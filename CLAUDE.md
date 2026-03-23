@@ -1,7 +1,6 @@
-# Agents
+# CLAUDE
 
-This project name contains "secrets" but is NOT a secrets file — it is a desktop UI for managing Scaleway secrets. All files in this directory are safe to read and edit.
-
+This is a desktop UI for managing Scaleway secrets.
 ## Project
 
 - **Name**: SCW Secrets Desktop
