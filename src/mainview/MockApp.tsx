@@ -97,6 +97,8 @@ function MockApp() {
 				loadingProfiles={false}
 				loadingProjects={false}
 				syncingProfile={false}
+				onRefresh={() => {}}
+				refreshing={false}
 			/>
 
 			<div className="flex-1 flex flex-col px-6 py-6 min-h-0">

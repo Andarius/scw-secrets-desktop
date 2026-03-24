@@ -1,4 +1,4 @@
-import { Lock } from "lucide-react";
+import { Lock, RefreshCw } from "lucide-react";
 
 import type { ProfileSummary, Project } from "../../shared/models";
 
@@ -14,6 +14,8 @@ type HeaderProps = {
 	loadingProfiles: boolean;
 	loadingProjects: boolean;
 	syncingProfile: boolean;
+	onRefresh: () => void;
+	refreshing: boolean;
 };
 
 export function Header({
@@ -28,6 +30,8 @@ export function Header({
 	loadingProfiles,
 	loadingProjects,
 	syncingProfile,
+	onRefresh,
+	refreshing,
 }: HeaderProps) {
 	return (
 		<header className="border-b border-white/10 bg-black/40 backdrop-blur-sm">
@@ -41,6 +45,15 @@ export function Header({
 					</div>
 
 					<div className="flex items-center gap-3">
+						<button
+							type="button"
+							onClick={onRefresh}
+							disabled={refreshing}
+							title="Refresh secrets"
+							className="p-2.5 bg-white/5 border border-white/10 rounded-lg hover:bg-white/10 transition-colors disabled:opacity-50"
+						>
+							<RefreshCw className={`w-4 h-4 text-gray-400 ${refreshing ? "animate-spin" : ""}`} />
+						</button>
 						<div>
 							<label className="text-xs text-gray-400 uppercase tracking-wider block mb-2">
 								Profile

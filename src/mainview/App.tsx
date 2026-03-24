@@ -27,6 +27,7 @@ function App() {
 	const [loadingProjects, setLoadingProjects] = useState(false);
 	const [loadingSecrets, setLoadingSecrets] = useState(false);
 	const [syncingProfile, setSyncingProfile] = useState(false);
+	const [refreshKey, setRefreshKey] = useState(0);
 
 	const deferredQuery = useDeferredValue(query);
 
@@ -160,7 +161,7 @@ function App() {
 		return () => {
 			cancelled = true;
 		};
-	}, [selectedProfile, selectedProjectId]);
+	}, [selectedProfile, selectedProjectId, refreshKey]);
 
 	const pathCounts = new Map<string, number>();
 	for (const secret of secrets) {
@@ -277,6 +278,8 @@ function App() {
 				loadingProfiles={loadingProfiles}
 				loadingProjects={loadingProjects}
 				syncingProfile={syncingProfile}
+				onRefresh={() => setRefreshKey((k) => k + 1)}
+				refreshing={loadingSecrets}
 			/>
 
 			<div className="flex-1 flex flex-col px-6 py-6 min-h-0">
