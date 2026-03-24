@@ -1,18 +1,21 @@
 import { useState } from "react";
-import { Copy, Eye, Clock, Key as KeyIcon, Settings, Loader2, ExternalLink, Trash2 } from "lucide-react";
+import { Copy, Eye, Pencil, Clock, Key as KeyIcon, Settings, Loader2, ExternalLink, Trash2 } from "lucide-react";
 
 import { electrobun } from "../rpc";
-import type { ProfileSummary, Project, Secret, SecretVersion } from "../../shared/models";
+import type { ProfileSummary, Project, Secret } from "../../shared/models";
 
 const SECRET_MANAGER_REGION = "fr-par";
 
-export type ValueEntry = { name: string; value: string };
+export type ValueEntry = { secretId: string; name: string; value: string };
 
 type DetailPanelProps = {
 	secrets: Secret[];
 	selectedProject: Project | null;
 	selectedProfileSummary: ProfileSummary | null;
 	onViewValues: (title: string, values: ValueEntry[]) => void;
+	onEditValue: (entry: ValueEntry) => void;
+	onViewHistory: (secretId: string, secretName: string) => void;
+	onRefresh: () => void;
 };
 
 function formatDate(value: string): string {
@@ -28,21 +31,6 @@ function formatDate(value: string): string {
 	});
 }
 
-function formatDateTime(value: string): string {
-	const date = new Date(value);
-	if (Number.isNaN(date.getTime())) {
-		return value;
-	}
-
-	return date.toLocaleString(undefined, {
-		month: "short",
-		day: "numeric",
-		year: "numeric",
-		hour: "2-digit",
-		minute: "2-digit",
-	});
-}
-
 function CopyButton({ text }: { text: string }) {
 	return (
 		<button
@@ -55,49 +43,33 @@ function CopyButton({ text }: { text: string }) {
 	);
 }
 
-function VersionStatusBadge({ status }: { status: string }) {
-	const styles: Record<string, string> = {
-		enabled: "bg-emerald-500/20 text-emerald-300 border-emerald-500/30",
-		disabled: "bg-amber-500/20 text-amber-300 border-amber-500/30",
-		destroyed: "bg-red-500/20 text-red-300 border-red-500/30",
-	};
-
-	return (
-		<span
-			className={`text-[10px] px-1.5 py-0.5 rounded font-medium border ${styles[status] ?? "bg-gray-500/20 text-gray-300 border-gray-500/30"}`}
-		>
-			{status}
-		</span>
-	);
-}
-
 function SingleSecretDetail({
 	secret,
 	selectedProject,
 	selectedProfileSummary,
 	onViewValues,
+	onEditValue,
+	onViewHistory,
 }: {
 	secret: Secret;
 	selectedProject: Project | null;
 	selectedProfileSummary: ProfileSummary | null;
 	onViewValues: (title: string, values: ValueEntry[]) => void;
+	onEditValue: (entry: ValueEntry) => void;
+	onViewHistory: (secretId: string, secretName: string) => void;
 }) {
 	const [loadingValue, setLoadingValue] = useState(false);
 	const [valueError, setValueError] = useState<string | null>(null);
 
-	const [versions, setVersions] = useState<SecretVersion[]>([]);
-	const [versionsVisible, setVersionsVisible] = useState(false);
-	const [loadingVersions, setLoadingVersions] = useState(false);
-	const [versionsError, setVersionsError] = useState<string | null>(null);
+	const [loadingEdit, setLoadingEdit] = useState(false);
+	const [editError, setEditError] = useState<string | null>(null);
 
 	const secretId = secret.id;
 	const [prevSecretId, setPrevSecretId] = useState<string>(secretId);
 	if (secretId !== prevSecretId) {
 		setPrevSecretId(secretId);
 		setValueError(null);
-		setVersions([]);
-		setVersionsVisible(false);
-		setVersionsError(null);
+		setEditError(null);
 	}
 
 	async function handleViewValue() {
@@ -110,7 +82,7 @@ function SingleSecretDetail({
 				profile: selectedProfileSummary?.name,
 				projectId: selectedProject?.id,
 			});
-			onViewValues(secret.name, [{ name: secret.name, value: response.value }]);
+			onViewValues(secret.name, [{ secretId: secret.id, name: secret.name, value: response.value }]);
 		} catch (reason) {
 			setValueError(reason instanceof Error ? reason.message : String(reason));
 		} finally {
@@ -118,31 +90,21 @@ function SingleSecretDetail({
 		}
 	}
 
-	async function handleViewVersions() {
-		if (versionsVisible && versions.length > 0) {
-			setVersionsVisible(false);
-			return;
-		}
-
-		if (versions.length > 0) {
-			setVersionsVisible(true);
-			return;
-		}
-
-		setLoadingVersions(true);
-		setVersionsError(null);
+	async function handleEditValue() {
+		setLoadingEdit(true);
+		setEditError(null);
 		try {
-			const response = await electrobun.rpc!.request.getSecretVersions({
+			const response = await electrobun.rpc!.request.getSecretValue({
 				secretId: secret.id,
+				revision: "latest_enabled",
 				profile: selectedProfileSummary?.name,
 				projectId: selectedProject?.id,
 			});
-			setVersions(response);
-			setVersionsVisible(true);
+			onEditValue({ secretId: secret.id, name: secret.name, value: response.value });
 		} catch (reason) {
-			setVersionsError(reason instanceof Error ? reason.message : String(reason));
+			setEditError(reason instanceof Error ? reason.message : String(reason));
 		} finally {
-			setLoadingVersions(false);
+			setLoadingEdit(false);
 		}
 	}
 
@@ -256,60 +218,32 @@ function SingleSecretDetail({
 
 					<button
 						type="button"
-						onClick={() => void handleViewVersions()}
-						disabled={loadingVersions}
+						onClick={() => void handleEditValue()}
+						disabled={loadingEdit}
 						className="w-full flex items-center gap-3 px-4 py-3 bg-white/5 border border-white/10 rounded-lg hover:bg-white/10 transition-colors text-sm disabled:opacity-50"
 					>
-						{loadingVersions ? (
-							<Loader2 className="w-4 h-4 text-purple-400 animate-spin" />
+						{loadingEdit ? (
+							<Loader2 className="w-4 h-4 text-amber-400 animate-spin" />
 						) : (
-							<Clock className="w-4 h-4 text-purple-400" />
+							<Pencil className="w-4 h-4 text-amber-400" />
 						)}
-						<span>{versionsVisible ? "Hide Version History" : "View Version History"}</span>
+						<span>Edit Secret Value</span>
 					</button>
 
-					{versionsError ? (
+					{editError ? (
 						<div className="px-4 py-2 rounded-lg border border-red-500/30 bg-red-500/10 text-red-300 text-xs">
-							{versionsError}
+							{editError}
 						</div>
 					) : null}
 
-					{versionsVisible && versions.length > 0 ? (
-						<div className="rounded-lg border border-purple-500/20 overflow-hidden">
-							<table className="w-full text-xs">
-								<thead>
-									<tr className="bg-purple-500/10 text-purple-300">
-										<th className="px-3 py-2 text-left font-medium">Rev</th>
-										<th className="px-3 py-2 text-left font-medium">Status</th>
-										<th className="px-3 py-2 text-left font-medium">Created</th>
-									</tr>
-								</thead>
-								<tbody>
-									{versions.map((version) => (
-										<tr
-											key={version.revision}
-											className="border-t border-white/5 hover:bg-white/5"
-										>
-											<td className="px-3 py-2 font-mono text-gray-300">
-												{version.revision}
-												{version.latest ? (
-													<span className="ml-1.5 text-[10px] px-1 py-0.5 rounded bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
-														latest
-													</span>
-												) : null}
-											</td>
-											<td className="px-3 py-2">
-												<VersionStatusBadge status={version.status} />
-											</td>
-											<td className="px-3 py-2 text-gray-400">
-												{formatDateTime(version.created_at)}
-											</td>
-										</tr>
-									))}
-								</tbody>
-							</table>
-						</div>
-					) : null}
+					<button
+						type="button"
+						onClick={() => onViewHistory(secret.id, secret.name)}
+						className="w-full flex items-center gap-3 px-4 py-3 bg-white/5 border border-white/10 rounded-lg hover:bg-white/10 transition-colors text-sm"
+					>
+						<Clock className="w-4 h-4 text-purple-400" />
+						<span>Version History</span>
+					</button>
 
 					<button
 						type="button"
@@ -331,11 +265,13 @@ function MultiSecretDetail({
 	selectedProject,
 	selectedProfileSummary,
 	onViewValues,
+	onRefresh,
 }: {
 	secrets: Secret[];
 	selectedProject: Project | null;
 	selectedProfileSummary: ProfileSummary | null;
 	onViewValues: (title: string, values: ValueEntry[]) => void;
+	onRefresh: () => void;
 }) {
 	const [loadingValues, setLoadingValues] = useState(false);
 	const [valuesError, setValuesError] = useState<string | null>(null);
@@ -355,7 +291,7 @@ function MultiSecretDetail({
 						profile: selectedProfileSummary?.name,
 						projectId: selectedProject?.id,
 					});
-					return { name: secret.name, value: response.value };
+					return { secretId: secret.id, name: secret.name, value: response.value };
 				}),
 			);
 			onViewValues(`${secrets.length} Secrets`, results);
@@ -385,6 +321,7 @@ function MultiSecretDetail({
 				),
 			);
 			setConfirmDelete(false);
+			onRefresh();
 		} catch (reason) {
 			setDeleteError(reason instanceof Error ? reason.message : String(reason));
 		} finally {
@@ -489,6 +426,9 @@ export function DetailPanel({
 	selectedProject,
 	selectedProfileSummary,
 	onViewValues,
+	onEditValue,
+	onViewHistory,
+	onRefresh,
 }: DetailPanelProps) {
 	if (secrets.length === 0) {
 		return (
@@ -513,6 +453,8 @@ export function DetailPanel({
 					selectedProject={selectedProject}
 					selectedProfileSummary={selectedProfileSummary}
 					onViewValues={onViewValues}
+					onEditValue={onEditValue}
+					onViewHistory={onViewHistory}
 				/>
 			) : (
 				<MultiSecretDetail
@@ -520,6 +462,7 @@ export function DetailPanel({
 					selectedProject={selectedProject}
 					selectedProfileSummary={selectedProfileSummary}
 					onViewValues={onViewValues}
+					onRefresh={onRefresh}
 				/>
 			)}
 		</div>

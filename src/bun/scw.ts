@@ -289,6 +289,23 @@ async function apiGet<T>(
 	return parseJson<T>(response);
 }
 
+async function apiPost<T>(
+	pathname: string,
+	profile: LoadedProfile,
+	body: unknown,
+): Promise<T> {
+	const url = new URL(pathname, API_BASE);
+	const response = await fetch(url, {
+		method: "POST",
+		headers: {
+			"X-Auth-Token": profile.secretKey,
+			"Content-Type": "application/json",
+		},
+		body: JSON.stringify(body),
+	});
+	return parseJson<T>(response);
+}
+
 async function apiDelete(
 	pathname: string,
 	profile: LoadedProfile,
@@ -424,6 +441,63 @@ export async function accessSecretVersion(
 		{ project_id: projectId || profile.projectId },
 	);
 	return atob(data.data);
+}
+
+export async function createSecretVersion(
+	secretId: string,
+	value: string,
+	profileName?: string,
+	_projectId?: string,
+): Promise<SecretVersion> {
+	const profile = loadProfile(profileName);
+	const encoded = btoa(value);
+	return apiPost<SecretVersion>(
+		secretManagerPath("secrets", secretId, "versions"),
+		profile,
+		{ data: encoded },
+	);
+}
+
+export async function enableSecretVersion(
+	secretId: string,
+	revision: number,
+	profileName?: string,
+	_projectId?: string,
+): Promise<SecretVersion> {
+	const profile = loadProfile(profileName);
+	return apiPost<SecretVersion>(
+		secretManagerPath("secrets", secretId, "versions", String(revision), "enable"),
+		profile,
+		{},
+	);
+}
+
+export async function disableSecretVersion(
+	secretId: string,
+	revision: number,
+	profileName?: string,
+	_projectId?: string,
+): Promise<SecretVersion> {
+	const profile = loadProfile(profileName);
+	return apiPost<SecretVersion>(
+		secretManagerPath("secrets", secretId, "versions", String(revision), "disable"),
+		profile,
+		{},
+	);
+}
+
+export async function destroySecretVersion(
+	secretId: string,
+	revision: number,
+	profileName?: string,
+	_projectId?: string,
+): Promise<SecretVersion> {
+	const profile = loadProfile(profileName);
+	return apiPost<SecretVersion>(
+		secretManagerPath("secrets", secretId, "versions", String(revision), "destroy"),
+		profile,
+		{},
+	);
 }
 
 export async function deleteSecret(

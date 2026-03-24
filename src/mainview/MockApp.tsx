@@ -26,18 +26,18 @@ const MOCK_PROJECTS: Project[] = [
 ];
 
 const MOCK_SECRETS: Secret[] = [
-	{ id: "d4e5f6a7-b8c9-0123-defa-234567890123", name: "DATABASE_URL", path: "/services/api", version_count: 5, status: "ready", created_at: "2025-02-10T08:00:00Z", updated_at: "2026-03-20T14:30:00Z" },
-	{ id: "e5f6a7b8-c9d0-1234-efab-345678901234", name: "REDIS_PASSWORD", path: "/services/api", version_count: 2, status: "ready", created_at: "2025-02-10T08:05:00Z", updated_at: "2026-01-15T11:20:00Z" },
-	{ id: "f6a7b8c9-d0e1-2345-fabc-456789012345", name: "JWT_SECRET", path: "/services/auth", version_count: 3, status: "ready", created_at: "2025-03-01T09:00:00Z", updated_at: "2026-03-10T08:45:00Z" },
-	{ id: "a7b8c9d0-e1f2-3456-abcd-567890123456", name: "SMTP_API_KEY", path: "/services/notifications", version_count: 1, status: "ready", created_at: "2025-04-15T14:00:00Z", updated_at: "2025-04-15T14:00:00Z" },
-	{ id: "b8c9d0e1-f2a3-4567-bcde-678901234567", name: "STRIPE_SECRET_KEY", path: "/services/billing", version_count: 4, status: "ready", created_at: "2025-05-01T10:30:00Z", updated_at: "2026-03-19T16:00:00Z" },
-	{ id: "c9d0e1f2-a3b4-5678-cdef-789012345678", name: "AWS_ACCESS_KEY_ID", path: "/infra/cloud", version_count: 2, status: "ready", created_at: "2025-06-20T07:15:00Z", updated_at: "2026-02-28T12:30:00Z" },
-	{ id: "d0e1f2a3-b4c5-6789-defa-890123456789", name: "AWS_SECRET_ACCESS_KEY", path: "/infra/cloud", version_count: 2, status: "ready", created_at: "2025-06-20T07:15:00Z", updated_at: "2026-02-28T12:30:00Z" },
-	{ id: "e1f2a3b4-c5d6-7890-efab-901234567890", name: "SENTRY_DSN", path: "/services/monitoring", version_count: 1, status: "ready", created_at: "2025-07-10T11:00:00Z", updated_at: "2025-07-10T11:00:00Z" },
-	{ id: "f2a3b4c5-d6e7-8901-fabc-012345678901", name: "DEPRECATED_API_TOKEN", path: "/services/legacy", version_count: 6, status: "locked", created_at: "2025-01-05T06:00:00Z", updated_at: "2026-03-01T09:00:00Z" },
-	{ id: "a3b4c5d6-e7f8-9012-abcd-123456789abc", name: "OAUTH_CLIENT_SECRET", path: "/services/auth", version_count: 2, status: "ready", created_at: "2025-08-22T15:45:00Z", updated_at: "2026-03-15T10:20:00Z" },
-	{ id: "b4c5d6e7-f8a9-0123-bcde-23456789abcd", name: "ENCRYPTION_MASTER_KEY", path: "/services/api", version_count: 1, status: "ready", created_at: "2025-09-01T09:30:00Z", updated_at: "2025-09-01T09:30:00Z" },
-	{ id: "c5d6e7f8-a9b0-1234-cdef-3456789abcde", name: "WEBHOOK_SIGNING_KEY", path: "/services/billing", version_count: 3, status: "ready", created_at: "2025-10-12T13:00:00Z", updated_at: "2026-03-22T08:15:00Z" },
+	{ id: "d4e5f6a7-b8c9-0123-defa-234567890123", name: "DATABASE_URL", path: "/services/api", version_count: 5, status: "ready", tags: ["prod", "database"], created_at: "2025-02-10T08:00:00Z", updated_at: "2026-03-20T14:30:00Z" },
+	{ id: "e5f6a7b8-c9d0-1234-efab-345678901234", name: "REDIS_PASSWORD", path: "/services/api", version_count: 2, status: "ready", tags: ["prod"], created_at: "2025-02-10T08:05:00Z", updated_at: "2026-01-15T11:20:00Z" },
+	{ id: "f6a7b8c9-d0e1-2345-fabc-456789012345", name: "JWT_SECRET", path: "/services/auth", version_count: 3, status: "ready", tags: ["auth"], created_at: "2025-03-01T09:00:00Z", updated_at: "2026-03-10T08:45:00Z" },
+	{ id: "a7b8c9d0-e1f2-3456-abcd-567890123456", name: "SMTP_API_KEY", path: "/services/notifications", version_count: 1, status: "ready", tags: [], created_at: "2025-04-15T14:00:00Z", updated_at: "2025-04-15T14:00:00Z" },
+	{ id: "b8c9d0e1-f2a3-4567-bcde-678901234567", name: "STRIPE_SECRET_KEY", path: "/services/billing", version_count: 4, status: "ready", tags: ["billing", "sensitive"], created_at: "2025-05-01T10:30:00Z", updated_at: "2026-03-19T16:00:00Z" },
+	{ id: "c9d0e1f2-a3b4-5678-cdef-789012345678", name: "AWS_ACCESS_KEY_ID", path: "/infra/cloud", version_count: 2, status: "ready", tags: ["aws"], created_at: "2025-06-20T07:15:00Z", updated_at: "2026-02-28T12:30:00Z" },
+	{ id: "d0e1f2a3-b4c5-6789-defa-890123456789", name: "AWS_SECRET_ACCESS_KEY", path: "/infra/cloud", version_count: 2, status: "ready", tags: ["aws"], created_at: "2025-06-20T07:15:00Z", updated_at: "2026-02-28T12:30:00Z" },
+	{ id: "e1f2a3b4-c5d6-7890-efab-901234567890", name: "SENTRY_DSN", path: "/services/monitoring", version_count: 1, status: "ready", tags: [], created_at: "2025-07-10T11:00:00Z", updated_at: "2025-07-10T11:00:00Z" },
+	{ id: "f2a3b4c5-d6e7-8901-fabc-012345678901", name: "DEPRECATED_API_TOKEN", path: "/services/legacy", version_count: 6, status: "locked", tags: ["deprecated"], created_at: "2025-01-05T06:00:00Z", updated_at: "2026-03-01T09:00:00Z" },
+	{ id: "a3b4c5d6-e7f8-9012-abcd-123456789abc", name: "OAUTH_CLIENT_SECRET", path: "/services/auth", version_count: 2, status: "ready", tags: ["auth"], created_at: "2025-08-22T15:45:00Z", updated_at: "2026-03-15T10:20:00Z" },
+	{ id: "b4c5d6e7-f8a9-0123-bcde-23456789abcd", name: "ENCRYPTION_MASTER_KEY", path: "/services/api", version_count: 1, status: "ready", tags: ["sensitive"], created_at: "2025-09-01T09:30:00Z", updated_at: "2025-09-01T09:30:00Z" },
+	{ id: "c5d6e7f8-a9b0-1234-cdef-3456789abcde", name: "WEBHOOK_SIGNING_KEY", path: "/services/billing", version_count: 3, status: "ready", tags: ["billing"], created_at: "2025-10-12T13:00:00Z", updated_at: "2026-03-22T08:15:00Z" },
 ];
 
 function MockApp() {
@@ -147,6 +147,9 @@ function MockApp() {
 							selectedProject={selectedProject}
 							selectedProfileSummary={selectedProfileSummary}
 							onViewValues={(title, values) => setExpandedValues({ title, values })}
+							onEditValue={() => {}}
+							onViewHistory={() => {}}
+							onRefresh={() => {}}
 						/>
 					</div>
 				)}

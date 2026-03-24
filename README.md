@@ -13,8 +13,10 @@ Built with [Electrobun](https://electrobun.dev), React, TypeScript, and Tailwind
 - **Secrets inventory** — searchable table with status and version badges, filter by status
 - **Multi-select** — shift+click for range, ctrl+click to toggle, batch operations
 - **View secret values** — single or batch, displayed in a full-screen overlay with copy support
+- **Edit secret values** — modify a value and save as a new version
 - **Copy as KEY=VALUE** — batch-copy selected secrets for `.env` files
-- **Version history** — view all versions of a secret with revision, status, and timestamps
+- **Version history** — modal with all versions, enable/disable/destroy actions
+- **Tags** — displayed in the inventory table
 - **Manage secret** — opens the Scaleway console for the selected secret
 - **Delete secrets** — single or batch delete with confirmation
 
@@ -55,8 +57,10 @@ src/
 │       ├── StatsCards.tsx     # Gradient stat cards
 │       ├── Navigator.tsx     # Path tree with count badges
 │       ├── Inventory.tsx     # Secrets table with multi-select
-│       ├── DetailPanel.tsx   # Secret detail, actions, version history
-│       └── ValueModal.tsx    # Full-screen value overlay
+│       ├── DetailPanel.tsx   # Secret detail and action buttons
+│       ├── ValueModal.tsx    # Full-screen value overlay
+│       ├── EditModal.tsx     # Edit secret value modal
+│       └── HistoryModal.tsx  # Version history modal with actions
 └── shared/
     ├── models.ts             # Shared types
     └── rpc.ts                # RPC contract

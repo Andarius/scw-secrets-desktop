@@ -1,6 +1,6 @@
 import { BrowserView, BrowserWindow, Updater, type RPCSchema } from "electrobun/bun";
 
-import { accessSecretVersion, deleteSecret, getProfiles, getProjects, getSecrets, getSecretVersions, switchActiveProfile } from "./scw";
+import { accessSecretVersion, createSecretVersion, deleteSecret, destroySecretVersion, disableSecretVersion, enableSecretVersion, getProfiles, getProjects, getSecrets, getSecretVersions, switchActiveProfile } from "./scw";
 import type { SecretFilters } from "../shared/models";
 import type { AppRPCContract } from "../shared/rpc";
 
@@ -43,6 +43,22 @@ const rpc = BrowserView.defineRPC<AppRPC>({
 			getSecretValue: async ({ secretId, revision, profile, projectId }: { secretId: string; revision: string; profile?: string; projectId?: string }) => ({
 				value: await accessSecretVersion(secretId, revision, profile, projectId),
 			}),
+			updateSecretValue: async ({ secretId, value, profile, projectId }: { secretId: string; value: string; profile?: string; projectId?: string }) => {
+				await createSecretVersion(secretId, value, profile, projectId);
+				return { ok: true };
+			},
+			enableSecretVersion: async ({ secretId, revision, profile, projectId }: { secretId: string; revision: number; profile?: string; projectId?: string }) => {
+				await enableSecretVersion(secretId, revision, profile, projectId);
+				return { ok: true };
+			},
+			disableSecretVersion: async ({ secretId, revision, profile, projectId }: { secretId: string; revision: number; profile?: string; projectId?: string }) => {
+				await disableSecretVersion(secretId, revision, profile, projectId);
+				return { ok: true };
+			},
+			destroySecretVersion: async ({ secretId, revision, profile, projectId }: { secretId: string; revision: number; profile?: string; projectId?: string }) => {
+				await destroySecretVersion(secretId, revision, profile, projectId);
+				return { ok: true };
+			},
 			deleteSecret: async ({ secretId, profile, projectId }: { secretId: string; profile?: string; projectId?: string }) => {
 				await deleteSecret(secretId, profile, projectId);
 				return { ok: true };

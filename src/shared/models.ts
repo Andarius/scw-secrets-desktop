@@ -25,6 +25,7 @@ export type Secret = {
 	path: string;
 	version_count: number;
 	status: string;
+	tags: string[];
 	created_at: string;
 	updated_at: string;
 };

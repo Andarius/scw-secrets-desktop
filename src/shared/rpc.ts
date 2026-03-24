@@ -27,6 +27,22 @@ export type AppRPCContract = {
 				params: { secretId: string; revision: string; profile?: string; projectId?: string };
 				response: { value: string };
 			};
+			updateSecretValue: {
+				params: { secretId: string; value: string; profile?: string; projectId?: string };
+				response: { ok: boolean };
+			};
+			enableSecretVersion: {
+				params: { secretId: string; revision: number; profile?: string; projectId?: string };
+				response: { ok: boolean };
+			};
+			disableSecretVersion: {
+				params: { secretId: string; revision: number; profile?: string; projectId?: string };
+				response: { ok: boolean };
+			};
+			destroySecretVersion: {
+				params: { secretId: string; revision: number; profile?: string; projectId?: string };
+				response: { ok: boolean };
+			};
 			deleteSecret: {
 				params: { secretId: string; profile?: string; projectId?: string };
 				response: { ok: boolean };

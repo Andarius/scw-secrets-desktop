@@ -164,6 +164,9 @@ export function Inventory({
 									Status
 								</th>
 								<th className="px-4 py-3 text-xs font-medium text-gray-400 uppercase tracking-wider">
+									Tags
+								</th>
+								<th className="px-4 py-3 text-xs font-medium text-gray-400 uppercase tracking-wider">
 									Versions
 								</th>
 								<th className="px-4 py-3 text-xs font-medium text-gray-400 uppercase tracking-wider">
@@ -202,6 +205,20 @@ export function Inventory({
 										</td>
 										<td className="px-4 py-3">
 											<StatusBadge status={secret.status} />
+										</td>
+										<td className="px-4 py-3">
+											<div className="flex flex-wrap gap-1">
+												{secret.tags.length > 0
+													? secret.tags.map((tag) => (
+														<span
+															key={tag}
+															className="text-[10px] px-1.5 py-0.5 rounded bg-white/10 text-gray-300 border border-white/10"
+														>
+															{tag}
+														</span>
+													))
+													: <span className="text-xs text-gray-600">—</span>}
+											</div>
 										</td>
 										<td className="px-4 py-3">
 											<div className="text-sm text-gray-300">
