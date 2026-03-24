@@ -1,10 +1,17 @@
+import { readFileSync } from "node:fs";
 import type { ElectrobunConfig } from "electrobun";
+
+const packageJson = JSON.parse(
+	readFileSync(new URL("./package.json", import.meta.url), "utf8"),
+) as {
+	version: string;
+};
 
 export default {
 	app: {
 		name: "Scw Secrets",
 		identifier: "dev.julien.scw-secrets",
-		version: "0.1.0",
+		version: process.env.ELECTROBUN_APP_VERSION?.trim() || packageJson.version,
 	},
 	build: {
 		// Vite builds to dist/, we copy from there

@@ -16,6 +16,6 @@
 		"noUnusedParameters": true,
 		"noFallthroughCasesInSwitch": true
 	},
-	"include": ["src", "src/types/**/*.d.ts"],
+	"include": ["src", "tests", "src/types/**/*.d.ts"],
 	"exclude": ["node_modules", "dist", "build", "../../package/dist"]
 }

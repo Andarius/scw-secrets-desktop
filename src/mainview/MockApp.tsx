@@ -4,11 +4,18 @@ import type { ProfilesResponse, Project, Secret } from "../shared/models";
 import { Header } from "./components/Header";
 import { StatsCards } from "./components/StatsCards";
 import { Navigator } from "./components/Navigator";
-import { Inventory, type InventorySortDirection, type InventorySortKey } from "./components/Inventory";
+import { Inventory } from "./components/Inventory";
 import { DetailPanel, type ValueEntry } from "./components/DetailPanel";
 import { ValueView } from "./components/ValueModal";
-
-type StatusFilter = "all" | "ready" | "attention";
+import {
+	filterSecrets,
+	getPathEntries,
+	reconcileSelectedSecretIds,
+	sortSecrets,
+	type InventorySortDirection,
+	type InventorySortKey,
+	type StatusFilter,
+} from "./secret-list";
 
 const MOCK_PROFILES: ProfilesResponse = {
 	active: "production",
@@ -55,43 +62,15 @@ function MockApp() {
 	const profiles = MOCK_PROFILES.profiles;
 	const selectedProfileSummary = profiles.find((p) => p.name === selectedProfile) ?? profiles[0];
 	const selectedProject = MOCK_PROJECTS.find((p) => p.id === selectedProjectId) ?? MOCK_PROJECTS[0];
-
-	const pathCounts = new Map<string, number>();
-	for (const secret of MOCK_SECRETS) {
-		pathCounts.set(secret.path, (pathCounts.get(secret.path) ?? 0) + 1);
-	}
-	const paths = Array.from(pathCounts.entries()).sort((a, b) => a[0].localeCompare(b[0]));
-
-	const normalizedQuery = deferredQuery.trim().toLowerCase();
-	const filteredSecrets = MOCK_SECRETS.filter((secret) => {
-		if (
-			pathFilter !== "all" &&
-			secret.path !== pathFilter &&
-			!secret.path.startsWith(`${pathFilter}/`)
-		) return false;
-		if (statusFilter === "ready" && secret.status !== "ready") return false;
-		if (statusFilter === "attention" && secret.status === "ready") return false;
-		if (!normalizedQuery) return true;
-		return `${secret.name} ${secret.path}`.toLowerCase().includes(normalizedQuery);
+	const paths = getPathEntries(MOCK_SECRETS);
+	const filteredSecrets = filterSecrets(MOCK_SECRETS, {
+		query: deferredQuery,
+		pathFilter,
+		statusFilter,
 	});
-	const visibleSecrets = [...filteredSecrets].sort((left, right) => {
-		const factor = sortDirection === "asc" ? 1 : -1;
-		if (sortKey === "version_count") {
-			const diff = left.version_count - right.version_count;
-			if (diff !== 0) return diff * factor;
-		} else if (sortKey === "updated_at") {
-			const leftTime = new Date(left.updated_at).getTime();
-			const rightTime = new Date(right.updated_at).getTime();
-			if (!Number.isNaN(leftTime) && !Number.isNaN(rightTime) && leftTime !== rightTime) {
-				return (leftTime - rightTime) * factor;
-			}
-			const fallbackDate = left.updated_at.localeCompare(right.updated_at);
-			if (fallbackDate !== 0) return fallbackDate * factor;
-		} else {
-			const diff = left.name.localeCompare(right.name);
-			if (diff !== 0) return diff * factor;
-		}
-		return left.name.localeCompare(right.name);
+	const visibleSecrets = sortSecrets(filteredSecrets, {
+		sortKey,
+		sortDirection,
 	});
 	const visibleVersionCount = visibleSecrets.reduce((sum, secret) => sum + secret.version_count, 0);
 	const totalVersionCount = MOCK_SECRETS.reduce((sum, secret) => sum + secret.version_count, 0);
@@ -105,16 +84,11 @@ function MockApp() {
 	);
 
 	useEffect(() => {
-		if (visibleSecrets.length === 0 && selectedSecretIds.size > 0) {
-			setSelectedSecretIds(new Set());
-			return;
+		const nextSelection = reconcileSelectedSecretIds(visibleSecrets, selectedSecretIds);
+		if (nextSelection) {
+			setSelectedSecretIds(nextSelection);
 		}
-		const filteredIds = new Set(visibleSecrets.map((s) => s.id));
-		const stillValid = [...selectedSecretIds].filter((id) => filteredIds.has(id));
-		if (stillValid.length === 0 && visibleSecrets.length > 0) {
-			setSelectedSecretIds(new Set([visibleSecrets[0].id]));
-		}
-	}, [visibleSecrets]);
+	}, [visibleSecrets, selectedSecretIds]);
 
 	const selectedSecrets = visibleSecrets.filter((s) => selectedSecretIds.has(s.id));
 

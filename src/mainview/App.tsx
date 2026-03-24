@@ -5,14 +5,21 @@ import type { ProfilesResponse, Project, Secret } from "../shared/models";
 import { Header } from "./components/Header";
 import { StatsCards } from "./components/StatsCards";
 import { Navigator } from "./components/Navigator";
-import { Inventory, type InventorySortDirection, type InventorySortKey } from "./components/Inventory";
+import { Inventory } from "./components/Inventory";
 import { DetailPanel, type ValueEntry } from "./components/DetailPanel";
 import { ValueView } from "./components/ValueModal";
 import { EditModal } from "./components/EditModal";
 import { HistoryModal } from "./components/HistoryModal";
 import { CreateSecretModal } from "./components/CreateSecretModal";
-
-type StatusFilter = "all" | "ready" | "attention";
+import {
+	filterSecrets,
+	getPathEntries,
+	reconcileSelectedSecretIds,
+	sortSecrets,
+	type InventorySortDirection,
+	type InventorySortKey,
+	type StatusFilter,
+} from "./secret-list";
 
 function App() {
 	const [profilesResponse, setProfilesResponse] = useState<ProfilesResponse | null>(null);
@@ -171,65 +178,15 @@ function App() {
 		};
 	}, [selectedProfile, selectedProjectId, refreshKey]);
 
-	const pathCounts = new Map<string, number>();
-	for (const secret of secrets) {
-		pathCounts.set(secret.path, (pathCounts.get(secret.path) ?? 0) + 1);
-	}
-	const paths = Array.from(pathCounts.entries()).sort((left, right) =>
-		left[0].localeCompare(right[0]),
-	);
-
-	const normalizedQuery = deferredQuery.trim().toLowerCase();
-	const filteredSecrets = secrets.filter((secret) => {
-		if (
-			pathFilter !== "all" &&
-			secret.path !== pathFilter &&
-			!secret.path.startsWith(`${pathFilter}/`)
-		) {
-			return false;
-		}
-
-		if (statusFilter === "ready" && secret.status !== "ready") {
-			return false;
-		}
-
-		if (statusFilter === "attention" && secret.status === "ready") {
-			return false;
-		}
-
-		if (!normalizedQuery) {
-			return true;
-		}
-
-		const searchable = `${secret.name} ${secret.path}`.toLowerCase();
-		return searchable.includes(normalizedQuery);
+	const paths = getPathEntries(secrets);
+	const filteredSecrets = filterSecrets(secrets, {
+		query: deferredQuery,
+		pathFilter,
+		statusFilter,
 	});
-	const visibleSecrets = [...filteredSecrets].sort((left, right) => {
-		const factor = sortDirection === "asc" ? 1 : -1;
-
-		if (sortKey === "version_count") {
-			const diff = left.version_count - right.version_count;
-			if (diff !== 0) {
-				return diff * factor;
-			}
-		} else if (sortKey === "updated_at") {
-			const leftTime = new Date(left.updated_at).getTime();
-			const rightTime = new Date(right.updated_at).getTime();
-			if (!Number.isNaN(leftTime) && !Number.isNaN(rightTime) && leftTime !== rightTime) {
-				return (leftTime - rightTime) * factor;
-			}
-			const fallbackDate = left.updated_at.localeCompare(right.updated_at);
-			if (fallbackDate !== 0) {
-				return fallbackDate * factor;
-			}
-		} else {
-			const diff = left.name.localeCompare(right.name);
-			if (diff !== 0) {
-				return diff * factor;
-			}
-		}
-
-		return left.name.localeCompare(right.name);
+	const visibleSecrets = sortSecrets(filteredSecrets, {
+		sortKey,
+		sortDirection,
 	});
 	const visibleVersionCount = visibleSecrets.reduce((sum, secret) => sum + secret.version_count, 0);
 	const totalVersionCount = secrets.reduce((sum, secret) => sum + secret.version_count, 0);
@@ -243,19 +200,9 @@ function App() {
 	);
 
 	useEffect(() => {
-		if (visibleSecrets.length === 0) {
-			if (selectedSecretIds.size > 0) {
-				setSelectedSecretIds(new Set());
-			}
-			return;
-		}
-
-		const filteredIds = new Set(visibleSecrets.map((s) => s.id));
-		const stillValid = [...selectedSecretIds].filter((id) => filteredIds.has(id));
-		if (stillValid.length === 0) {
-			setSelectedSecretIds(new Set([visibleSecrets[0].id]));
-		} else if (stillValid.length !== selectedSecretIds.size) {
-			setSelectedSecretIds(new Set(stillValid));
+		const nextSelection = reconcileSelectedSecretIds(visibleSecrets, selectedSecretIds);
+		if (nextSelection) {
+			setSelectedSecretIds(nextSelection);
 		}
 	}, [visibleSecrets, selectedSecretIds]);
 

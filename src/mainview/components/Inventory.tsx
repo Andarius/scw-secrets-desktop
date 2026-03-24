@@ -2,10 +2,17 @@ import { useRef } from "react";
 import { ChevronDown, ChevronUp, Search } from "lucide-react";
 
 import type { Secret } from "../../shared/models";
+import {
+	getNextSelectionState,
+	getSelectAllState,
+} from "../inventory-selection";
+import type {
+	InventorySortDirection,
+	InventorySortKey,
+	StatusFilter,
+} from "../secret-list";
 
-type StatusFilter = "all" | "ready" | "attention";
-export type InventorySortKey = "name" | "updated_at" | "version_count";
-export type InventorySortDirection = "desc" | "asc";
+export type { InventorySortDirection, InventorySortKey };
 
 type InventoryProps = {
 	secrets: Secret[];
@@ -90,36 +97,26 @@ export function Inventory({
 		secrets.length > 0 && secrets.every((secret) => selectedSecretIds.has(secret.id));
 
 	function handleRowClick(secret: Secret, index: number, event: React.MouseEvent) {
-		if (event.shiftKey && lastClickedIndex.current !== null) {
-			const start = Math.min(lastClickedIndex.current, index);
-			const end = Math.max(lastClickedIndex.current, index);
-			const rangeIds = secrets.slice(start, end + 1).map((s) => s.id);
-			const next = new Set(selectedSecretIds);
-			for (const id of rangeIds) {
-				next.add(id);
-			}
-			onSelectionChange(next);
-		} else if (event.ctrlKey || event.metaKey) {
-			const next = new Set(selectedSecretIds);
-			if (next.has(secret.id)) {
-				next.delete(secret.id);
-				if (next.size === 0) {
-					next.add(secret.id);
-				}
-			} else {
-				next.add(secret.id);
-			}
-			onSelectionChange(next);
-			lastClickedIndex.current = index;
-		} else {
-			onSelectionChange(new Set([secret.id]));
-			lastClickedIndex.current = index;
-		}
+		const nextState = getNextSelectionState(
+			secrets,
+			selectedSecretIds,
+			lastClickedIndex.current,
+			secret,
+			index,
+			{
+				shiftKey: event.shiftKey,
+				ctrlKey: event.ctrlKey,
+				metaKey: event.metaKey,
+			},
+		);
+		onSelectionChange(nextState.selectedSecretIds);
+		lastClickedIndex.current = nextState.lastClickedIndex;
 	}
 
 	function handleSelectAll() {
-		onSelectionChange(new Set(secrets.map((secret) => secret.id)));
-		lastClickedIndex.current = secrets.length > 0 ? secrets.length - 1 : null;
+		const nextState = getSelectAllState(secrets);
+		onSelectionChange(nextState.selectedSecretIds);
+		lastClickedIndex.current = nextState.lastClickedIndex;
 	}
 
 	function handleSort(nextKey: InventorySortKey) {

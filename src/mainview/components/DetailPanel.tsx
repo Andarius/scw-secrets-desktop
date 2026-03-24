@@ -3,6 +3,7 @@ import { Copy, Eye, Pencil, Clock, Key as KeyIcon, Settings, Loader2, ExternalLi
 
 import { electrobun } from "../rpc";
 import type { ProfileSummary, Project, Secret } from "../../shared/models";
+import { planKeepLatestVersionOnly } from "../secret-versions";
 
 const SECRET_MANAGER_REGION = "fr-par";
 
@@ -59,10 +60,6 @@ function formatSecretType(type?: string): string {
 	return labels[type] ?? type.split("_").map((part) => part.charAt(0).toUpperCase() + part.slice(1)).join(" ");
 }
 
-function isVersionDeleted(status: string): boolean {
-	return status === "scheduled_for_deletion" || status === "destroyed";
-}
-
 async function keepLatestVersionOnly(
 	secretId: string,
 	profile?: string,
@@ -73,31 +70,20 @@ async function keepLatestVersionOnly(
 		profile,
 		projectId,
 	});
-	const remainingVersions = versions.filter((version) => !isVersionDeleted(version.status));
-	const latestRevision =
-		remainingVersions.find((version) => version.latest)?.revision ?? remainingVersions[0]?.revision;
-
-	if (latestRevision === undefined) {
-		return;
-	}
-
-	for (const version of versions) {
-		if (isVersionDeleted(version.status) || version.revision === latestRevision) {
-			continue;
-		}
-
-		if (version.status === "enabled") {
+	for (const action of planKeepLatestVersionOnly(versions)) {
+		if (action.type === "disable") {
 			await electrobun.rpc!.request.disableSecretVersion({
 				secretId,
-				revision: version.revision,
+				revision: action.revision,
 				profile,
 				projectId,
 			});
+			continue;
 		}
 
 		await electrobun.rpc!.request.destroySecretVersion({
 			secretId,
-			revision: version.revision,
+			revision: action.revision,
 			profile,
 			projectId,
 		});

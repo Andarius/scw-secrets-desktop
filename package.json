@@ -10,8 +10,12 @@
 		"dev:hmr": "concurrently \"bun run hmr\" \"bun run start\"",
 		"hmr": "vite --port 5173",
 		"mock": "VITE_MOCK=1 vite --port 5199",
+		"mock:e2e": "VITE_MOCK=1 vite --host 127.0.0.1 --port 5199",
+		"test": "bun test",
+		"test:e2e": "playwright test",
 		"typecheck": "tsc --noEmit",
-		"build:canary": "vite build && electrobun build --env=canary"
+		"build:canary": "vite build && electrobun build --env=canary",
+		"build:stable": "vite build && electrobun build --env=stable"
 	},
 	"dependencies": {
 		"electrobun": "1.16.1-beta.0",
@@ -20,6 +24,7 @@
 		"react-dom": "^18.3.1"
 	},
 	"devDependencies": {
+		"@playwright/test": "^1.58.2",
 		"@types/bun": "latest",
 		"@types/react": "^18.3.12",
 		"@types/react-dom": "^18.3.1",

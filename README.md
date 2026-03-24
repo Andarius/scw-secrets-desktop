@@ -4,6 +4,10 @@ Desktop app for browsing and managing [Scaleway Secret Manager](https://www.scal
 
 Built with [Electrobun](https://electrobun.dev), React, TypeScript, and Tailwind CSS.
 
+## Disclaimer
+
+This project is provided as-is, with no guarantee or warranty of any kind. Use it at your own risk.
+
 ![SCW Secrets Desktop](docs/screenshot.png)
 
 ## Features
@@ -40,10 +44,19 @@ bun run dev:hmr      # Electrobun + Vite HMR
 bun run mock         # Browser preview with mock data (port 5199)
 ```
 
+## Testing
+
+```bash
+bun run test         # Unit tests (bun test)
+bun run test:e2e     # E2E tests (Playwright against mock mode)
+```
+
 ## Build
 
 ```bash
 bun run build        # Vite production build
+bun run build:canary # Vite build + Electrobun canary
+bun run build:stable # Vite build + Electrobun stable
 bun run typecheck    # TypeScript check
 ```
 
@@ -58,6 +71,9 @@ src/
 │   ├── App.tsx               # React application shell
 │   ├── rpc.ts                # Typed Electrobun webview RPC setup
 │   ├── main.tsx              # React entry point
+│   ├── secret-list.ts        # Filtering, sorting, and selection reconciliation
+│   ├── secret-versions.ts    # Version pruning plan logic
+│   ├── inventory-selection.ts # Row click and select-all state helpers
 │   └── components/
 │       ├── Header.tsx        # Profile/project dropdowns, metadata bar
 │       ├── StatsCards.tsx     # Gradient stat cards
