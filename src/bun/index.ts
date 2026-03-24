@@ -93,7 +93,7 @@ const win = new BrowserWindow({
 
 // Set window icon (not exposed in Electrobun's public API, calling FFI directly)
 {
-	const suffix = process.platform === "win32" ? "dll" : "so";
+	const suffix = process.platform === "win32" ? "dll" : process.platform === "darwin" ? "dylib" : "so";
 	const lib = dlopen(join(process.cwd(), `libNativeWrapper.${suffix}`), {
 		setWindowIcon: { args: [FFIType.ptr, FFIType.cstring], returns: FFIType.void },
 	});
