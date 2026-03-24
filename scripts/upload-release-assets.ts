@@ -26,6 +26,7 @@ function collectFiles(root: string): string[] {
 }
 
 const releaseTag = Bun.env.RELEASE_TAG?.trim();
+const ghRepo = Bun.env.GH_REPO?.trim();
 
 if (!releaseTag) {
 	throw new Error("RELEASE_TAG is required");
@@ -60,7 +61,15 @@ for (const filePath of stagedFiles) {
 }
 
 const upload = Bun.spawn({
-	cmd: ["gh", "release", "upload", releaseTag, ...stagedFiles, "--clobber"],
+	cmd: [
+		"gh",
+		"release",
+		"upload",
+		releaseTag,
+		...(ghRepo ? ["--repo", ghRepo] : []),
+		...stagedFiles,
+		"--clobber",
+	],
 	stdin: "inherit",
 	stdout: "inherit",
 	stderr: "inherit",

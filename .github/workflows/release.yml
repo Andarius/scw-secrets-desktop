@@ -36,6 +36,10 @@ jobs:
         run: |
           if [[ "${GITHUB_EVENT_NAME}" == "workflow_dispatch" ]]; then
             tag="${{ inputs.tag }}"
+            tag="${tag#refs/tags/}"
+            if [[ "${tag}" != v* ]]; then
+              tag="v${tag}"
+            fi
           else
             tag="${GITHUB_REF_NAME}"
           fi
@@ -65,12 +69,13 @@ jobs:
       - name: Create draft release
         env:
           GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
           RELEASE_TAG: ${{ steps.tag.outputs.value }}
         run: |
-          if gh release view "${RELEASE_TAG}" >/dev/null 2>&1; then
+          if gh release view "${RELEASE_TAG}" --repo "${GH_REPO}" >/dev/null 2>&1; then
             echo "Release ${RELEASE_TAG} already exists"
           else
-            gh release create "${RELEASE_TAG}" --draft --generate-notes --title "${RELEASE_TAG}"
+            gh release create "${RELEASE_TAG}" --repo "${GH_REPO}" --draft --generate-notes --title "${RELEASE_TAG}"
           fi
 
   build:
@@ -111,6 +116,7 @@ jobs:
       - name: Upload release assets
         env:
           GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
         run: bun run ./scripts/upload-release-assets.ts
 
       - name: Upload build artifacts on failure
@@ -130,5 +136,6 @@ jobs:
       - name: Publish draft release
         env:
           GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
           RELEASE_TAG: ${{ needs.prepare.outputs.tag }}
-        run: gh release edit "${RELEASE_TAG}" --draft=false
+        run: gh release edit "${RELEASE_TAG}" --repo "${GH_REPO}" --draft=false
