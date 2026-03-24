@@ -64,7 +64,11 @@ function MockApp() {
 
 	const normalizedQuery = deferredQuery.trim().toLowerCase();
 	const filteredSecrets = MOCK_SECRETS.filter((secret) => {
-		if (pathFilter !== "all" && secret.path !== pathFilter) return false;
+		if (
+			pathFilter !== "all" &&
+			secret.path !== pathFilter &&
+			!secret.path.startsWith(`${pathFilter}/`)
+		) return false;
 		if (statusFilter === "ready" && secret.status !== "ready") return false;
 		if (statusFilter === "attention" && secret.status === "ready") return false;
 		if (!normalizedQuery) return true;
@@ -140,7 +144,7 @@ function MockApp() {
 						/>
 					</div>
 				) : (
-					<div className="mt-6 flex-1 grid grid-cols-[minmax(0,280px)_minmax(0,1fr)_minmax(0,320px)] gap-4 min-h-0 min-w-0 overflow-hidden">
+					<div className="mt-6 flex-1 grid grid-cols-[minmax(0,280px)_minmax(0,1fr)_minmax(0,360px)] gap-4 min-h-0 min-w-0 overflow-hidden">
 						<Navigator
 							paths={paths}
 							pathFilter={pathFilter}

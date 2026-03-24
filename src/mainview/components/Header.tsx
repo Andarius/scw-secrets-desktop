@@ -44,16 +44,21 @@ export function Header({
 						</h1>
 					</div>
 
-					<div className="flex items-center gap-3">
-						<button
-							type="button"
-							onClick={onRefresh}
-							disabled={refreshing}
-							title="Refresh secrets"
-							className="p-2.5 bg-white/5 border border-white/10 rounded-lg hover:bg-white/10 transition-colors disabled:opacity-50"
-						>
-							<RefreshCw className={`w-4 h-4 text-gray-400 ${refreshing ? "animate-spin" : ""}`} />
-						</button>
+					<div className="flex items-end gap-3">
+						<div>
+							<label className="text-xs text-gray-400 uppercase tracking-wider block mb-2 opacity-0">
+								Refresh
+							</label>
+							<button
+								type="button"
+								onClick={onRefresh}
+								disabled={refreshing}
+								title="Refresh secrets"
+								className="p-2.5 bg-white/5 border border-white/10 rounded-lg hover:bg-white/10 transition-colors disabled:opacity-50"
+							>
+								<RefreshCw className={`w-4 h-4 text-gray-400 ${refreshing ? "animate-spin" : ""}`} />
+							</button>
+						</div>
 						<div>
 							<label className="text-xs text-gray-400 uppercase tracking-wider block mb-2">
 								Profile

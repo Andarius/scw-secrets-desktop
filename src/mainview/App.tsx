@@ -179,7 +179,11 @@ function App() {
 
 	const normalizedQuery = deferredQuery.trim().toLowerCase();
 	const filteredSecrets = secrets.filter((secret) => {
-		if (pathFilter !== "all" && secret.path !== pathFilter) {
+		if (
+			pathFilter !== "all" &&
+			secret.path !== pathFilter &&
+			!secret.path.startsWith(`${pathFilter}/`)
+		) {
 			return false;
 		}
 
@@ -322,7 +326,7 @@ function App() {
 					</div>
 				) : null}
 
-				<div className="mt-6 flex-1 grid grid-cols-[minmax(0,280px)_minmax(0,1fr)_minmax(0,320px)] gap-4 min-h-0 min-w-0 overflow-hidden">
+				<div className="mt-6 flex-1 grid grid-cols-[minmax(0,280px)_minmax(0,1fr)_minmax(0,360px)] gap-4 min-h-0 min-w-0 overflow-hidden">
 						<Navigator
 							paths={paths}
 							pathFilter={pathFilter}
