@@ -16,9 +16,14 @@ Built with [Electrobun](https://electrobun.dev), React, TypeScript, and Tailwind
 - **Edit secret values** — modify a value and save as a new version
 - **Copy as KEY=VALUE** — batch-copy selected secrets for `.env` files
 - **Version history** — modal with all versions, enable/disable/destroy actions
+- **Keep Latest** — prune old versions, keeping only the latest revision (single or batch)
+- **Version sorting** — sort inventory by version count (ascending/descending)
+- **Secret types** — displayed in inventory table and detail panel
+- **Cost estimates** — storage cost and potential cleanup savings in stats cards
 - **Tags** — displayed in the inventory table
+- **Select all** — quick button to select all visible secrets
 - **Manage secret** — opens the Scaleway console for the selected secret
-- **Delete secrets** — single or batch delete with confirmation
+- **Schedule deletion** — single or batch delete with confirmation
 
 ## Setup
 

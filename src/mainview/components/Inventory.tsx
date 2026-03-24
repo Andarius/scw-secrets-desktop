@@ -1,9 +1,10 @@
 import { useRef } from "react";
-import { Search } from "lucide-react";
+import { ChevronDown, ChevronUp, Search } from "lucide-react";
 
 import type { Secret } from "../../shared/models";
 
 type StatusFilter = "all" | "ready" | "attention";
+type VersionSortDirection = "desc" | "asc";
 
 type InventoryProps = {
 	secrets: Secret[];
@@ -13,6 +14,8 @@ type InventoryProps = {
 	onQueryChange: (query: string) => void;
 	statusFilter: StatusFilter;
 	onStatusFilterChange: (filter: StatusFilter) => void;
+	versionSortDirection: VersionSortDirection;
+	onVersionSortDirectionChange: (direction: VersionSortDirection) => void;
 	loading: boolean;
 	totalCount: number;
 };
@@ -27,6 +30,22 @@ function formatCompactDate(value: string): string {
 		month: "short",
 		day: "numeric",
 	});
+}
+
+function formatSecretType(type?: string): string {
+	if (!type) {
+		return "—";
+	}
+
+	const labels: Record<string, string> = {
+		opaque: "Opaque",
+		basic_credentials: "Basic Creds",
+		database_credentials: "DB Creds",
+		key_value: "Key/Value",
+		ssh_key: "SSH Key",
+	};
+
+	return labels[type] ?? type.split("_").map((part) => part.charAt(0).toUpperCase() + part.slice(1)).join(" ");
 }
 
 function StatusBadge({ status }: { status: string }) {
@@ -58,10 +77,14 @@ export function Inventory({
 	onQueryChange,
 	statusFilter,
 	onStatusFilterChange,
+	versionSortDirection,
+	onVersionSortDirectionChange,
 	loading,
 	totalCount,
 }: InventoryProps) {
 	const lastClickedIndex = useRef<number | null>(null);
+	const allVisibleSelected =
+		secrets.length > 0 && secrets.every((secret) => selectedSecretIds.has(secret.id));
 
 	function handleRowClick(secret: Secret, index: number, event: React.MouseEvent) {
 		if (event.shiftKey && lastClickedIndex.current !== null) {
@@ -91,6 +114,11 @@ export function Inventory({
 		}
 	}
 
+	function handleSelectAll() {
+		onSelectionChange(new Set(secrets.map((secret) => secret.id)));
+		lastClickedIndex.current = secrets.length > 0 ? secrets.length - 1 : null;
+	}
+
 	return (
 		<div className="rounded-xl border border-white/10 bg-black/40 backdrop-blur-sm overflow-hidden flex flex-col h-full">
 			<div className="p-4 border-b border-white/10">
@@ -104,7 +132,17 @@ export function Inventory({
 							: `${secrets.length} visible of ${totalCount}`}
 					</div>
 				</div>
-				<div className="text-base font-medium mb-4">Secrets</div>
+				<div className="flex items-center justify-between gap-3 mb-4">
+					<div className="text-base font-medium">Secrets</div>
+					<button
+						type="button"
+						onClick={handleSelectAll}
+						disabled={secrets.length === 0 || allVisibleSelected}
+						className="px-3 py-1.5 text-xs font-medium rounded-md bg-white/5 text-gray-300 border border-white/10 hover:bg-white/10 transition-colors disabled:opacity-50"
+					>
+						Select All
+					</button>
+				</div>
 
 				<div className="space-y-3">
 					<div className="relative">
@@ -161,13 +199,36 @@ export function Inventory({
 									Path
 								</th>
 								<th className="px-4 py-3 text-xs font-medium text-gray-400 uppercase tracking-wider">
+									Type
+								</th>
+								<th className="px-4 py-3 text-xs font-medium text-gray-400 uppercase tracking-wider">
 									Status
 								</th>
 								<th className="px-4 py-3 text-xs font-medium text-gray-400 uppercase tracking-wider">
 									Tags
 								</th>
 								<th className="px-4 py-3 text-xs font-medium text-gray-400 uppercase tracking-wider">
-									Versions
+									<button
+										type="button"
+										onClick={() =>
+											onVersionSortDirectionChange(
+												versionSortDirection === "desc" ? "asc" : "desc",
+											)
+										}
+										className={`inline-flex items-center gap-1 transition-colors ${
+											versionSortDirection === "desc" || versionSortDirection === "asc"
+												? "text-cyan-300 hover:text-cyan-200"
+												: "hover:text-gray-200"
+										}`}
+										aria-label={`Sort by versions ${versionSortDirection === "desc" ? "ascending" : "descending"}`}
+									>
+										<span>Versions</span>
+										{versionSortDirection === "desc" ? (
+											<ChevronDown className="h-3.5 w-3.5" />
+										) : (
+											<ChevronUp className="h-3.5 w-3.5" />
+										)}
+									</button>
 								</th>
 								<th className="px-4 py-3 text-xs font-medium text-gray-400 uppercase tracking-wider">
 									Updated
@@ -201,6 +262,11 @@ export function Inventory({
 										<td className="px-4 py-3">
 											<div className="text-sm text-gray-300 font-mono">
 												{secret.path}
+											</div>
+										</td>
+										<td className="px-4 py-3">
+											<div className="inline-flex items-center rounded border border-white/10 bg-white/5 px-2 py-0.5 text-xs text-gray-300">
+												{formatSecretType(secret.type)}
 											</div>
 										</td>
 										<td className="px-4 py-3">

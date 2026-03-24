@@ -293,8 +293,14 @@ async function apiPost<T>(
 	pathname: string,
 	profile: LoadedProfile,
 	body: unknown,
+	params: Record<string, string> = {},
 ): Promise<T> {
 	const url = new URL(pathname, API_BASE);
+	for (const [key, value] of Object.entries(params)) {
+		if (value) {
+			url.searchParams.set(key, value);
+		}
+	}
 	const response = await fetch(url, {
 		method: "POST",
 		headers: {
@@ -309,8 +315,14 @@ async function apiPost<T>(
 async function apiDelete(
 	pathname: string,
 	profile: LoadedProfile,
+	params: Record<string, string> = {},
 ): Promise<void> {
 	const url = new URL(pathname, API_BASE);
+	for (const [key, value] of Object.entries(params)) {
+		if (value) {
+			url.searchParams.set(key, value);
+		}
+	}
 	const response = await fetch(url, {
 		method: "DELETE",
 		headers: {
@@ -447,7 +459,7 @@ export async function createSecretVersion(
 	secretId: string,
 	value: string,
 	profileName?: string,
-	_projectId?: string,
+	projectId?: string,
 ): Promise<SecretVersion> {
 	const profile = loadProfile(profileName);
 	const encoded = btoa(value);
@@ -455,6 +467,7 @@ export async function createSecretVersion(
 		secretManagerPath("secrets", secretId, "versions"),
 		profile,
 		{ data: encoded },
+		{ project_id: projectId || profile.projectId },
 	);
 }
 
@@ -462,13 +475,14 @@ export async function enableSecretVersion(
 	secretId: string,
 	revision: number,
 	profileName?: string,
-	_projectId?: string,
+	projectId?: string,
 ): Promise<SecretVersion> {
 	const profile = loadProfile(profileName);
 	return apiPost<SecretVersion>(
 		secretManagerPath("secrets", secretId, "versions", String(revision), "enable"),
 		profile,
 		{},
+		{ project_id: projectId || profile.projectId },
 	);
 }
 
@@ -476,13 +490,14 @@ export async function disableSecretVersion(
 	secretId: string,
 	revision: number,
 	profileName?: string,
-	_projectId?: string,
+	projectId?: string,
 ): Promise<SecretVersion> {
 	const profile = loadProfile(profileName);
 	return apiPost<SecretVersion>(
 		secretManagerPath("secrets", secretId, "versions", String(revision), "disable"),
 		profile,
 		{},
+		{ project_id: projectId || profile.projectId },
 	);
 }
 
@@ -490,14 +505,23 @@ export async function destroySecretVersion(
 	secretId: string,
 	revision: number,
 	profileName?: string,
-	_projectId?: string,
+	projectId?: string,
 ): Promise<SecretVersion> {
 	const profile = loadProfile(profileName);
-	return apiPost<SecretVersion>(
-		secretManagerPath("secrets", secretId, "versions", String(revision), "destroy"),
+	await apiDelete(
+		secretManagerPath("secrets", secretId, "versions", String(revision)),
 		profile,
-		{},
+		{ project_id: projectId || profile.projectId },
 	);
+	return {
+		revision,
+		secret_id: secretId,
+		status: "scheduled_for_deletion",
+		created_at: "",
+		updated_at: "",
+		description: "",
+		latest: false,
+	};
 }
 
 export async function deleteSecret(
@@ -510,5 +534,5 @@ export async function deleteSecret(
 	if (projectId || profile.projectId) {
 		url.searchParams.set("project_id", projectId || profile.projectId);
 	}
-	await apiDelete(url.pathname + url.search, profile);
+	await apiDelete(url.pathname, profile, Object.fromEntries(url.searchParams.entries()));
 }

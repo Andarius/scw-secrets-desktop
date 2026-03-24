@@ -12,6 +12,7 @@ import { EditModal } from "./components/EditModal";
 import { HistoryModal } from "./components/HistoryModal";
 
 type StatusFilter = "all" | "ready" | "attention";
+type VersionSortDirection = "desc" | "asc";
 
 function App() {
 	const [profilesResponse, setProfilesResponse] = useState<ProfilesResponse | null>(null);
@@ -26,6 +27,7 @@ function App() {
 	const [query, setQuery] = useState("");
 	const [pathFilter, setPathFilter] = useState("all");
 	const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+	const [versionSortDirection, setVersionSortDirection] = useState<VersionSortDirection>("desc");
 	const [error, setError] = useState<string | null>(null);
 	const [loadingProfiles, setLoadingProfiles] = useState(true);
 	const [loadingProjects, setLoadingProjects] = useState(false);
@@ -196,25 +198,44 @@ function App() {
 		const searchable = `${secret.name} ${secret.path}`.toLowerCase();
 		return searchable.includes(normalizedQuery);
 	});
+	const visibleSecrets = [...filteredSecrets].sort((left, right) => {
+		const direction = versionSortDirection === "desc" ? -1 : 1;
+		const versionDiff = (left.version_count - right.version_count) * direction;
+		if (versionDiff !== 0) {
+			return versionDiff;
+		}
+
+		return left.name.localeCompare(right.name);
+	});
+	const visibleVersionCount = visibleSecrets.reduce((sum, secret) => sum + secret.version_count, 0);
+	const totalVersionCount = secrets.reduce((sum, secret) => sum + secret.version_count, 0);
+	const visiblePrunableVersionCount = visibleSecrets.reduce(
+		(sum, secret) => sum + Math.max(secret.version_count - 1, 0),
+		0,
+	);
+	const totalPrunableVersionCount = secrets.reduce(
+		(sum, secret) => sum + Math.max(secret.version_count - 1, 0),
+		0,
+	);
 
 	useEffect(() => {
-		if (filteredSecrets.length === 0) {
+		if (visibleSecrets.length === 0) {
 			if (selectedSecretIds.size > 0) {
 				setSelectedSecretIds(new Set());
 			}
 			return;
 		}
 
-		const filteredIds = new Set(filteredSecrets.map((s) => s.id));
+		const filteredIds = new Set(visibleSecrets.map((s) => s.id));
 		const stillValid = [...selectedSecretIds].filter((id) => filteredIds.has(id));
 		if (stillValid.length === 0) {
-			setSelectedSecretIds(new Set([filteredSecrets[0].id]));
+			setSelectedSecretIds(new Set([visibleSecrets[0].id]));
 		} else if (stillValid.length !== selectedSecretIds.size) {
 			setSelectedSecretIds(new Set(stillValid));
 		}
-	}, [filteredSecrets, selectedSecretIds]);
+	}, [visibleSecrets, selectedSecretIds]);
 
-	const selectedSecrets = filteredSecrets.filter((s) => selectedSecretIds.has(s.id));
+	const selectedSecrets = visibleSecrets.filter((s) => selectedSecretIds.has(s.id));
 
 	async function handleProfileChange(nextProfile: string) {
 		setSelectedProfile(nextProfile);
@@ -265,9 +286,6 @@ function App() {
 		}
 	}
 
-	const activeSummary =
-		profiles.find((profile) => profile.name === profilesResponse?.active) ?? selectedProfileSummary;
-
 	return (
 		<div className="h-screen flex flex-col bg-[#0a0a0a] text-white overflow-hidden">
 			<Header
@@ -286,17 +304,17 @@ function App() {
 				refreshing={loadingSecrets}
 			/>
 
-			<div className="flex-1 flex flex-col px-6 py-6 min-h-0">
-				<StatsCards
-					profileCount={profiles.length}
-					activeSourceName={activeSummary?.name ?? ""}
-					projectCount={projects.length}
-					selectedProjectName={selectedProject?.name ?? ""}
-					filteredSecretsCount={filteredSecrets.length}
-					totalSecretsCount={secrets.length}
-					pathCount={paths.length}
-					currentPathFilter={pathFilter}
-				/>
+				<div className="flex-1 flex flex-col px-6 py-6 min-h-0">
+					<StatsCards
+						filteredSecretsCount={filteredSecrets.length}
+						totalSecretsCount={secrets.length}
+						visibleVersionCount={visibleVersionCount}
+						totalVersionCount={totalVersionCount}
+						visiblePrunableVersionCount={visiblePrunableVersionCount}
+						totalPrunableVersionCount={totalPrunableVersionCount}
+						pathCount={paths.length}
+						currentPathFilter={pathFilter}
+					/>
 
 				{error ? (
 					<div className="mt-4 p-4 rounded-xl border border-red-500/30 bg-red-500/10 text-red-300 text-sm">
@@ -313,13 +331,15 @@ function App() {
 						/>
 
 						<Inventory
-							secrets={filteredSecrets}
+							secrets={visibleSecrets}
 							selectedSecretIds={selectedSecretIds}
 							onSelectionChange={setSelectedSecretIds}
 							query={query}
 							onQueryChange={setQuery}
 							statusFilter={statusFilter}
 							onStatusFilterChange={setStatusFilter}
+							versionSortDirection={versionSortDirection}
+							onVersionSortDirectionChange={setVersionSortDirection}
 							loading={loadingSecrets}
 							totalCount={secrets.length}
 						/>

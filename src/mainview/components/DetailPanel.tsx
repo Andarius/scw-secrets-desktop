@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Copy, Eye, Pencil, Clock, Key as KeyIcon, Settings, Loader2, ExternalLink, Trash2 } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Copy, Eye, Pencil, Clock, Key as KeyIcon, Settings, Loader2, ExternalLink, Trash2, Layers2 } from "lucide-react";
 
 import { electrobun } from "../rpc";
 import type { ProfileSummary, Project, Secret } from "../../shared/models";
@@ -43,6 +43,67 @@ function CopyButton({ text }: { text: string }) {
 	);
 }
 
+function formatSecretType(type?: string): string {
+	if (!type) {
+		return "—";
+	}
+
+	const labels: Record<string, string> = {
+		opaque: "Opaque",
+		basic_credentials: "Basic Credentials",
+		database_credentials: "Database Credentials",
+		key_value: "Key/Value",
+		ssh_key: "SSH Key",
+	};
+
+	return labels[type] ?? type.split("_").map((part) => part.charAt(0).toUpperCase() + part.slice(1)).join(" ");
+}
+
+function isVersionDeleted(status: string): boolean {
+	return status === "scheduled_for_deletion" || status === "destroyed";
+}
+
+async function keepLatestVersionOnly(
+	secretId: string,
+	profile?: string,
+	projectId?: string,
+) {
+	const versions = await electrobun.rpc!.request.getSecretVersions({
+		secretId,
+		profile,
+		projectId,
+	});
+	const remainingVersions = versions.filter((version) => !isVersionDeleted(version.status));
+	const latestRevision =
+		remainingVersions.find((version) => version.latest)?.revision ?? remainingVersions[0]?.revision;
+
+	if (latestRevision === undefined) {
+		return;
+	}
+
+	for (const version of versions) {
+		if (isVersionDeleted(version.status) || version.revision === latestRevision) {
+			continue;
+		}
+
+		if (version.status === "enabled") {
+			await electrobun.rpc!.request.disableSecretVersion({
+				secretId,
+				revision: version.revision,
+				profile,
+				projectId,
+			});
+		}
+
+		await electrobun.rpc!.request.destroySecretVersion({
+			secretId,
+			revision: version.revision,
+			profile,
+			projectId,
+		});
+	}
+}
+
 function SingleSecretDetail({
 	secret,
 	selectedProject,
@@ -50,6 +111,7 @@ function SingleSecretDetail({
 	onViewValues,
 	onEditValue,
 	onViewHistory,
+	onRefresh,
 }: {
 	secret: Secret;
 	selectedProject: Project | null;
@@ -57,12 +119,16 @@ function SingleSecretDetail({
 	onViewValues: (title: string, values: ValueEntry[]) => void;
 	onEditValue: (entry: ValueEntry) => void;
 	onViewHistory: (secretId: string, secretName: string) => void;
+	onRefresh: () => void;
 }) {
 	const [loadingValue, setLoadingValue] = useState(false);
 	const [valueError, setValueError] = useState<string | null>(null);
 
 	const [loadingEdit, setLoadingEdit] = useState(false);
 	const [editError, setEditError] = useState<string | null>(null);
+	const [keepingLatest, setKeepingLatest] = useState(false);
+	const [keepLatestError, setKeepLatestError] = useState<string | null>(null);
+	const [confirmKeepLatest, setConfirmKeepLatest] = useState(false);
 
 	const secretId = secret.id;
 	const [prevSecretId, setPrevSecretId] = useState<string>(secretId);
@@ -70,6 +136,8 @@ function SingleSecretDetail({
 		setPrevSecretId(secretId);
 		setValueError(null);
 		setEditError(null);
+		setKeepLatestError(null);
+		setConfirmKeepLatest(false);
 	}
 
 	async function handleViewValue() {
@@ -108,12 +176,32 @@ function SingleSecretDetail({
 		}
 	}
 
+	async function handleKeepLatest() {
+		if (!confirmKeepLatest) {
+			setConfirmKeepLatest(true);
+			return;
+		}
+
+		setKeepingLatest(true);
+		setKeepLatestError(null);
+		try {
+			await keepLatestVersionOnly(secret.id, selectedProfileSummary?.name, selectedProject?.id);
+			setConfirmKeepLatest(false);
+			onRefresh();
+		} catch (reason) {
+			setKeepLatestError(reason instanceof Error ? reason.message : String(reason));
+		} finally {
+			setKeepingLatest(false);
+		}
+	}
+
 	function handleManageSecret() {
 		const url = `https://console.scaleway.com/secret-manager/secrets/${SECRET_MANAGER_REGION}/${secret.id}/overview`;
 		void electrobun.rpc!.request.openExternal({ url });
 	}
 
 	const isReady = secret.status === "ready";
+	const canKeepLatest = secret.version_count > 1;
 
 	return (
 		<>
@@ -173,6 +261,15 @@ function SingleSecretDetail({
 						</div>
 						<div className="text-sm text-gray-300 font-mono">
 							{secret.path}
+						</div>
+					</div>
+
+					<div>
+						<div className="text-xs text-gray-400 uppercase tracking-wider mb-1.5">
+							Type
+						</div>
+						<div className="text-sm text-gray-300">
+							{formatSecretType(secret.type)}
 						</div>
 					</div>
 
@@ -245,6 +342,56 @@ function SingleSecretDetail({
 						<span>Version History</span>
 					</button>
 
+					{canKeepLatest ? (
+						<>
+							<button
+								type="button"
+								onClick={() => void handleKeepLatest()}
+								disabled={keepingLatest}
+								className={`w-full flex items-center gap-3 px-4 py-3 border rounded-lg transition-colors text-sm disabled:opacity-50 ${
+									confirmKeepLatest
+										? "bg-amber-500/20 border-amber-500/30 text-amber-200 hover:bg-amber-500/30"
+										: "bg-white/5 border-white/10 hover:bg-white/10"
+								}`}
+							>
+								{keepingLatest ? (
+									<Loader2 className="w-4 h-4 text-amber-400 animate-spin" />
+								) : (
+									<Layers2 className="w-4 h-4 text-amber-400" />
+								)}
+								<span>{confirmKeepLatest ? "Confirm Keep Latest" : "Keep Latest"}</span>
+							</button>
+
+							{confirmKeepLatest ? (
+								<div className="px-4 py-3 rounded-lg border border-amber-500/30 bg-amber-500/10 text-amber-100 text-xs space-y-1">
+									<div className="font-medium text-amber-200">Keep only the latest revision</div>
+									<div>
+										This will schedule deletion for every older version that is not already scheduled for deletion.
+									</div>
+									<div>
+										The latest remaining revision is kept. Scheduled deletions stay recoverable during Scaleway&apos;s retention window.
+									</div>
+								</div>
+							) : null}
+
+							{confirmKeepLatest && !keepingLatest ? (
+								<button
+									type="button"
+									onClick={() => setConfirmKeepLatest(false)}
+									className="w-full flex items-center justify-center px-4 py-2 text-xs text-gray-400 hover:text-gray-300 transition-colors"
+								>
+									Cancel Keep Latest
+								</button>
+							) : null}
+
+							{keepLatestError ? (
+								<div className="px-4 py-2 rounded-lg border border-red-500/30 bg-red-500/10 text-red-300 text-xs">
+									{keepLatestError}
+								</div>
+							) : null}
+						</>
+					) : null}
+
 					<button
 						type="button"
 						onClick={handleManageSecret}
@@ -275,9 +422,21 @@ function MultiSecretDetail({
 }) {
 	const [loadingValues, setLoadingValues] = useState(false);
 	const [valuesError, setValuesError] = useState<string | null>(null);
+	const [keepingLatest, setKeepingLatest] = useState(false);
+	const [keepLatestError, setKeepLatestError] = useState<string | null>(null);
+	const [confirmKeepLatest, setConfirmKeepLatest] = useState(false);
 	const [deleting, setDeleting] = useState(false);
 	const [deleteError, setDeleteError] = useState<string | null>(null);
 	const [confirmDelete, setConfirmDelete] = useState(false);
+	const selectionKey = secrets.map((secret) => secret.id).join("|");
+	const prunableSecrets = secrets.filter((secret) => secret.version_count > 1);
+
+	useEffect(() => {
+		setConfirmKeepLatest(false);
+		setKeepLatestError(null);
+		setConfirmDelete(false);
+		setDeleteError(null);
+	}, [selectionKey]);
 
 	async function handleViewAllValues() {
 		setLoadingValues(true);
@@ -329,6 +488,28 @@ function MultiSecretDetail({
 		}
 	}
 
+	async function handleKeepLatest() {
+		if (!confirmKeepLatest) {
+			setConfirmKeepLatest(true);
+			return;
+		}
+
+		setKeepingLatest(true);
+		setKeepLatestError(null);
+		try {
+			for (const secret of prunableSecrets) {
+				await keepLatestVersionOnly(secret.id, selectedProfileSummary?.name, selectedProject?.id);
+			}
+
+			setConfirmKeepLatest(false);
+			onRefresh();
+		} catch (reason) {
+			setKeepLatestError(reason instanceof Error ? reason.message : String(reason));
+		} finally {
+			setKeepingLatest(false);
+		}
+	}
+
 	return (
 		<>
 			<div className="p-4 border-b border-white/10">
@@ -353,6 +534,7 @@ function MultiSecretDetail({
 								<div className="text-sm text-white truncate">{secret.name}</div>
 								<div className="text-xs text-gray-500 font-mono">{secret.path}</div>
 							</div>
+							<div className="text-xs text-gray-500">{secret.version_count} versions</div>
 						</div>
 					))}
 				</div>
@@ -378,10 +560,64 @@ function MultiSecretDetail({
 						</div>
 					) : null}
 
+					{prunableSecrets.length > 0 ? (
+						<>
+							<button
+								type="button"
+								onClick={() => void handleKeepLatest()}
+								disabled={keepingLatest || deleting}
+								className={`w-full flex items-center gap-3 px-4 py-3 border rounded-lg transition-colors text-sm disabled:opacity-50 ${
+									confirmKeepLatest
+										? "bg-amber-500/20 border-amber-500/30 text-amber-200 hover:bg-amber-500/30"
+										: "bg-white/5 border-white/10 hover:bg-white/10"
+								}`}
+							>
+								{keepingLatest ? (
+									<Loader2 className="w-4 h-4 text-amber-400 animate-spin" />
+								) : (
+									<Layers2 className="w-4 h-4 text-amber-400" />
+								)}
+								<span>
+									{confirmKeepLatest
+										? `Confirm Keep Latest for ${prunableSecrets.length} Secrets`
+										: "Keep Latest"}
+								</span>
+							</button>
+
+							{confirmKeepLatest ? (
+								<div className="px-4 py-3 rounded-lg border border-amber-500/30 bg-amber-500/10 text-amber-100 text-xs space-y-1">
+									<div className="font-medium text-amber-200">Keep only the latest revision</div>
+									<div>
+										This will schedule deletion for every older version that is not already scheduled for deletion.
+									</div>
+									<div>
+										The latest remaining revision is kept for each eligible secret. Scheduled deletions stay recoverable during Scaleway&apos;s retention window.
+									</div>
+								</div>
+							) : null}
+
+							{confirmKeepLatest && !keepingLatest ? (
+								<button
+									type="button"
+									onClick={() => setConfirmKeepLatest(false)}
+									className="w-full flex items-center justify-center px-4 py-2 text-xs text-gray-400 hover:text-gray-300 transition-colors"
+								>
+									Cancel Keep Latest
+								</button>
+							) : null}
+
+							{keepLatestError ? (
+								<div className="px-4 py-2 rounded-lg border border-red-500/30 bg-red-500/10 text-red-300 text-xs">
+									{keepLatestError}
+								</div>
+							) : null}
+						</>
+					) : null}
+
 					<button
 						type="button"
 						onClick={() => void handleDeleteAll()}
-						disabled={deleting}
+						disabled={deleting || keepingLatest}
 						className={`w-full flex items-center gap-3 px-4 py-3 border rounded-lg transition-colors text-sm disabled:opacity-50 ${
 							confirmDelete
 								? "bg-red-500/20 border-red-500/30 text-red-300 hover:bg-red-500/30"
@@ -395,8 +631,8 @@ function MultiSecretDetail({
 						)}
 						<span>
 							{confirmDelete
-								? `Confirm Delete ${secrets.length} Secrets`
-								: `Delete ${secrets.length} Secrets`}
+								? `Confirm Schedule Deletion for ${secrets.length} Secrets`
+								: `Schedule Deletion for ${secrets.length} Secrets`}
 						</span>
 					</button>
 
@@ -455,6 +691,7 @@ export function DetailPanel({
 					onViewValues={onViewValues}
 					onEditValue={onEditValue}
 					onViewHistory={onViewHistory}
+					onRefresh={onRefresh}
 				/>
 			) : (
 				<MultiSecretDetail

@@ -23,6 +23,7 @@ export type Secret = {
 	id: string;
 	name: string;
 	path: string;
+	type?: string;
 	version_count: number;
 	status: string;
 	tags: string[];
