@@ -60,6 +60,37 @@ bun run build:stable # Vite build + Electrobun stable
 bun run typecheck    # TypeScript check
 ```
 
+## Linux Release
+
+Download the Linux release from the GitHub releases page:
+
+- `stable-linux-x64-ScwSecrets-Setup.tar.gz`
+- `stable-linux-x64-ScwSecrets.tar.zst`
+
+Using the `.tar.gz` asset:
+
+```bash
+curl -LO https://github.com/Andarius/scw-secrets-desktop/releases/download/v0.1.0/stable-linux-x64-ScwSecrets-Setup.tar.gz
+tar -xzf stable-linux-x64-ScwSecrets-Setup.tar.gz
+cd stable-linux-x64-ScwSecrets-Setup
+./bin/launcher
+```
+
+Using the `.tar.zst` asset:
+
+```bash
+curl -LO https://github.com/Andarius/scw-secrets-desktop/releases/download/v0.1.0/stable-linux-x64-ScwSecrets.tar.zst
+tar --zstd -xf stable-linux-x64-ScwSecrets.tar.zst
+cd stable-linux-x64-ScwSecrets
+./bin/launcher
+```
+
+If the extracted directory name changes in a future release, locate the launcher with:
+
+```bash
+find . -type f -name launcher
+```
+
 ## Project Structure
 
 ```
