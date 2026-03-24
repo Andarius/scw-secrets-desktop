@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { Copy, X } from "lucide-react";
 
 type ValueViewProps = {
@@ -16,6 +16,23 @@ function CopyButton({ text }: { text: string }) {
 		>
 			<Copy className="w-3.5 h-3.5 text-gray-400" />
 		</button>
+	);
+}
+
+function FormattedValue({ value }: { value: string }) {
+	const formatted = useMemo(() => {
+		try {
+			const parsed = JSON.parse(value);
+			return JSON.stringify(parsed, null, 2);
+		} catch {
+			return null;
+		}
+	}, [value]);
+
+	return (
+		<pre className="text-sm text-cyan-200 font-mono whitespace-pre-wrap break-all">
+			{formatted ?? value}
+		</pre>
 	);
 }
 
@@ -67,9 +84,7 @@ export function ValueView({ title, values, onClose }: ValueViewProps) {
 								<span className="text-xs text-gray-400 font-medium">{entry.name}</span>
 								<CopyButton text={entry.value} />
 							</div>
-							<pre className="text-sm text-cyan-200 font-mono whitespace-pre-wrap break-all">
-								{entry.value}
-							</pre>
+							<FormattedValue value={entry.value} />
 						</div>
 					))}
 				</div>
