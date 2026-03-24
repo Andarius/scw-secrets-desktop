@@ -1,4 +1,6 @@
 import { BrowserView, BrowserWindow, Updater, type RPCSchema } from "electrobun/bun";
+import { dlopen, FFIType, ptr as ffiPtr } from "bun:ffi";
+import { join } from "path";
 
 import { accessSecretVersion, createSecretVersion, deleteSecret, destroySecretVersion, disableSecretVersion, enableSecretVersion, getProfiles, getProjects, getSecrets, getSecretVersions, switchActiveProfile } from "./scw";
 import type { SecretFilters } from "../shared/models";
@@ -72,7 +74,7 @@ const rpc = BrowserView.defineRPC<AppRPC>({
 	},
 });
 
-new BrowserWindow({
+const win = new BrowserWindow({
 	title: "Scw Secrets",
 	url,
 	rpc,
@@ -83,5 +85,15 @@ new BrowserWindow({
 		y: 80,
 	},
 });
+
+// Set window icon (not exposed in Electrobun's public API, calling FFI directly)
+{
+	const suffix = process.platform === "win32" ? "dll" : "so";
+	const lib = dlopen(join(process.cwd(), `libNativeWrapper.${suffix}`), {
+		setWindowIcon: { args: [FFIType.ptr, FFIType.cstring], returns: FFIType.void },
+	});
+	const iconBuf = Buffer.from(join(process.cwd(), "../Resources/appIcon.png") + "\0");
+	lib.symbols.setWindowIcon(win.ptr, ffiPtr(iconBuf));
+}
 
 console.log("Scw Secrets desktop started!");
