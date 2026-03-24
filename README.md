@@ -67,23 +67,26 @@ Download the Linux release from the GitHub releases page:
 - `stable-linux-x64-ScwSecrets-Setup.tar.gz`
 - `stable-linux-x64-ScwSecrets.tar.zst`
 
-Using the `.tar.gz` asset:
+Using the installer bundle (`.tar.gz`):
 
 ```bash
 curl -LO https://github.com/Andarius/scw-secrets-desktop/releases/download/v0.1.0/stable-linux-x64-ScwSecrets-Setup.tar.gz
 tar -xzf stable-linux-x64-ScwSecrets-Setup.tar.gz
-cd stable-linux-x64-ScwSecrets-Setup
-./bin/launcher
+./installer
 ```
 
-Using the `.tar.zst` asset:
+The installer extracts the app to `~/.local/share/dev.julien.scw-secrets/stable/app` and creates a desktop shortcut.
+
+Using the direct app bundle (`.tar.zst`):
 
 ```bash
 curl -LO https://github.com/Andarius/scw-secrets-desktop/releases/download/v0.1.0/stable-linux-x64-ScwSecrets.tar.zst
 tar --zstd -xf stable-linux-x64-ScwSecrets.tar.zst
-cd stable-linux-x64-ScwSecrets
+cd ScwSecrets
 ./bin/launcher
 ```
+
+The app needs a graphical session. If you launch it from a plain shell without a usable display, GTK will fail with `cannot open display`.
 
 If the extracted directory name changes in a future release, locate the launcher with:
 
