@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="512" y2="512" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#4F46E5"/>
+      <stop offset="100%" stop-color="#7C3AED"/>
+    </linearGradient>
+    <linearGradient id="shine" x1="128" y1="96" x2="384" y2="416" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.15"/>
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="key" x1="200" y1="180" x2="320" y2="380" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#F9FAFB"/>
+      <stop offset="100%" stop-color="#D1D5DB"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Rounded square background -->
+  <rect x="16" y="16" width="480" height="480" rx="96" ry="96" fill="url(#bg)"/>
+  <rect x="16" y="16" width="480" height="480" rx="96" ry="96" fill="url(#shine)"/>
+
+  <!-- Shield shape -->
+  <path d="M256 88 L400 148 C400 148 408 280 356 356 C304 432 256 448 256 448 C256 448 208 432 156 356 C104 280 112 148 112 148 Z"
+        fill="none" stroke="#ffffff" stroke-width="16" stroke-linejoin="round" opacity="0.25"/>
+
+  <!-- Key icon (centered) -->
+  <g transform="translate(256, 240)">
+    <!-- Key head (circle with hole) -->
+    <circle cx="0" cy="-52" r="56" fill="url(#key)" stroke="#ffffff" stroke-width="6"/>
+    <circle cx="0" cy="-52" r="24" fill="url(#bg)" stroke="#ffffff" stroke-width="4"/>
+
+    <!-- Key shaft -->
+    <rect x="-10" y="4" width="20" height="120" rx="6" fill="url(#key)" stroke="#ffffff" stroke-width="4"/>
+
+    <!-- Key teeth -->
+    <rect x="10" y="72" width="28" height="14" rx="4" fill="url(#key)" stroke="#ffffff" stroke-width="3"/>
+    <rect x="10" y="96" width="20" height="14" rx="4" fill="url(#key)" stroke="#ffffff" stroke-width="3"/>
+  </g>
+
+  <!-- Small decorative dots (representing secret data points) -->
+  <circle cx="160" cy="180" r="6" fill="#ffffff" opacity="0.3"/>
+  <circle cx="352" cy="180" r="6" fill="#ffffff" opacity="0.3"/>
+  <circle cx="144" cy="260" r="5" fill="#ffffff" opacity="0.2"/>
+  <circle cx="368" cy="260" r="5" fill="#ffffff" opacity="0.2"/>
+  <circle cx="168" cy="340" r="4" fill="#ffffff" opacity="0.15"/>
+  <circle cx="344" cy="340" r="4" fill="#ffffff" opacity="0.15"/>
+</svg>
