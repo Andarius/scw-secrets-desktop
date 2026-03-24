@@ -4,7 +4,8 @@ import { ChevronDown, ChevronUp, Search } from "lucide-react";
 import type { Secret } from "../../shared/models";
 
 type StatusFilter = "all" | "ready" | "attention";
-type VersionSortDirection = "desc" | "asc";
+export type InventorySortKey = "name" | "updated_at" | "version_count";
+export type InventorySortDirection = "desc" | "asc";
 
 type InventoryProps = {
 	secrets: Secret[];
@@ -14,8 +15,9 @@ type InventoryProps = {
 	onQueryChange: (query: string) => void;
 	statusFilter: StatusFilter;
 	onStatusFilterChange: (filter: StatusFilter) => void;
-	versionSortDirection: VersionSortDirection;
-	onVersionSortDirectionChange: (direction: VersionSortDirection) => void;
+	sortKey: InventorySortKey;
+	sortDirection: InventorySortDirection;
+	onSortChange: (key: InventorySortKey, direction: InventorySortDirection) => void;
 	loading: boolean;
 	totalCount: number;
 };
@@ -77,8 +79,9 @@ export function Inventory({
 	onQueryChange,
 	statusFilter,
 	onStatusFilterChange,
-	versionSortDirection,
-	onVersionSortDirectionChange,
+	sortKey,
+	sortDirection,
+	onSortChange,
 	loading,
 	totalCount,
 }: InventoryProps) {
@@ -117,6 +120,18 @@ export function Inventory({
 	function handleSelectAll() {
 		onSelectionChange(new Set(secrets.map((secret) => secret.id)));
 		lastClickedIndex.current = secrets.length > 0 ? secrets.length - 1 : null;
+	}
+
+	function handleSort(nextKey: InventorySortKey) {
+		const nextDirection =
+			sortKey === nextKey
+				? sortDirection === "desc"
+					? "asc"
+					: "desc"
+				: nextKey === "name"
+					? "asc"
+					: "desc";
+		onSortChange(nextKey, nextDirection);
 	}
 
 	return (
@@ -193,7 +208,25 @@ export function Inventory({
 						<thead className="sticky top-0 bg-black/60 backdrop-blur-sm border-b border-white/10">
 							<tr className="text-left">
 								<th className="px-4 py-3 text-xs font-medium text-gray-400 uppercase tracking-wider">
-									Name
+									<button
+										type="button"
+										onClick={() => handleSort("name")}
+										className={`inline-flex items-center gap-1 transition-colors ${
+											sortKey === "name"
+												? "text-cyan-300 hover:text-cyan-200"
+												: "hover:text-gray-200"
+										}`}
+										aria-label={`Sort by name ${sortKey === "name" && sortDirection === "asc" ? "descending" : "ascending"}`}
+									>
+										<span>Name</span>
+										{sortKey === "name" ? (
+											sortDirection === "desc" ? (
+												<ChevronDown className="h-3.5 w-3.5" />
+											) : (
+												<ChevronUp className="h-3.5 w-3.5" />
+											)
+										) : null}
+									</button>
 								</th>
 								<th className="px-4 py-3 text-xs font-medium text-gray-400 uppercase tracking-wider">
 									Path
@@ -210,28 +243,44 @@ export function Inventory({
 								<th className="px-4 py-3 text-xs font-medium text-gray-400 uppercase tracking-wider">
 									<button
 										type="button"
-										onClick={() =>
-											onVersionSortDirectionChange(
-												versionSortDirection === "desc" ? "asc" : "desc",
-											)
-										}
+										onClick={() => handleSort("version_count")}
 										className={`inline-flex items-center gap-1 transition-colors ${
-											versionSortDirection === "desc" || versionSortDirection === "asc"
+											sortKey === "version_count"
 												? "text-cyan-300 hover:text-cyan-200"
 												: "hover:text-gray-200"
 										}`}
-										aria-label={`Sort by versions ${versionSortDirection === "desc" ? "ascending" : "descending"}`}
+										aria-label={`Sort by versions ${sortKey === "version_count" && sortDirection === "desc" ? "ascending" : "descending"}`}
 									>
 										<span>Versions</span>
-										{versionSortDirection === "desc" ? (
-											<ChevronDown className="h-3.5 w-3.5" />
-										) : (
-											<ChevronUp className="h-3.5 w-3.5" />
-										)}
+										{sortKey === "version_count" ? (
+											sortDirection === "desc" ? (
+												<ChevronDown className="h-3.5 w-3.5" />
+											) : (
+												<ChevronUp className="h-3.5 w-3.5" />
+											)
+										) : null}
 									</button>
 								</th>
 								<th className="px-4 py-3 text-xs font-medium text-gray-400 uppercase tracking-wider">
-									Updated
+									<button
+										type="button"
+										onClick={() => handleSort("updated_at")}
+										className={`inline-flex items-center gap-1 transition-colors ${
+											sortKey === "updated_at"
+												? "text-cyan-300 hover:text-cyan-200"
+												: "hover:text-gray-200"
+										}`}
+										aria-label={`Sort by updated ${sortKey === "updated_at" && sortDirection === "desc" ? "ascending" : "descending"}`}
+									>
+										<span>Updated</span>
+										{sortKey === "updated_at" ? (
+											sortDirection === "desc" ? (
+												<ChevronDown className="h-3.5 w-3.5" />
+											) : (
+												<ChevronUp className="h-3.5 w-3.5" />
+											)
+										) : null}
+									</button>
 								</th>
 							</tr>
 						</thead>

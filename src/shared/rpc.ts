@@ -27,6 +27,10 @@ export type AppRPCContract = {
 				params: { secretId: string; revision: string; profile?: string; projectId?: string };
 				response: { value: string };
 			};
+			createSecret: {
+				params: { name: string; path?: string; type?: string; value: string; tags?: string[]; profile?: string; projectId?: string };
+				response: { secretId: string };
+			};
 			updateSecretValue: {
 				params: { secretId: string; value: string; profile?: string; projectId?: string };
 				response: { ok: boolean };

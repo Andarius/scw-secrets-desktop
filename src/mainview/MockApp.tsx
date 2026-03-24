@@ -4,12 +4,11 @@ import type { ProfilesResponse, Project, Secret } from "../shared/models";
 import { Header } from "./components/Header";
 import { StatsCards } from "./components/StatsCards";
 import { Navigator } from "./components/Navigator";
-import { Inventory } from "./components/Inventory";
+import { Inventory, type InventorySortDirection, type InventorySortKey } from "./components/Inventory";
 import { DetailPanel, type ValueEntry } from "./components/DetailPanel";
 import { ValueView } from "./components/ValueModal";
 
 type StatusFilter = "all" | "ready" | "attention";
-type VersionSortDirection = "desc" | "asc";
 
 const MOCK_PROFILES: ProfilesResponse = {
 	active: "production",
@@ -49,7 +48,8 @@ function MockApp() {
 	const [query, setQuery] = useState("");
 	const [pathFilter, setPathFilter] = useState("all");
 	const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
-	const [versionSortDirection, setVersionSortDirection] = useState<VersionSortDirection>("desc");
+	const [sortKey, setSortKey] = useState<InventorySortKey>("version_count");
+	const [sortDirection, setSortDirection] = useState<InventorySortDirection>("desc");
 
 	const deferredQuery = useDeferredValue(query);
 	const profiles = MOCK_PROFILES.profiles;
@@ -75,9 +75,22 @@ function MockApp() {
 		return `${secret.name} ${secret.path}`.toLowerCase().includes(normalizedQuery);
 	});
 	const visibleSecrets = [...filteredSecrets].sort((left, right) => {
-		const direction = versionSortDirection === "desc" ? -1 : 1;
-		const versionDiff = (left.version_count - right.version_count) * direction;
-		if (versionDiff !== 0) return versionDiff;
+		const factor = sortDirection === "asc" ? 1 : -1;
+		if (sortKey === "version_count") {
+			const diff = left.version_count - right.version_count;
+			if (diff !== 0) return diff * factor;
+		} else if (sortKey === "updated_at") {
+			const leftTime = new Date(left.updated_at).getTime();
+			const rightTime = new Date(right.updated_at).getTime();
+			if (!Number.isNaN(leftTime) && !Number.isNaN(rightTime) && leftTime !== rightTime) {
+				return (leftTime - rightTime) * factor;
+			}
+			const fallbackDate = left.updated_at.localeCompare(right.updated_at);
+			if (fallbackDate !== 0) return fallbackDate * factor;
+		} else {
+			const diff = left.name.localeCompare(right.name);
+			if (diff !== 0) return diff * factor;
+		}
 		return left.name.localeCompare(right.name);
 	});
 	const visibleVersionCount = visibleSecrets.reduce((sum, secret) => sum + secret.version_count, 0);
@@ -160,8 +173,12 @@ function MockApp() {
 							onQueryChange={setQuery}
 							statusFilter={statusFilter}
 							onStatusFilterChange={setStatusFilter}
-							versionSortDirection={versionSortDirection}
-							onVersionSortDirectionChange={setVersionSortDirection}
+							sortKey={sortKey}
+							sortDirection={sortDirection}
+							onSortChange={(key, direction) => {
+								setSortKey(key);
+								setSortDirection(direction);
+							}}
 							loading={false}
 							totalCount={MOCK_SECRETS.length}
 						/>

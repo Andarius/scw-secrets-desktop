@@ -5,14 +5,14 @@ import type { ProfilesResponse, Project, Secret } from "../shared/models";
 import { Header } from "./components/Header";
 import { StatsCards } from "./components/StatsCards";
 import { Navigator } from "./components/Navigator";
-import { Inventory } from "./components/Inventory";
+import { Inventory, type InventorySortDirection, type InventorySortKey } from "./components/Inventory";
 import { DetailPanel, type ValueEntry } from "./components/DetailPanel";
 import { ValueView } from "./components/ValueModal";
 import { EditModal } from "./components/EditModal";
 import { HistoryModal } from "./components/HistoryModal";
+import { CreateSecretModal } from "./components/CreateSecretModal";
 
 type StatusFilter = "all" | "ready" | "attention";
-type VersionSortDirection = "desc" | "asc";
 
 function App() {
 	const [profilesResponse, setProfilesResponse] = useState<ProfilesResponse | null>(null);
@@ -23,11 +23,13 @@ function App() {
 	const [selectedSecretIds, setSelectedSecretIds] = useState<Set<string>>(new Set());
 	const [expandedValues, setExpandedValues] = useState<{ title: string; values: ValueEntry[] } | null>(null);
 	const [editingEntry, setEditingEntry] = useState<ValueEntry | null>(null);
+	const [creatingSecret, setCreatingSecret] = useState(false);
 	const [historyTarget, setHistoryTarget] = useState<{ secretId: string; secretName: string } | null>(null);
 	const [query, setQuery] = useState("");
 	const [pathFilter, setPathFilter] = useState("all");
 	const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
-	const [versionSortDirection, setVersionSortDirection] = useState<VersionSortDirection>("desc");
+	const [sortKey, setSortKey] = useState<InventorySortKey>("version_count");
+	const [sortDirection, setSortDirection] = useState<InventorySortDirection>("desc");
 	const [error, setError] = useState<string | null>(null);
 	const [loadingProfiles, setLoadingProfiles] = useState(true);
 	const [loadingProjects, setLoadingProjects] = useState(false);
@@ -203,10 +205,28 @@ function App() {
 		return searchable.includes(normalizedQuery);
 	});
 	const visibleSecrets = [...filteredSecrets].sort((left, right) => {
-		const direction = versionSortDirection === "desc" ? -1 : 1;
-		const versionDiff = (left.version_count - right.version_count) * direction;
-		if (versionDiff !== 0) {
-			return versionDiff;
+		const factor = sortDirection === "asc" ? 1 : -1;
+
+		if (sortKey === "version_count") {
+			const diff = left.version_count - right.version_count;
+			if (diff !== 0) {
+				return diff * factor;
+			}
+		} else if (sortKey === "updated_at") {
+			const leftTime = new Date(left.updated_at).getTime();
+			const rightTime = new Date(right.updated_at).getTime();
+			if (!Number.isNaN(leftTime) && !Number.isNaN(rightTime) && leftTime !== rightTime) {
+				return (leftTime - rightTime) * factor;
+			}
+			const fallbackDate = left.updated_at.localeCompare(right.updated_at);
+			if (fallbackDate !== 0) {
+				return fallbackDate * factor;
+			}
+		} else {
+			const diff = left.name.localeCompare(right.name);
+			if (diff !== 0) {
+				return diff * factor;
+			}
 		}
 
 		return left.name.localeCompare(right.name);
@@ -304,6 +324,7 @@ function App() {
 				loadingProfiles={loadingProfiles}
 				loadingProjects={loadingProjects}
 				syncingProfile={syncingProfile}
+				onCreateSecret={() => setCreatingSecret(true)}
 				onRefresh={() => setRefreshKey((k) => k + 1)}
 				refreshing={loadingSecrets}
 			/>
@@ -342,8 +363,12 @@ function App() {
 							onQueryChange={setQuery}
 							statusFilter={statusFilter}
 							onStatusFilterChange={setStatusFilter}
-							versionSortDirection={versionSortDirection}
-							onVersionSortDirectionChange={setVersionSortDirection}
+							sortKey={sortKey}
+							sortDirection={sortDirection}
+							onSortChange={(key, direction) => {
+								setSortKey(key);
+								setSortDirection(direction);
+							}}
 							loading={loadingSecrets}
 							totalCount={secrets.length}
 						/>
@@ -377,6 +402,20 @@ function App() {
 						onClose={() => setEditingEntry(null)}
 						onSaved={() => {
 							setEditingEntry(null);
+							setRefreshKey((k) => k + 1);
+						}}
+					/>
+				) : null}
+
+				{creatingSecret ? (
+					<CreateSecretModal
+						profile={selectedProfileSummary?.name}
+						projectId={selectedProject?.id}
+						pathSuggestions={paths.map(([path]) => path)}
+						tagSuggestions={Array.from(new Set(secrets.flatMap((secret) => secret.tags))).sort((left, right) => left.localeCompare(right))}
+						onClose={() => setCreatingSecret(false)}
+						onCreated={() => {
+							setCreatingSecret(false);
 							setRefreshKey((k) => k + 1);
 						}}
 					/>

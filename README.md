@@ -13,11 +13,12 @@ Built with [Electrobun](https://electrobun.dev), React, TypeScript, and Tailwind
 - **Secrets inventory** — searchable table with status and version badges, filter by status
 - **Multi-select** — shift+click for range, ctrl+click to toggle, batch operations
 - **View secret values** — single or batch, displayed in a full-screen overlay with copy support
+- **Create secret** — create new secrets with name, path, type, value, and tags
 - **Edit secret values** — modify a value and save as a new version
 - **Copy as KEY=VALUE** — batch-copy selected secrets for `.env` files
 - **Version history** — modal with all versions, enable/disable/destroy actions
 - **Keep Latest** — prune old versions, keeping only the latest revision (single or batch)
-- **Version sorting** — sort inventory by version count (ascending/descending)
+- **Column sorting** — sort inventory by name, version count, or updated date
 - **Secret types** — displayed in inventory table and detail panel
 - **Cost estimates** — storage cost and potential cleanup savings in stats cards
 - **Tags** — displayed in the inventory table
@@ -65,6 +66,7 @@ src/
 │       ├── DetailPanel.tsx   # Secret detail and action buttons
 │       ├── ValueModal.tsx    # Full-screen value overlay
 │       ├── EditModal.tsx     # Edit secret value modal
+│       ├── CreateSecretModal.tsx # Create new secret modal
 │       └── HistoryModal.tsx  # Version history modal with actions
 └── shared/
     ├── models.ts             # Shared types

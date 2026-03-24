@@ -129,6 +129,9 @@ function SingleSecretDetail({
 	const [keepingLatest, setKeepingLatest] = useState(false);
 	const [keepLatestError, setKeepLatestError] = useState<string | null>(null);
 	const [confirmKeepLatest, setConfirmKeepLatest] = useState(false);
+	const [deletingSecret, setDeletingSecret] = useState(false);
+	const [deleteSecretError, setDeleteSecretError] = useState<string | null>(null);
+	const [confirmDeleteSecret, setConfirmDeleteSecret] = useState(false);
 
 	const secretId = secret.id;
 	const [prevSecretId, setPrevSecretId] = useState<string>(secretId);
@@ -138,6 +141,8 @@ function SingleSecretDetail({
 		setEditError(null);
 		setKeepLatestError(null);
 		setConfirmKeepLatest(false);
+		setDeleteSecretError(null);
+		setConfirmDeleteSecret(false);
 	}
 
 	async function handleViewValue() {
@@ -192,6 +197,29 @@ function SingleSecretDetail({
 			setKeepLatestError(reason instanceof Error ? reason.message : String(reason));
 		} finally {
 			setKeepingLatest(false);
+		}
+	}
+
+	async function handleDeleteSecret() {
+		if (!confirmDeleteSecret) {
+			setConfirmDeleteSecret(true);
+			return;
+		}
+
+		setDeletingSecret(true);
+		setDeleteSecretError(null);
+		try {
+			await electrobun.rpc!.request.deleteSecret({
+				secretId: secret.id,
+				profile: selectedProfileSummary?.name,
+				projectId: selectedProject?.id,
+			});
+			setConfirmDeleteSecret(false);
+			onRefresh();
+		} catch (reason) {
+			setDeleteSecretError(reason instanceof Error ? reason.message : String(reason));
+		} finally {
+			setDeletingSecret(false);
 		}
 	}
 
@@ -401,6 +429,40 @@ function SingleSecretDetail({
 						<span>Manage Secret</span>
 						<ExternalLink className="w-3 h-3 text-gray-500 ml-auto" />
 					</button>
+
+					<button
+						type="button"
+						onClick={() => void handleDeleteSecret()}
+						disabled={deletingSecret}
+						className={`w-full flex items-center gap-3 px-4 py-3 border rounded-lg transition-colors text-sm disabled:opacity-50 ${
+							confirmDeleteSecret
+								? "bg-red-500/20 border-red-500/30 text-red-300 hover:bg-red-500/30"
+								: "bg-white/5 border-white/10 hover:bg-white/10"
+						}`}
+					>
+						{deletingSecret ? (
+							<Loader2 className="w-4 h-4 text-red-400 animate-spin" />
+						) : (
+							<Trash2 className="w-4 h-4 text-red-400" />
+						)}
+						<span>{confirmDeleteSecret ? "Confirm Delete Secret" : "Delete Secret"}</span>
+					</button>
+
+					{confirmDeleteSecret && !deletingSecret ? (
+						<button
+							type="button"
+							onClick={() => setConfirmDeleteSecret(false)}
+							className="w-full flex items-center justify-center px-4 py-2 text-xs text-gray-400 hover:text-gray-300 transition-colors"
+						>
+							Cancel Delete
+						</button>
+					) : null}
+
+					{deleteSecretError ? (
+						<div className="px-4 py-2 rounded-lg border border-red-500/30 bg-red-500/10 text-red-300 text-xs">
+							{deleteSecretError}
+						</div>
+					) : null}
 				</div>
 			</div>
 		</>

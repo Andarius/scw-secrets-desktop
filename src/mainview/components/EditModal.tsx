@@ -13,6 +13,14 @@ type EditModalProps = {
 	onSaved: () => void;
 };
 
+function tryFormatJson(value: string): string | null {
+	try {
+		return JSON.stringify(JSON.parse(value), null, 2);
+	} catch {
+		return null;
+	}
+}
+
 export function EditModal({
 	secretId,
 	name,
@@ -23,12 +31,7 @@ export function EditModal({
 	onSaved,
 }: EditModalProps) {
 	const formatted = useMemo(() => {
-		try {
-			const parsed = JSON.parse(initialValue);
-			return JSON.stringify(parsed, null, 2);
-		} catch {
-			return initialValue;
-		}
+		return tryFormatJson(initialValue) ?? initialValue;
 	}, [initialValue]);
 
 	const [value, setValue] = useState(formatted);
@@ -36,6 +39,8 @@ export function EditModal({
 	const [error, setError] = useState<string | null>(null);
 
 	const hasChanges = value !== formatted;
+	const formattedJson = useMemo(() => tryFormatJson(value), [value]);
+	const canFormatJson = formattedJson !== null && formattedJson !== value;
 
 	useEffect(() => {
 		function handleKey(e: KeyboardEvent) {
@@ -81,6 +86,18 @@ export function EditModal({
 						<p className="text-xs text-gray-500 mt-0.5">{name}</p>
 					</div>
 					<div className="flex items-center gap-2">
+						<button
+							type="button"
+							onClick={() => {
+								if (formattedJson) {
+									setValue(formattedJson);
+								}
+							}}
+							disabled={!canFormatJson || saving}
+							className="flex items-center gap-1.5 px-3 py-1.5 text-xs bg-white/5 border border-white/10 rounded-lg hover:bg-white/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-gray-300"
+						>
+							<span>Format JSON</span>
+						</button>
 						<button
 							type="button"
 							onClick={() => void handleSave()}

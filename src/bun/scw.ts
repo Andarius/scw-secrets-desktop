@@ -471,6 +471,45 @@ export async function createSecretVersion(
 	);
 }
 
+export async function createSecret(
+	name: string,
+	path: string,
+	type: string,
+	tags: string[],
+	profileName?: string,
+	projectId?: string,
+): Promise<Secret> {
+	const profile = loadProfile(profileName);
+	const body: {
+		name: string;
+		project_id: string;
+		path?: string;
+		type?: string;
+		tags?: string[];
+	} = {
+		name,
+		project_id: projectId || profile.projectId,
+	};
+
+	if (path && path !== "/") {
+		body.path = path;
+	}
+
+	if (type && type !== "opaque") {
+		body.type = type;
+	}
+
+	if (tags.length > 0) {
+		body.tags = tags;
+	}
+
+	return apiPost<Secret>(
+		secretManagerPath("secrets"),
+		profile,
+		body,
+	);
+}
+
 export async function enableSecretVersion(
 	secretId: string,
 	revision: number,

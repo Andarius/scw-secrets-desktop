@@ -1,4 +1,4 @@
-import { Lock, RefreshCw } from "lucide-react";
+import { Lock, Plus, RefreshCw } from "lucide-react";
 
 import type { ProfileSummary, Project } from "../../shared/models";
 
@@ -14,6 +14,7 @@ type HeaderProps = {
 	loadingProfiles: boolean;
 	loadingProjects: boolean;
 	syncingProfile: boolean;
+	onCreateSecret?: () => void;
 	onRefresh: () => void;
 	refreshing: boolean;
 };
@@ -30,6 +31,7 @@ export function Header({
 	loadingProfiles,
 	loadingProjects,
 	syncingProfile,
+	onCreateSecret,
 	onRefresh,
 	refreshing,
 }: HeaderProps) {
@@ -45,6 +47,22 @@ export function Header({
 					</div>
 
 					<div className="flex items-end gap-3">
+						{onCreateSecret ? (
+							<div>
+								<label className="text-xs text-gray-400 uppercase tracking-wider block mb-2 opacity-0">
+									New secret
+								</label>
+								<button
+									type="button"
+									onClick={onCreateSecret}
+									disabled={loadingProjects || !selectedProject}
+									className="flex items-center gap-2 px-3 py-2.5 bg-cyan-500/15 border border-cyan-500/30 rounded-lg hover:bg-cyan-500/25 transition-colors disabled:opacity-50 text-cyan-200 text-sm"
+								>
+									<Plus className="w-4 h-4" />
+									<span>New Secret</span>
+								</button>
+							</div>
+						) : null}
 						<div>
 							<label className="text-xs text-gray-400 uppercase tracking-wider block mb-2 opacity-0">
 								Refresh
