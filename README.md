@@ -36,6 +36,16 @@ This project is provided as-is, with no guarantee or warranty of any kind. Use i
 bun install
 ```
 
+### macOS
+
+When installing from a `.dmg`, copy the app to `/Applications` before launching — running directly from the disk image will fail due to an Electrobun self-extraction limitation.
+
+If macOS shows "app is damaged and can't be opened", clear the quarantine attribute:
+
+```bash
+xattr -c "/Applications/Scw Secrets.app"
+```
+
 ## Development
 
 ```bash

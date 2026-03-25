@@ -71,7 +71,9 @@ const rpc = BrowserView.defineRPC<AppRPC>({
 				return { ok: true };
 			},
 			openExternal: ({ url }: { url: string }) => {
-				Bun.spawn(["xdg-open", url]);
+				const cmd = process.platform === "darwin" ? "open" : process.platform === "win32" ? "cmd" : "xdg-open";
+				const args = process.platform === "win32" ? ["/c", "start", url] : [url];
+				Bun.spawn([cmd, ...args]);
 				return { ok: true };
 			},
 		},
@@ -91,14 +93,24 @@ const win = new BrowserWindow({
 	},
 });
 
-// Set window icon (not exposed in Electrobun's public API, calling FFI directly)
-{
-	const suffix = process.platform === "win32" ? "dll" : process.platform === "darwin" ? "dylib" : "so";
-	const lib = dlopen(join(process.cwd(), `libNativeWrapper.${suffix}`), {
-		setWindowIcon: { args: [FFIType.ptr, FFIType.cstring], returns: FFIType.void },
-	});
-	const iconBuf = Buffer.from(join(process.cwd(), "../Resources/appIcon.png") + "\0");
-	lib.symbols.setWindowIcon(win.ptr, ffiPtr(iconBuf));
+// Set window icon via FFI (Linux/Windows only — macOS uses CFBundleIconFile from Info.plist)
+if (process.platform !== "darwin") {
+	const suffix = process.platform === "win32" ? "dll" : "so";
+	const iconPath = join(process.cwd(), "../Resources/app/appIcon.png");
+	try {
+		const file = Bun.file(iconPath);
+		if (await file.exists()) {
+			const lib = dlopen(join(process.cwd(), `libNativeWrapper.${suffix}`), {
+				setWindowIcon: { args: [FFIType.ptr, FFIType.cstring], returns: FFIType.void },
+			});
+			const iconBuf = Buffer.from(iconPath + "\0");
+			lib.symbols.setWindowIcon(win.ptr, ffiPtr(iconBuf));
+		} else {
+			console.warn("Icon not found at", iconPath);
+		}
+	} catch (e) {
+		console.warn("Failed to set window icon:", e);
+	}
 }
 
 console.log("Scw Secrets desktop started!");
