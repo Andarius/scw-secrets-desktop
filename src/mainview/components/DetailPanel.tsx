@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Copy, Eye, Pencil, Clock, Key as KeyIcon, Settings, Loader2, ExternalLink, Trash2, Layers2 } from "lucide-react";
+import { Copy, CopyPlus, Eye, Pencil, Clock, Key as KeyIcon, Settings, Loader2, ExternalLink, Trash2, Layers2, X, Plus, Tag } from "lucide-react";
 
 import { electrobun } from "../rpc";
 import type { ProfileSummary, Project, Secret } from "../../shared/models";
@@ -115,6 +115,15 @@ function SingleSecretDetail({
 	const [keepingLatest, setKeepingLatest] = useState(false);
 	const [keepLatestError, setKeepLatestError] = useState<string | null>(null);
 	const [confirmKeepLatest, setConfirmKeepLatest] = useState(false);
+	const [duplicating, setDuplicating] = useState(false);
+	const [duplicateError, setDuplicateError] = useState<string | null>(null);
+	const [showDuplicate, setShowDuplicate] = useState(false);
+	const [duplicateName, setDuplicateName] = useState("");
+	const [editingTags, setEditingTags] = useState(false);
+	const [tagDraft, setTagDraft] = useState<string[]>([]);
+	const [tagInput, setTagInput] = useState("");
+	const [savingTags, setSavingTags] = useState(false);
+	const [tagError, setTagError] = useState<string | null>(null);
 	const [deletingSecret, setDeletingSecret] = useState(false);
 	const [deleteSecretError, setDeleteSecretError] = useState<string | null>(null);
 	const [confirmDeleteSecret, setConfirmDeleteSecret] = useState(false);
@@ -127,6 +136,10 @@ function SingleSecretDetail({
 		setEditError(null);
 		setKeepLatestError(null);
 		setConfirmKeepLatest(false);
+		setDuplicateError(null);
+		setShowDuplicate(false);
+		setEditingTags(false);
+		setTagError(null);
 		setDeleteSecretError(null);
 		setConfirmDeleteSecret(false);
 	}
@@ -206,6 +219,48 @@ function SingleSecretDetail({
 			setDeleteSecretError(reason instanceof Error ? reason.message : String(reason));
 		} finally {
 			setDeletingSecret(false);
+		}
+	}
+
+	async function handleDuplicate() {
+		setDuplicating(true);
+		setDuplicateError(null);
+		try {
+			await electrobun.rpc!.request.duplicateSecret({
+				secretId: secret.id,
+				name: duplicateName,
+				path: secret.path,
+				type: secret.type,
+				tags: secret.tags,
+				profile: selectedProfileSummary?.name,
+				projectId: selectedProject?.id,
+			});
+			setShowDuplicate(false);
+			setDuplicateName("");
+			onRefresh();
+		} catch (reason) {
+			setDuplicateError(reason instanceof Error ? reason.message : String(reason));
+		} finally {
+			setDuplicating(false);
+		}
+	}
+
+	async function handleSaveTags() {
+		setSavingTags(true);
+		setTagError(null);
+		try {
+			await electrobun.rpc!.request.updateSecret({
+				secretId: secret.id,
+				tags: tagDraft,
+				profile: selectedProfileSummary?.name,
+				projectId: selectedProject?.id,
+			});
+			setEditingTags(false);
+			onRefresh();
+		} catch (reason) {
+			setTagError(reason instanceof Error ? reason.message : String(reason));
+		} finally {
+			setSavingTags(false);
 		}
 	}
 
@@ -306,6 +361,125 @@ function SingleSecretDetail({
 					</div>
 				</div>
 
+				<div>
+					<div className="flex items-center justify-between mb-1.5">
+						<div className="text-xs text-gray-400 uppercase tracking-wider">
+							Tags
+						</div>
+						{!editingTags ? (
+							<button
+								type="button"
+								onClick={() => {
+									setTagDraft([...secret.tags]);
+									setTagInput("");
+									setTagError(null);
+									setEditingTags(true);
+								}}
+								className="p-1 hover:bg-white/10 rounded transition-colors"
+							>
+								<Pencil className="w-3 h-3 text-gray-500" />
+							</button>
+						) : null}
+					</div>
+
+					{!editingTags ? (
+						<div className="flex flex-wrap gap-1.5">
+							{secret.tags.length > 0
+								? secret.tags.map((tag) => (
+									<span
+										key={tag}
+										className="text-xs px-2 py-0.5 rounded bg-white/5 border border-white/10 text-gray-300"
+									>
+										{tag}
+									</span>
+								))
+								: <span className="text-xs text-gray-500">No tags</span>
+							}
+						</div>
+					) : (
+						<div className="space-y-2">
+							<div className="flex flex-wrap gap-1.5">
+								{tagDraft.map((tag) => (
+									<span
+										key={tag}
+										className="flex items-center gap-1 text-xs px-2 py-0.5 rounded bg-emerald-500/15 border border-emerald-500/30 text-emerald-300"
+									>
+										{tag}
+										<button
+											type="button"
+											onClick={() => setTagDraft((d) => d.filter((t) => t !== tag))}
+											className="hover:text-red-300 transition-colors"
+										>
+											<X className="w-2.5 h-2.5" />
+										</button>
+									</span>
+								))}
+							</div>
+							<div className="flex gap-1.5">
+								<input
+									type="text"
+									value={tagInput}
+									onChange={(e) => setTagInput(e.target.value)}
+									onKeyDown={(e) => {
+										if (e.key === "Enter" && tagInput.trim()) {
+											e.preventDefault();
+											const value = tagInput.trim();
+											if (!tagDraft.includes(value)) {
+												setTagDraft((d) => [...d, value]);
+											}
+											setTagInput("");
+										}
+									}}
+									placeholder="Add tag..."
+									className="flex-1 min-w-0 px-2 py-1 rounded bg-black/40 border border-white/10 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-emerald-500/50"
+									autoFocus
+								/>
+								<button
+									type="button"
+									onClick={() => {
+										const value = tagInput.trim();
+										if (value && !tagDraft.includes(value)) {
+											setTagDraft((d) => [...d, value]);
+										}
+										setTagInput("");
+									}}
+									disabled={!tagInput.trim()}
+									className="p-1 hover:bg-white/10 rounded transition-colors disabled:opacity-30"
+								>
+									<Plus className="w-3.5 h-3.5 text-emerald-400" />
+								</button>
+							</div>
+							<div className="flex gap-2">
+								<button
+									type="button"
+									onClick={() => void handleSaveTags()}
+									disabled={savingTags}
+									className="flex-1 flex items-center justify-center gap-2 px-3 py-1.5 rounded-lg bg-emerald-500/20 border border-emerald-500/30 text-emerald-200 hover:bg-emerald-500/30 transition-colors text-xs disabled:opacity-50"
+								>
+									{savingTags ? <Loader2 className="w-3 h-3 animate-spin" /> : <Tag className="w-3 h-3" />}
+									<span>{savingTags ? "Saving..." : "Save Tags"}</span>
+								</button>
+								<button
+									type="button"
+									onClick={() => {
+										setEditingTags(false);
+										setTagError(null);
+									}}
+									disabled={savingTags}
+									className="px-3 py-1.5 rounded-lg text-xs text-gray-400 hover:text-gray-300 transition-colors"
+								>
+									Cancel
+								</button>
+							</div>
+							{tagError ? (
+								<div className="px-3 py-2 rounded-lg border border-red-500/30 bg-red-500/10 text-red-300 text-xs">
+									{tagError}
+								</div>
+							) : null}
+						</div>
+					)}
+				</div>
+
 				<div className="pt-4 border-t border-white/10 space-y-2">
 					<button
 						type="button"
@@ -355,6 +529,68 @@ function SingleSecretDetail({
 						<Clock className="w-4 h-4 text-purple-400" />
 						<span>Version History</span>
 					</button>
+
+					<button
+						type="button"
+						onClick={() => {
+							setShowDuplicate(true);
+							setDuplicateName(`${secret.name}-copy`);
+						}}
+						disabled={showDuplicate}
+						className="w-full flex items-center gap-3 px-4 py-3 bg-white/5 border border-white/10 rounded-lg hover:bg-white/10 transition-colors text-sm disabled:opacity-50"
+					>
+						<CopyPlus className="w-4 h-4 text-teal-400" />
+						<span>Duplicate Secret</span>
+					</button>
+
+					{showDuplicate ? (
+						<div className="px-4 py-3 rounded-lg border border-teal-500/30 bg-teal-500/10 space-y-3">
+							<div className="text-xs text-teal-200 font-medium">New secret name</div>
+							<input
+								type="text"
+								value={duplicateName}
+								onChange={(e) => setDuplicateName(e.target.value)}
+								onKeyDown={(e) => {
+									if (e.key === "Enter" && duplicateName.trim()) {
+										void handleDuplicate();
+									}
+								}}
+								className="w-full px-3 py-2 rounded-lg bg-black/40 border border-white/10 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-teal-500/50"
+								placeholder="Secret name"
+								autoFocus
+							/>
+							<div className="flex gap-2">
+								<button
+									type="button"
+									onClick={() => void handleDuplicate()}
+									disabled={duplicating || !duplicateName.trim()}
+									className="flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-teal-500/20 border border-teal-500/30 text-teal-200 hover:bg-teal-500/30 transition-colors text-xs disabled:opacity-50"
+								>
+									{duplicating ? (
+										<Loader2 className="w-3 h-3 animate-spin" />
+									) : null}
+									<span>{duplicating ? "Duplicating..." : "Duplicate"}</span>
+								</button>
+								<button
+									type="button"
+									onClick={() => {
+										setShowDuplicate(false);
+										setDuplicateError(null);
+									}}
+									disabled={duplicating}
+									className="px-3 py-2 rounded-lg text-xs text-gray-400 hover:text-gray-300 transition-colors"
+								>
+									Cancel
+								</button>
+							</div>
+						</div>
+					) : null}
+
+					{duplicateError ? (
+						<div className="px-4 py-2 rounded-lg border border-red-500/30 bg-red-500/10 text-red-300 text-xs">
+							{duplicateError}
+						</div>
+					) : null}
 
 					{canKeepLatest ? (
 						<>

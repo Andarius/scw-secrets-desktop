@@ -1,4 +1,4 @@
-import { Lock, Plus, RefreshCw } from "lucide-react";
+import { Lock, Plus, RefreshCw, Settings } from "lucide-react";
 
 import type { ProfileSummary, Project } from "../../shared/models";
 
@@ -17,6 +17,7 @@ type HeaderProps = {
 	onCreateSecret?: () => void;
 	onRefresh: () => void;
 	refreshing: boolean;
+	onOpenSettings: () => void;
 };
 
 export function Header({
@@ -34,6 +35,7 @@ export function Header({
 	onCreateSecret,
 	onRefresh,
 	refreshing,
+	onOpenSettings,
 }: HeaderProps) {
 	return (
 		<header className="border-b border-white/10 bg-black/40 backdrop-blur-sm">
@@ -67,15 +69,25 @@ export function Header({
 							<label className="text-xs text-gray-400 uppercase tracking-wider block mb-2 opacity-0">
 								Refresh
 							</label>
-							<button
-								type="button"
-								onClick={onRefresh}
-								disabled={refreshing}
-								title="Refresh secrets"
-								className="p-2.5 bg-white/5 border border-white/10 rounded-lg hover:bg-white/10 transition-colors disabled:opacity-50"
-							>
-								<RefreshCw className={`w-4 h-4 text-gray-400 ${refreshing ? "animate-spin" : ""}`} />
-							</button>
+							<div className="flex gap-1.5">
+								<button
+									type="button"
+									onClick={onRefresh}
+									disabled={refreshing}
+									title="Refresh secrets"
+									className="p-2.5 bg-white/5 border border-white/10 rounded-lg hover:bg-white/10 transition-colors disabled:opacity-50"
+								>
+									<RefreshCw className={`w-4 h-4 text-gray-400 ${refreshing ? "animate-spin" : ""}`} />
+								</button>
+								<button
+									type="button"
+									onClick={onOpenSettings}
+									title="Settings"
+									className="p-2.5 bg-white/5 border border-white/10 rounded-lg hover:bg-white/10 transition-colors"
+								>
+									<Settings className="w-4 h-4 text-gray-400" />
+								</button>
+							</div>
 						</div>
 						<div>
 							<label className="text-xs text-gray-400 uppercase tracking-wider block mb-2">

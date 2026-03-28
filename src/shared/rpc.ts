@@ -1,4 +1,4 @@
-import type { ProfilesResponse, Project, Secret, SecretFilters, SecretVersion } from "./models";
+import type { HttpLog, ProfilesResponse, Project, Secret, SecretFilters, SecretVersion } from "./models";
 
 export type AppRPCContract = {
 	bun: {
@@ -47,8 +47,24 @@ export type AppRPCContract = {
 				params: { secretId: string; revision: number; profile?: string; projectId?: string };
 				response: { ok: boolean };
 			};
+			updateSecret: {
+				params: { secretId: string; name?: string; tags?: string[]; profile?: string; projectId?: string };
+				response: { ok: boolean };
+			};
+			duplicateSecret: {
+				params: { secretId: string; name: string; path?: string; type?: string; tags?: string[]; profile?: string; projectId?: string };
+				response: { secretId: string };
+			};
 			deleteSecret: {
 				params: { secretId: string; profile?: string; projectId?: string };
+				response: { ok: boolean };
+			};
+			getHttpLogs: {
+				params: {};
+				response: HttpLog[];
+			};
+			clearHttpLogs: {
+				params: {};
 				response: { ok: boolean };
 			};
 			openExternal: {

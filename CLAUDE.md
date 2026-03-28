@@ -15,6 +15,14 @@ This is a desktop UI for managing Scaleway secrets.
 - `src/shared/` — Shared types (models.ts) and RPC contract (rpc.ts)
 - `src/types/` — TypeScript type declarations
 
+## Scaleway API Reference
+
+When working on API-related features, refer to:
+- **Web docs**: https://www.scaleway.com/en/developers/api/secret-manager/ (client-rendered, may not be scrapable)
+- **Go SDK source** (most reliable): https://raw.githubusercontent.com/scaleway/scaleway-sdk-go/master/api/secret/v1beta1/secret_sdk.go
+
+There is no public OpenAPI spec. The Go SDK file contains all endpoint paths, request/response types, and supported fields.
+
 ## Commands
 
 - `bun run dev` — Start Electrobun in dev mode

@@ -41,6 +41,16 @@ export type SecretVersion = {
 	latest: boolean;
 };
 
+export type HttpLog = {
+	id: number;
+	method: string;
+	url: string;
+	status: number;
+	durationMs: number;
+	timestamp: string;
+	error?: string;
+};
+
 export type SecretFilters = {
 	profile?: string;
 	projectId?: string;

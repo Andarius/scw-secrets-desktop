@@ -108,6 +108,7 @@ function MockApp() {
 				syncingProfile={false}
 				onRefresh={() => {}}
 				refreshing={false}
+				onOpenSettings={() => {}}
 			/>
 
 				<div className="flex-1 flex flex-col px-6 py-6 min-h-0">
