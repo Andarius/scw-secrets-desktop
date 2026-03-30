@@ -16,6 +16,7 @@
 		"test:e2e:record": "bun scripts/record-e2e.ts",
 		"screenshot": "bun scripts/update-screenshot.ts",
 		"typecheck": "tsc --noEmit",
+		"bump": "bun run scripts/bump.ts",
 		"build:canary": "vite build && electrobun build --env=canary",
 		"build:stable": "vite build && electrobun build --env=stable"
 	},
