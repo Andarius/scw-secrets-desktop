@@ -1,5 +1,5 @@
-import { useRef } from "react";
-import { ChevronDown, ChevronUp, Search } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { ChevronDown, ChevronUp, Search, Tag } from "lucide-react";
 
 import type { Secret } from "../../shared/models";
 import {
@@ -22,6 +22,9 @@ type InventoryProps = {
 	onQueryChange: (query: string) => void;
 	statusFilter: StatusFilter;
 	onStatusFilterChange: (filter: StatusFilter) => void;
+	tagFilter: Set<string>;
+	onTagFilterChange: (tags: Set<string>) => void;
+	allTags: string[];
 	sortKey: InventorySortKey;
 	sortDirection: InventorySortDirection;
 	onSortChange: (key: InventorySortKey, direction: InventorySortDirection) => void;
@@ -78,6 +81,92 @@ const FILTERS: { key: StatusFilter; label: string }[] = [
 	{ key: "attention", label: "ATTENTION" },
 ];
 
+function TagDropdown({
+	allTags,
+	tagFilter,
+	onTagFilterChange,
+}: {
+	allTags: string[];
+	tagFilter: Set<string>;
+	onTagFilterChange: (tags: Set<string>) => void;
+}) {
+	const [open, setOpen] = useState(false);
+	const ref = useRef<HTMLDivElement>(null);
+
+	useEffect(() => {
+		if (!open) return;
+		function handleClick(e: MouseEvent) {
+			if (ref.current && !ref.current.contains(e.target as Node)) {
+				setOpen(false);
+			}
+		}
+		document.addEventListener("mousedown", handleClick);
+		return () => document.removeEventListener("mousedown", handleClick);
+	}, [open]);
+
+	return (
+		<div className="relative" ref={ref}>
+			<button
+				type="button"
+				onClick={() => setOpen(!open)}
+				className={`inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
+					tagFilter.size > 0
+						? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
+						: "bg-white/5 text-gray-400 border border-white/10 hover:bg-white/10"
+				}`}
+			>
+				<Tag className="w-3 h-3" />
+				Tags
+				{tagFilter.size > 0 && (
+					<span className="ml-0.5 px-1.5 py-0.5 rounded-full bg-emerald-500/30 text-[10px] leading-none">
+						{tagFilter.size}
+					</span>
+				)}
+			</button>
+			{open && (
+				<div className="absolute top-full left-0 mt-1 z-50 w-48 max-h-60 overflow-auto rounded-lg border border-white/10 bg-[#1a1a1a] shadow-xl">
+					{allTags.length === 0 ? (
+						<div className="px-3 py-2 text-xs text-gray-500">No tags</div>
+					) : (
+						allTags.map((tag) => {
+							const active = tagFilter.has(tag);
+							return (
+								<button
+									key={tag}
+									type="button"
+									onClick={() => {
+										const next = new Set(tagFilter);
+										if (active) {
+											next.delete(tag);
+										} else {
+											next.add(tag);
+										}
+										onTagFilterChange(next);
+									}}
+									className={`w-full text-left px-3 py-1.5 text-xs transition-colors flex items-center gap-2 ${
+										active
+											? "bg-emerald-500/15 text-emerald-300"
+											: "text-gray-300 hover:bg-white/5"
+									}`}
+								>
+									<span className={`w-3.5 h-3.5 rounded border flex items-center justify-center ${
+										active
+											? "border-emerald-500/50 bg-emerald-500/20"
+											: "border-white/20"
+									}`}>
+										{active && <span className="text-[8px]">✓</span>}
+									</span>
+									{tag}
+								</button>
+							);
+						})
+					)}
+				</div>
+			)}
+		</div>
+	);
+}
+
 export function Inventory({
 	secrets,
 	selectedSecretIds,
@@ -86,6 +175,9 @@ export function Inventory({
 	onQueryChange,
 	statusFilter,
 	onStatusFilterChange,
+	tagFilter,
+	onTagFilterChange,
+	allTags,
 	sortKey,
 	sortDirection,
 	onSortChange,
@@ -168,7 +260,7 @@ export function Inventory({
 						/>
 					</div>
 
-					<div className="flex gap-2">
+					<div className="flex gap-2 flex-wrap items-center">
 						{FILTERS.map((f) => (
 							<button
 								key={f.key}
@@ -183,6 +275,7 @@ export function Inventory({
 								{f.label}
 							</button>
 						))}
+						<TagDropdown allTags={allTags} tagFilter={tagFilter} onTagFilterChange={onTagFilterChange} />
 					</div>
 				</div>
 			</div>
@@ -322,12 +415,23 @@ export function Inventory({
 											<div className="flex flex-wrap gap-1">
 												{secret.tags.length > 0
 													? secret.tags.map((tag) => (
-														<span
+														<button
 															key={tag}
-															className="text-[10px] px-1.5 py-0.5 rounded bg-white/10 text-gray-300 border border-white/10"
+															type="button"
+															onClick={(e) => {
+																e.stopPropagation();
+																const next = new Set(tagFilter);
+																next.add(tag);
+																onTagFilterChange(next);
+															}}
+															className={`text-[10px] px-1.5 py-0.5 rounded border transition-colors ${
+																tagFilter.has(tag)
+																	? "bg-emerald-500/20 text-emerald-300 border-emerald-500/30"
+																	: "bg-white/10 text-gray-300 border-white/10 hover:bg-white/15 hover:text-white"
+															}`}
 														>
 															{tag}
-														</span>
+														</button>
 													))
 													: <span className="text-xs text-gray-600">—</span>}
 											</div>
