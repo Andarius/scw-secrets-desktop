@@ -56,6 +56,7 @@ function MockApp() {
 	const [query, setQuery] = useState("");
 	const [pathFilter, setPathFilter] = useState("all");
 	const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+	const [tagFilter, setTagFilter] = useState<Set<string>>(new Set());
 	const [sortKey, setSortKey] = useState<InventorySortKey>("version_count");
 	const [sortDirection, setSortDirection] = useState<InventorySortDirection>("desc");
 	const [spotlightOpen, setSpotlightOpen] = useState(false);
@@ -80,6 +81,7 @@ function MockApp() {
 		query: deferredQuery,
 		pathFilter,
 		statusFilter,
+		tagFilter,
 	});
 	const visibleSecrets = sortSecrets(filteredSecrets, {
 		sortKey,
@@ -161,6 +163,9 @@ function MockApp() {
 							onQueryChange={setQuery}
 							statusFilter={statusFilter}
 							onStatusFilterChange={setStatusFilter}
+							tagFilter={tagFilter}
+							onTagFilterChange={setTagFilter}
+							allTags={Array.from(new Set(MOCK_SECRETS.flatMap((s) => s.tags))).sort()}
 							sortKey={sortKey}
 							sortDirection={sortDirection}
 							onSortChange={(key, direction) => {
@@ -189,6 +194,7 @@ function MockApp() {
 						onSelect={(secretId) => {
 							setPathFilter("all");
 							setStatusFilter("all");
+							setTagFilter(new Set());
 							setQuery("");
 							setSelectedSecretIds(new Set([secretId]));
 						}}

@@ -92,6 +92,20 @@ test("spotlight search selects a secret and closes", async ({ page }) => {
 	await expect(page.locator("tbody tr.bg-cyan-500\\/10").filter({ hasText: "SENTRY_DSN" })).toBeVisible();
 });
 
+test("filters the inventory by clicking a tag", async ({ page }) => {
+	await page.locator("tbody tr").filter({ hasText: "DATABASE_URL" }).getByRole("button", { name: "prod" }).click();
+
+	await expect(inventoryRows(page)).toHaveCount(2);
+	await expect(page.locator("tbody tr").filter({ hasText: "DATABASE_URL" })).toHaveCount(1);
+	await expect(page.locator("tbody tr").filter({ hasText: "REDIS_PASSWORD" })).toHaveCount(1);
+
+	const tagsButton = page.getByRole("button", { name: "Tags" });
+	await tagsButton.click();
+	await tagsButton.locator("..").locator("button").filter({ hasText: "prod" }).click();
+
+	await expect(inventoryRows(page)).toHaveCount(12);
+});
+
 test("opens single-secret and batch value overlays", async ({ page }) => {
 	await page.getByRole("button", { name: "View Secret Value" }).click();
 

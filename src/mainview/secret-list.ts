@@ -21,10 +21,12 @@ export function filterSecrets(
 		query,
 		pathFilter,
 		statusFilter,
+		tagFilter,
 	}: {
 		query: string;
 		pathFilter: string;
 		statusFilter: StatusFilter;
+		tagFilter: Set<string>;
 	},
 ): Secret[] {
 	const normalizedQuery = query.trim().toLowerCase();
@@ -43,6 +45,10 @@ export function filterSecrets(
 		}
 
 		if (statusFilter === "attention" && secret.status === "ready") {
+			return false;
+		}
+
+		if (tagFilter.size > 0 && !secret.tags.some((tag) => tagFilter.has(tag))) {
 			return false;
 		}
 

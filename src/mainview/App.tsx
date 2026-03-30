@@ -74,6 +74,7 @@ function App() {
 	const [query, setQuery] = useState("");
 	const [pathFilter, setPathFilter] = useState(saved.pathFilter ?? "all");
 	const [statusFilter, setStatusFilter] = useState<StatusFilter>(saved.statusFilter ?? "all");
+	const [tagFilter, setTagFilter] = useState<Set<string>>(new Set());
 	const [sortKey, setSortKey] = useState<InventorySortKey>(saved.sortKey ?? "version_count");
 	const [sortDirection, setSortDirection] = useState<InventorySortDirection>(saved.sortDirection ?? "desc");
 	const [error, setError] = useState<string | null>(null);
@@ -247,6 +248,7 @@ function App() {
 		query: deferredQuery,
 		pathFilter,
 		statusFilter,
+		tagFilter,
 	});
 	const visibleSecrets = sortSecrets(filteredSecrets, {
 		sortKey,
@@ -375,6 +377,9 @@ function App() {
 							onQueryChange={setQuery}
 							statusFilter={statusFilter}
 							onStatusFilterChange={setStatusFilter}
+							tagFilter={tagFilter}
+							onTagFilterChange={setTagFilter}
+							allTags={Array.from(new Set(secrets.flatMap((s) => s.tags))).sort()}
 							sortKey={sortKey}
 							sortDirection={sortDirection}
 							onSortChange={(key, direction) => {
@@ -440,6 +445,7 @@ function App() {
 						onSelect={(secretId) => {
 							setPathFilter("all");
 							setStatusFilter("all");
+							setTagFilter(new Set());
 							setQuery("");
 							setSelectedSecretIds(new Set([secretId]));
 						}}

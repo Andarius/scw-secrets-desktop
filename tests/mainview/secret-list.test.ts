@@ -46,6 +46,7 @@ describe("filterSecrets", () => {
 			query: string;
 			pathFilter: string;
 			statusFilter: "all" | "ready" | "attention";
+			tagFilter: Set<string>;
 		};
 		expectedIds: string[];
 	}> = [
@@ -60,6 +61,7 @@ describe("filterSecrets", () => {
 				query: "",
 				pathFilter: "/prod",
 				statusFilter: "all",
+				tagFilter: new Set(),
 			},
 			expectedIds: ["1", "2"],
 		},
@@ -74,6 +76,7 @@ describe("filterSecrets", () => {
 				query: "prod/web",
 				pathFilter: "all",
 				statusFilter: "attention",
+				tagFilter: new Set(),
 			},
 			expectedIds: ["2"],
 		},
