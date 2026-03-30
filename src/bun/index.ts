@@ -2,7 +2,7 @@ import { BrowserView, BrowserWindow, Updater, type RPCSchema } from "electrobun/
 import { dlopen, FFIType, ptr as ffiPtr } from "bun:ffi";
 import { join } from "path";
 
-import { accessSecretVersion, createSecret, createSecretVersion, deleteSecret, destroySecretVersion, disableSecretVersion, enableSecretVersion, getProfiles, getProjects, getSecrets, getSecretVersions, switchActiveProfile } from "./scw";
+import { accessSecretVersion, clearHttpLogs, createSecret, createSecretVersion, deleteSecret, destroySecretVersion, disableSecretVersion, enableSecretVersion, getHttpLogs, getProfiles, getProjects, getSecrets, getSecretVersions, switchActiveProfile, updateSecret } from "./scw";
 import type { SecretFilters } from "../shared/models";
 import type { AppRPCContract } from "../shared/rpc";
 
@@ -66,8 +66,23 @@ const rpc = BrowserView.defineRPC<AppRPC>({
 				await destroySecretVersion(secretId, revision, profile, projectId);
 				return { ok: true };
 			},
+			updateSecret: async ({ secretId, name, tags, profile, projectId }: { secretId: string; name?: string; tags?: string[]; profile?: string; projectId?: string }) => {
+				await updateSecret(secretId, { name, tags }, profile, projectId);
+				return { ok: true };
+			},
+			duplicateSecret: async ({ secretId, name, path, type, tags, profile, projectId }: { secretId: string; name: string; path?: string; type?: string; tags?: string[]; profile?: string; projectId?: string }) => {
+				const value = await accessSecretVersion(secretId, "latest_enabled", profile, projectId);
+				const newSecret = await createSecret(name, path ?? "/", type ?? "opaque", tags ?? [], profile, projectId);
+				await createSecretVersion(newSecret.id, value, profile, projectId);
+				return { secretId: newSecret.id };
+			},
 			deleteSecret: async ({ secretId, profile, projectId }: { secretId: string; profile?: string; projectId?: string }) => {
 				await deleteSecret(secretId, profile, projectId);
+				return { ok: true };
+			},
+			getHttpLogs: () => getHttpLogs(),
+			clearHttpLogs: () => {
+				clearHttpLogs();
 				return { ok: true };
 			},
 			openExternal: ({ url }: { url: string }) => {

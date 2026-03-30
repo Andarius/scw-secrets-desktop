@@ -50,7 +50,7 @@ export function filterSecrets(
 			return true;
 		}
 
-		const searchable = `${secret.name} ${secret.path}`.toLowerCase();
+		const searchable = `${secret.name} ${secret.path} ${secret.id}`.toLowerCase();
 		return searchable.includes(normalizedQuery);
 	});
 }

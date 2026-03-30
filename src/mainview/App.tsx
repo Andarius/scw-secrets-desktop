@@ -11,6 +11,10 @@ import { ValueView } from "./components/ValueModal";
 import { EditModal } from "./components/EditModal";
 import { HistoryModal } from "./components/HistoryModal";
 import { CreateSecretModal } from "./components/CreateSecretModal";
+import { SpotlightSearch } from "./components/SpotlightSearch";
+import { SettingsModal } from "./components/SettingsModal";
+import { LogsModal } from "./components/LogsModal";
+import { loadSettings, saveSettings, type AppSettings } from "./settings";
 import {
 	filterSecrets,
 	getPathEntries,
@@ -21,22 +25,57 @@ import {
 	type StatusFilter,
 } from "./secret-list";
 
+const STORAGE_KEY = "scw-secrets-state";
+
+type PersistedState = {
+	selectedProjectId?: string;
+	pathFilter?: string;
+	statusFilter?: StatusFilter;
+	sortKey?: InventorySortKey;
+	sortDirection?: InventorySortDirection;
+};
+
+function loadPersistedState(): PersistedState {
+	try {
+		const raw = localStorage.getItem(STORAGE_KEY);
+		if (raw) {
+			return JSON.parse(raw) as PersistedState;
+		}
+	} catch {
+		// ignore
+	}
+	return {};
+}
+
+function savePersistedState(state: PersistedState) {
+	try {
+		localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+	} catch {
+		// ignore
+	}
+}
+
 function App() {
+	const saved = useState(() => loadPersistedState())[0];
 	const [profilesResponse, setProfilesResponse] = useState<ProfilesResponse | null>(null);
 	const [selectedProfile, setSelectedProfile] = useState("");
 	const [projects, setProjects] = useState<Project[]>([]);
-	const [selectedProjectId, setSelectedProjectId] = useState("");
+	const [selectedProjectId, setSelectedProjectId] = useState(saved.selectedProjectId ?? "");
 	const [secrets, setSecrets] = useState<Secret[]>([]);
 	const [selectedSecretIds, setSelectedSecretIds] = useState<Set<string>>(new Set());
 	const [expandedValues, setExpandedValues] = useState<{ title: string; values: ValueEntry[] } | null>(null);
 	const [editingEntry, setEditingEntry] = useState<ValueEntry | null>(null);
 	const [creatingSecret, setCreatingSecret] = useState(false);
 	const [historyTarget, setHistoryTarget] = useState<{ secretId: string; secretName: string } | null>(null);
+	const [spotlightOpen, setSpotlightOpen] = useState(false);
+	const [settingsOpen, setSettingsOpen] = useState(false);
+	const [logsOpen, setLogsOpen] = useState(false);
+	const [settings, setSettings] = useState<AppSettings>(() => loadSettings());
 	const [query, setQuery] = useState("");
-	const [pathFilter, setPathFilter] = useState("all");
-	const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
-	const [sortKey, setSortKey] = useState<InventorySortKey>("version_count");
-	const [sortDirection, setSortDirection] = useState<InventorySortDirection>("desc");
+	const [pathFilter, setPathFilter] = useState(saved.pathFilter ?? "all");
+	const [statusFilter, setStatusFilter] = useState<StatusFilter>(saved.statusFilter ?? "all");
+	const [sortKey, setSortKey] = useState<InventorySortKey>(saved.sortKey ?? "version_count");
+	const [sortDirection, setSortDirection] = useState<InventorySortDirection>(saved.sortDirection ?? "desc");
 	const [error, setError] = useState<string | null>(null);
 	const [loadingProfiles, setLoadingProfiles] = useState(true);
 	const [loadingProjects, setLoadingProjects] = useState(false);
@@ -45,6 +84,27 @@ function App() {
 	const [refreshKey, setRefreshKey] = useState(0);
 
 	const deferredQuery = useDeferredValue(query);
+
+	useEffect(() => {
+		function handleKeyDown(e: KeyboardEvent) {
+			if ((e.ctrlKey || e.metaKey) && e.key === "p") {
+				e.preventDefault();
+				setSpotlightOpen((open) => !open);
+			}
+		}
+		window.addEventListener("keydown", handleKeyDown);
+		return () => window.removeEventListener("keydown", handleKeyDown);
+	}, []);
+
+	useEffect(() => {
+		savePersistedState({
+			selectedProjectId,
+			pathFilter,
+			statusFilter,
+			sortKey,
+			sortDirection,
+		});
+	}, [selectedProjectId, pathFilter, statusFilter, sortKey, sortDirection]);
 
 	const profiles = profilesResponse?.profiles ?? [];
 	const selectedProfileSummary =
@@ -157,7 +217,11 @@ function App() {
 						const valid = new Set([...current].filter((id) => response.some((s: Secret) => s.id === id)));
 						return valid.size > 0 ? valid : new Set(response[0] ? [response[0].id] : []);
 					});
-					setPathFilter("all");
+					setPathFilter((current) => {
+						if (current === "all") return current;
+						const paths = response.map((s: Secret) => s.path);
+						return paths.includes(current) ? current : "all";
+					});
 					setError(null);
 				});
 			} catch (reason) {
@@ -274,6 +338,7 @@ function App() {
 				onCreateSecret={() => setCreatingSecret(true)}
 				onRefresh={() => setRefreshKey((k) => k + 1)}
 				refreshing={loadingSecrets}
+				onOpenSettings={() => setSettingsOpen(true)}
 			/>
 
 				<div className="flex-1 flex flex-col px-6 py-6 min-h-0">
@@ -346,6 +411,7 @@ function App() {
 						initialValue={editingEntry.value}
 						profile={selectedProfileSummary?.name}
 						projectId={selectedProject?.id}
+						autoKeepLatest={settings.autoKeepLatest}
 						onClose={() => setEditingEntry(null)}
 						onSaved={() => {
 							setEditingEntry(null);
@@ -368,6 +434,19 @@ function App() {
 					/>
 				) : null}
 
+				{spotlightOpen ? (
+					<SpotlightSearch
+						secrets={secrets}
+						onSelect={(secretId) => {
+							setPathFilter("all");
+							setStatusFilter("all");
+							setQuery("");
+							setSelectedSecretIds(new Set([secretId]));
+						}}
+						onClose={() => setSpotlightOpen(false)}
+					/>
+				) : null}
+
 				{historyTarget ? (
 					<HistoryModal
 						secretId={historyTarget.secretId}
@@ -376,6 +455,22 @@ function App() {
 						projectId={selectedProject?.id}
 						onClose={() => setHistoryTarget(null)}
 						onChanged={() => setRefreshKey((k) => k + 1)}
+					/>
+				) : null}
+
+				{logsOpen ? (
+					<LogsModal onClose={() => setLogsOpen(false)} />
+				) : null}
+
+				{settingsOpen ? (
+					<SettingsModal
+						settings={settings}
+						onChange={(next) => {
+							setSettings(next);
+							saveSettings(next);
+						}}
+						onClose={() => setSettingsOpen(false)}
+						onOpenLogs={() => setLogsOpen(true)}
 					/>
 				) : null}
 			</div>

@@ -29,14 +29,25 @@ jobs:
       - name: Install Playwright Chromium
         run: bunx playwright install --with-deps chromium
 
+      - name: Install ffmpeg
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg
+
       - name: Run unit tests
         run: bun run test
 
       - name: Run typecheck
         run: bun run typecheck
 
-      - name: Run E2E tests
-        run: bun run test:e2e
+      - name: Run E2E tests with recording
+        run: bun run test:e2e:record
+
+      - name: Upload E2E recording
+        if: always()
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          name: e2e-recording
+          path: videos/e2e.mp4
+          if-no-files-found: ignore
 
       - name: Upload Playwright artifacts
         if: failure()

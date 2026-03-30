@@ -2,6 +2,7 @@ import { existsSync, readFileSync, writeFileSync } from "fs";
 import { join } from "path";
 
 import type {
+	HttpLog,
 	ProfileSummary,
 	ProfilesResponse,
 	Project,
@@ -11,6 +12,34 @@ import type {
 } from "../shared/models";
 
 const API_BASE = "https://api.scaleway.com";
+
+// HTTP log collector
+const MAX_LOGS = 500;
+let logIdCounter = 0;
+const httpLogs: HttpLog[] = [];
+
+function recordLog(method: string, url: string, status: number, durationMs: number, error?: string) {
+	httpLogs.push({
+		id: ++logIdCounter,
+		method,
+		url,
+		status,
+		durationMs: Math.round(durationMs),
+		timestamp: new Date().toISOString(),
+		error,
+	});
+	if (httpLogs.length > MAX_LOGS) {
+		httpLogs.splice(0, httpLogs.length - MAX_LOGS);
+	}
+}
+
+export function getHttpLogs(): HttpLog[] {
+	return [...httpLogs].reverse();
+}
+
+export function clearHttpLogs(): void {
+	httpLogs.length = 0;
+}
 const SECRET_MANAGER_REGION = "fr-par";
 const HOME_DIR = Bun.env.HOME ?? Bun.env.USERPROFILE ?? "";
 const SCW_CONFIG_PATH = HOME_DIR ? join(HOME_DIR, ".config", "scw", "config.yaml") : "";
@@ -280,13 +309,22 @@ async function apiGet<T>(
 		}
 	}
 
+	const start = performance.now();
 	const response = await fetch(url, {
 		headers: {
 			"X-Auth-Token": profile.secretKey,
 		},
 	});
+	const durationMs = performance.now() - start;
 
-	return parseJson<T>(response);
+	try {
+		const result = await parseJson<T>(response);
+		recordLog("GET", url.toString(), response.status, durationMs);
+		return result;
+	} catch (err) {
+		recordLog("GET", url.toString(), response.status, durationMs, err instanceof Error ? err.message : String(err));
+		throw err;
+	}
 }
 
 async function apiPost<T>(
@@ -301,6 +339,7 @@ async function apiPost<T>(
 			url.searchParams.set(key, value);
 		}
 	}
+	const start = performance.now();
 	const response = await fetch(url, {
 		method: "POST",
 		headers: {
@@ -309,7 +348,49 @@ async function apiPost<T>(
 		},
 		body: JSON.stringify(body),
 	});
-	return parseJson<T>(response);
+	const durationMs = performance.now() - start;
+
+	try {
+		const result = await parseJson<T>(response);
+		recordLog("POST", url.toString(), response.status, durationMs);
+		return result;
+	} catch (err) {
+		recordLog("POST", url.toString(), response.status, durationMs, err instanceof Error ? err.message : String(err));
+		throw err;
+	}
+}
+
+async function apiPatch<T>(
+	pathname: string,
+	profile: LoadedProfile,
+	body: unknown,
+	params: Record<string, string> = {},
+): Promise<T> {
+	const url = new URL(pathname, API_BASE);
+	for (const [key, value] of Object.entries(params)) {
+		if (value) {
+			url.searchParams.set(key, value);
+		}
+	}
+	const start = performance.now();
+	const response = await fetch(url, {
+		method: "PATCH",
+		headers: {
+			"X-Auth-Token": profile.secretKey,
+			"Content-Type": "application/json",
+		},
+		body: JSON.stringify(body),
+	});
+	const durationMs = performance.now() - start;
+
+	try {
+		const result = await parseJson<T>(response);
+		recordLog("PATCH", url.toString(), response.status, durationMs);
+		return result;
+	} catch (err) {
+		recordLog("PATCH", url.toString(), response.status, durationMs, err instanceof Error ? err.message : String(err));
+		throw err;
+	}
 }
 
 async function apiDelete(
@@ -323,16 +404,24 @@ async function apiDelete(
 			url.searchParams.set(key, value);
 		}
 	}
+	const start = performance.now();
 	const response = await fetch(url, {
 		method: "DELETE",
 		headers: {
 			"X-Auth-Token": profile.secretKey,
 		},
 	});
+	const durationMs = performance.now() - start;
 
 	if (!response.ok) {
-		await parseJson(response);
+		try {
+			await parseJson(response);
+		} catch (err) {
+			recordLog("DELETE", url.toString(), response.status, durationMs, err instanceof Error ? err.message : String(err));
+			throw err;
+		}
 	}
+	recordLog("DELETE", url.toString(), response.status, durationMs);
 }
 
 const PAGE_SIZE = 100;
@@ -507,6 +596,21 @@ export async function createSecret(
 		secretManagerPath("secrets"),
 		profile,
 		body,
+	);
+}
+
+export async function updateSecret(
+	secretId: string,
+	updates: { name?: string; tags?: string[] },
+	profileName?: string,
+	projectId?: string,
+): Promise<Secret> {
+	const profile = loadProfile(profileName);
+	return apiPatch<Secret>(
+		secretManagerPath("secrets", secretId),
+		profile,
+		updates,
+		{ project_id: projectId || profile.projectId },
 	);
 }
 

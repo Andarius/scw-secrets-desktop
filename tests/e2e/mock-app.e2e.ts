@@ -1,10 +1,20 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect as baseExpect, test, type Page } from "@playwright/test";
+
+import { highlightExpect, patchHighlights } from "./highlights";
+
+const recording = process.env.PW_VIDEO === "1";
+const expect: typeof baseExpect = recording
+	? ((target: unknown) => highlightExpect(target)) as typeof baseExpect
+	: baseExpect;
 
 function inventoryRows(page: Page) {
 	return page.locator("tbody tr");
 }
 
 test.beforeEach(async ({ page }) => {
+	if (recording) {
+		patchHighlights(page);
+	}
 	await page.goto("/");
 	await expect(page.getByRole("heading", { name: "SCW Secrets" })).toBeVisible();
 });
@@ -44,6 +54,42 @@ test("sorts the inventory by secret name", async ({ page }) => {
 	await page.getByRole("button", { name: "Sort by name descending" }).click();
 
 	await expect(page.locator("tbody tr").first()).toContainText("WEBHOOK_SIGNING_KEY");
+});
+
+test("opens spotlight search with Ctrl+P and finds by name", async ({ page }) => {
+	await page.keyboard.press("Control+p");
+
+	const searchInput = page.getByPlaceholder("Search secrets...");
+	await expect(searchInput).toBeVisible();
+
+	await searchInput.fill("STRIPE");
+	await expect(page.locator("button").filter({ hasText: "STRIPE_SECRET_KEY" })).toBeVisible();
+
+	await page.keyboard.press("Escape");
+	await expect(searchInput).toHaveCount(0);
+});
+
+test("spotlight search finds by id prefix", async ({ page }) => {
+	await page.keyboard.press("Control+p");
+
+	const searchInput = page.getByPlaceholder("Search secrets...");
+	await searchInput.fill("id:d4e5f6a7");
+
+	await expect(page.locator("button").filter({ hasText: "DATABASE_URL" })).toBeVisible();
+	const badge = page.locator("button").filter({ hasText: "DATABASE_URL" }).locator("span").filter({ hasText: "id" });
+	await expect(badge).toBeVisible();
+});
+
+test("spotlight search selects a secret and closes", async ({ page }) => {
+	await page.keyboard.press("Control+p");
+
+	const searchInput = page.getByPlaceholder("Search secrets...");
+	await searchInput.fill("SENTRY");
+
+	await page.keyboard.press("Enter");
+	await expect(searchInput).toHaveCount(0);
+
+	await expect(page.locator("tbody tr.bg-cyan-500\\/10").filter({ hasText: "SENTRY_DSN" })).toBeVisible();
 });
 
 test("opens single-secret and batch value overlays", async ({ page }) => {

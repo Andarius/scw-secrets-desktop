@@ -1,6 +1,7 @@
 import { useState, useDeferredValue, useEffect } from "react";
 
 import type { ProfilesResponse, Project, Secret } from "../shared/models";
+import { SpotlightSearch } from "./components/SpotlightSearch";
 import { Header } from "./components/Header";
 import { StatsCards } from "./components/StatsCards";
 import { Navigator } from "./components/Navigator";
@@ -57,6 +58,18 @@ function MockApp() {
 	const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
 	const [sortKey, setSortKey] = useState<InventorySortKey>("version_count");
 	const [sortDirection, setSortDirection] = useState<InventorySortDirection>("desc");
+	const [spotlightOpen, setSpotlightOpen] = useState(false);
+
+	useEffect(() => {
+		function handleKeyDown(e: KeyboardEvent) {
+			if ((e.ctrlKey || e.metaKey) && e.key === "p") {
+				e.preventDefault();
+				setSpotlightOpen((open) => !open);
+			}
+		}
+		window.addEventListener("keydown", handleKeyDown);
+		return () => window.removeEventListener("keydown", handleKeyDown);
+	}, []);
 
 	const deferredQuery = useDeferredValue(query);
 	const profiles = MOCK_PROFILES.profiles;
@@ -108,6 +121,7 @@ function MockApp() {
 				syncingProfile={false}
 				onRefresh={() => {}}
 				refreshing={false}
+				onOpenSettings={() => {}}
 			/>
 
 				<div className="flex-1 flex flex-col px-6 py-6 min-h-0">
@@ -168,6 +182,19 @@ function MockApp() {
 						/>
 					</div>
 				)}
+
+				{spotlightOpen ? (
+					<SpotlightSearch
+						secrets={MOCK_SECRETS}
+						onSelect={(secretId) => {
+							setPathFilter("all");
+							setStatusFilter("all");
+							setQuery("");
+							setSelectedSecretIds(new Set([secretId]));
+						}}
+						onClose={() => setSpotlightOpen(false)}
+					/>
+				) : null}
 			</div>
 		</div>
 	);

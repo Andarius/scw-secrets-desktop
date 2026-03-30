@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Loader2, Save, X } from "lucide-react";
 
 import { electrobun } from "../rpc";
+import { planKeepLatestVersionOnly } from "../secret-versions";
 
 type EditModalProps = {
 	secretId: string;
@@ -9,6 +10,7 @@ type EditModalProps = {
 	initialValue: string;
 	profile?: string;
 	projectId?: string;
+	autoKeepLatest?: boolean;
 	onClose: () => void;
 	onSaved: () => void;
 };
@@ -27,6 +29,7 @@ export function EditModal({
 	initialValue,
 	profile,
 	projectId,
+	autoKeepLatest,
 	onClose,
 	onSaved,
 }: EditModalProps) {
@@ -66,6 +69,32 @@ export function EditModal({
 				profile,
 				projectId,
 			});
+
+			if (autoKeepLatest) {
+				const versions = await electrobun.rpc!.request.getSecretVersions({
+					secretId,
+					profile,
+					projectId,
+				});
+				for (const action of planKeepLatestVersionOnly(versions)) {
+					if (action.type === "disable") {
+						await electrobun.rpc!.request.disableSecretVersion({
+							secretId,
+							revision: action.revision,
+							profile,
+							projectId,
+						});
+					} else {
+						await electrobun.rpc!.request.destroySecretVersion({
+							secretId,
+							revision: action.revision,
+							profile,
+							projectId,
+						});
+					}
+				}
+			}
+
 			onSaved();
 		} catch (reason) {
 			setError(reason instanceof Error ? reason.message : String(reason));
