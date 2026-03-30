@@ -13,6 +13,7 @@
 		"mock:e2e": "VITE_MOCK=1 vite --host 127.0.0.1 --port 5199",
 		"test": "bun test",
 		"test:e2e": "playwright test",
+		"test:e2e:record": "bun scripts/record-e2e.ts",
 		"screenshot": "bun scripts/update-screenshot.ts",
 		"typecheck": "tsc --noEmit",
 		"build:canary": "vite build && electrobun build --env=canary",

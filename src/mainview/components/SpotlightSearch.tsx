@@ -9,13 +9,13 @@ type SpotlightSearchProps = {
 	onClose: () => void;
 };
 
-type MatchedSecret = {
+export type MatchedSecret = {
 	secret: Secret;
 	matchField: string;
 	matchValue: string;
 };
 
-function matchSecrets(secrets: Secret[], raw: string): MatchedSecret[] {
+export function matchSecrets(secrets: Secret[], raw: string): MatchedSecret[] {
 	const trimmed = raw.trim();
 	if (!trimmed) return [];
 

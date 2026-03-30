@@ -6,3 +6,4 @@ build/
 .bun-*
 playwright-report/
 test-results/
+videos/
