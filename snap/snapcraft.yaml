@@ -6,7 +6,7 @@ description: |
   React, and TypeScript.
 license: MIT
 grade: devel
-confinement: devmode
+confinement: classic
 base: core24
 platforms:
   amd64:
@@ -16,11 +16,6 @@ platforms:
 apps:
   scw-secrets:
     command: opt/scw-secrets/bin/launcher
-    extensions: [gnome]
-    plugs:
-      - network
-      - network-bind
-      - home
 
 parts:
   scw-secrets:
