@@ -22,11 +22,13 @@ export function filterSecrets(
 		pathFilter,
 		statusFilter,
 		tagFilter,
+		typeFilter,
 	}: {
 		query: string;
 		pathFilter: string;
 		statusFilter: StatusFilter;
 		tagFilter: Set<string>;
+		typeFilter: string;
 	},
 ): Secret[] {
 	const normalizedQuery = query.trim().toLowerCase();
@@ -49,6 +51,10 @@ export function filterSecrets(
 		}
 
 		if (tagFilter.size > 0 && !secret.tags.some((tag) => tagFilter.has(tag))) {
+			return false;
+		}
+
+		if (typeFilter !== "all" && (secret.type ?? "") !== typeFilter) {
 			return false;
 		}
 

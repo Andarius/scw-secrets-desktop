@@ -74,6 +74,9 @@ export function SettingsModal({ settings, onChange, onClose, onOpenLogs }: Setti
 							</div>
 						</button>
 					</div>
+					<div className="border-t border-white/10 pt-4 text-center">
+						<span className="text-xs text-gray-600">SCW Secrets Desktop v{APP_VERSION}</span>
+					</div>
 				</div>
 			</div>
 		</div>

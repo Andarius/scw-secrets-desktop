@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { ChevronDown, ChevronUp, Search, Tag } from "lucide-react";
+import { ChevronDown, ChevronUp, Search, Tag, X } from "lucide-react";
 
 import type { Secret } from "../../shared/models";
 import {
@@ -18,12 +18,15 @@ type InventoryProps = {
 	secrets: Secret[];
 	selectedSecretIds: Set<string>;
 	onSelectionChange: (ids: Set<string>) => void;
+	onSecretDoubleClick: (secret: Secret) => void;
 	query: string;
 	onQueryChange: (query: string) => void;
 	statusFilter: StatusFilter;
 	onStatusFilterChange: (filter: StatusFilter) => void;
 	tagFilter: Set<string>;
 	onTagFilterChange: (tags: Set<string>) => void;
+	typeFilter: string;
+	onTypeFilterChange: (type: string) => void;
 	allTags: string[];
 	sortKey: InventorySortKey;
 	sortDirection: InventorySortDirection;
@@ -171,12 +174,15 @@ export function Inventory({
 	secrets,
 	selectedSecretIds,
 	onSelectionChange,
+	onSecretDoubleClick,
 	query,
 	onQueryChange,
 	statusFilter,
 	onStatusFilterChange,
 	tagFilter,
 	onTagFilterChange,
+	typeFilter,
+	onTypeFilterChange,
 	allTags,
 	sortKey,
 	sortDirection,
@@ -276,6 +282,16 @@ export function Inventory({
 							</button>
 						))}
 						<TagDropdown allTags={allTags} tagFilter={tagFilter} onTagFilterChange={onTagFilterChange} />
+						{typeFilter !== "all" && (
+							<button
+								type="button"
+								onClick={() => onTypeFilterChange("all")}
+								className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded-md bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 hover:bg-cyan-500/30 transition-colors"
+							>
+								Type: {formatSecretType(typeFilter)}
+								<X className="w-3 h-3" />
+							</button>
+						)}
 					</div>
 				</div>
 			</div>
@@ -381,6 +397,7 @@ export function Inventory({
 									<tr
 										key={secret.id}
 										onClick={(e) => handleRowClick(secret, index, e)}
+										onDoubleClick={() => onSecretDoubleClick(secret)}
 										className={`relative cursor-pointer transition-colors select-none ${
 											isSelected
 												? "bg-cyan-500/10"
@@ -404,9 +421,21 @@ export function Inventory({
 											</div>
 										</td>
 										<td className="px-4 py-3">
-											<div className="inline-flex items-center rounded border border-white/10 bg-white/5 px-2 py-0.5 text-xs text-gray-300">
+											<button
+												type="button"
+												onClick={(e) => {
+													e.stopPropagation();
+													const type = secret.type ?? "";
+													onTypeFilterChange(typeFilter === type ? "all" : type);
+												}}
+												className={`inline-flex items-center rounded border px-2 py-0.5 text-xs transition-colors ${
+													typeFilter !== "all" && typeFilter === (secret.type ?? "")
+														? "bg-cyan-500/20 text-cyan-300 border-cyan-500/30"
+														: "border-white/10 bg-white/5 text-gray-300 hover:bg-white/10 hover:text-white"
+												}`}
+											>
 												{formatSecretType(secret.type)}
-											</div>
+											</button>
 										</td>
 										<td className="px-4 py-3">
 											<StatusBadge status={secret.status} />
