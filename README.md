@@ -1,4 +1,4 @@
-# SCW Secrets Desktop
+# Scaleway Secrets Desktop
 
 Desktop app for browsing and managing [Scaleway Secret Manager](https://www.scaleway.com/en/secret-manager/) secrets.
 
