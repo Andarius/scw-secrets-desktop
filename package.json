@@ -1,6 +1,6 @@
 {
 	"name": "scw-secrets-desktop",
-	"version": "0.3.0",
+	"version": "0.4.0",
 	"description": "Electrobun desktop client for Scaleway Secret Manager",
 	"private": true,
 	"scripts": {
