@@ -1,11 +1,11 @@
 name: scw-secrets
-version: "0.3.0"
+adopt-info: scw-secrets
 summary: Desktop UI for managing Scaleway secrets
 description: |
   A desktop client for Scaleway Secret Manager built with Electrobun,
   React, and TypeScript.
 license: MIT
-grade: devel
+grade: stable
 confinement: classic
 base: core24
 platforms:
@@ -20,7 +20,14 @@ apps:
 parts:
   scw-secrets:
     plugin: dump
-    source: build/dev-linux-x64/ScwSecrets-dev
+    source: build/stable-linux-x64/ScwSecrets
+    override-pull: |
+      craftctl default
+      version="$(git -C "${CRAFT_PROJECT_DIR}" describe --tags --abbrev=0 2>/dev/null | sed 's/^v//')"
+      if [ -z "${version}" ]; then
+        version="$(node -p "require('${CRAFT_PROJECT_DIR}/package.json').version")"
+      fi
+      craftctl set version="${version}"
     organize:
       "*": opt/scw-secrets/
     stage-packages:

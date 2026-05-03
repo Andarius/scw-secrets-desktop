@@ -79,9 +79,10 @@ bump *args:
 clean:
     rm -rf dist build artifacts test-results videos
 
-# Build .snap package (requires build/dev-linux-x64/ScwSecrets-dev to exist; run `just dev` once first)
+# Build .snap package (runs a stable electrobun build first)
 [group('snap')]
 snap-build:
+    bun run build:stable
     snapcraft pack
 
 # Install the locally-built .snap (classic confinement, unsigned)
