@@ -246,15 +246,21 @@ function SingleSecretDetail({
 	}
 
 	async function handleSaveTags() {
+		const pending = tagInput.trim();
+		const finalTags = pending && !tagDraft.includes(pending)
+			? [...tagDraft, pending]
+			: tagDraft;
 		setSavingTags(true);
 		setTagError(null);
 		try {
 			await electrobun.rpc!.request.updateSecret({
 				secretId: secret.id,
-				tags: tagDraft,
+				tags: finalTags,
 				profile: selectedProfileSummary?.name,
 				projectId: selectedProject?.id,
 			});
+			setTagDraft(finalTags);
+			setTagInput("");
 			setEditingTags(false);
 			onRefresh();
 		} catch (reason) {

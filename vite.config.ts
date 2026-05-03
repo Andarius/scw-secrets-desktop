@@ -23,7 +23,7 @@ export default defineConfig({
 			}
 		: undefined,
 	server: {
-		port: 5173,
+		port: 5181,
 		strictPort: true,
 	},
 });

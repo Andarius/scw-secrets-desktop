@@ -6,7 +6,7 @@ import { accessSecretVersion, clearHttpLogs, createSecret, createSecretVersion, 
 import type { SecretFilters } from "../shared/models";
 import type { AppRPCContract } from "../shared/rpc";
 
-const DEV_SERVER_PORT = 5173;
+const DEV_SERVER_PORT = 5181;
 const DEV_SERVER_URL = `http://localhost:${DEV_SERVER_PORT}`;
 
 type AppRPC = {
@@ -14,7 +14,9 @@ type AppRPC = {
 	webview: RPCSchema<AppRPCContract["webview"]>;
 };
 
-// Check if Vite dev server is running for HMR
+// Check if Vite dev server is running for HMR.
+// Uses a project-specific port so a packaged dev build never attaches to a
+// stray Vite server from another project (which would own the default 5173).
 async function getMainViewUrl(): Promise<string> {
 	const channel = await Updater.localInfo.channel();
 	if (channel === "dev") {
