@@ -23,10 +23,7 @@ parts:
     source: build/stable-linux-x64/ScwSecrets
     override-pull: |
       craftctl default
-      version="$(git -C "${CRAFT_PROJECT_DIR}" describe --tags --abbrev=0 2>/dev/null | sed 's/^v//')"
-      if [ -z "${version}" ]; then
-        version="$(node -p "require('${CRAFT_PROJECT_DIR}/package.json').version")"
-      fi
+      version="$(sed -n 's/.*"version":[[:space:]]*"\([^"]*\)".*/\1/p' "${CRAFT_PROJECT_DIR}/package.json" | head -n1)"
       craftctl set version="${version}"
     organize:
       "*": opt/scw-secrets/
