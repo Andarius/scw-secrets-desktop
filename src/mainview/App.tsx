@@ -75,6 +75,7 @@ function App() {
 	const [pathFilter, setPathFilter] = useState(saved.pathFilter ?? "all");
 	const [statusFilter, setStatusFilter] = useState<StatusFilter>(saved.statusFilter ?? "all");
 	const [tagFilter, setTagFilter] = useState<Set<string>>(new Set());
+	const [typeFilter, setTypeFilter] = useState("all");
 	const [sortKey, setSortKey] = useState<InventorySortKey>(saved.sortKey ?? "version_count");
 	const [sortDirection, setSortDirection] = useState<InventorySortDirection>(saved.sortDirection ?? "desc");
 	const [error, setError] = useState<string | null>(null);
@@ -249,6 +250,7 @@ function App() {
 		pathFilter,
 		statusFilter,
 		tagFilter,
+		typeFilter,
 	});
 	const visibleSecrets = sortSecrets(filteredSecrets, {
 		sortKey,
@@ -373,12 +375,30 @@ function App() {
 							secrets={visibleSecrets}
 							selectedSecretIds={selectedSecretIds}
 							onSelectionChange={setSelectedSecretIds}
+							onSecretDoubleClick={async (secret) => {
+								try {
+									const response = await electrobun.rpc!.request.getSecretValue({
+										secretId: secret.id,
+										revision: "latest_enabled",
+										profile: selectedProfileSummary?.name,
+										projectId: selectedProject?.id,
+									});
+									setExpandedValues({
+										title: secret.name,
+										values: [{ secretId: secret.id, name: secret.name, value: response.value }],
+									});
+								} catch {
+									// silently ignore — user can retry via DetailPanel
+								}
+							}}
 							query={query}
 							onQueryChange={setQuery}
 							statusFilter={statusFilter}
 							onStatusFilterChange={setStatusFilter}
 							tagFilter={tagFilter}
 							onTagFilterChange={setTagFilter}
+							typeFilter={typeFilter}
+							onTypeFilterChange={setTypeFilter}
 							allTags={Array.from(new Set(secrets.flatMap((s) => s.tags))).sort()}
 							sortKey={sortKey}
 							sortDirection={sortDirection}
@@ -405,7 +425,14 @@ function App() {
 					<ValueView
 						title={expandedValues.title}
 						values={expandedValues.values}
+						profile={selectedProfileSummary?.name}
+						projectId={selectedProject?.id}
+						autoKeepLatest={settings.autoKeepLatest}
 						onClose={() => setExpandedValues(null)}
+						onSaved={() => {
+							setExpandedValues(null);
+							setRefreshKey((k) => k + 1);
+						}}
 					/>
 				) : null}
 

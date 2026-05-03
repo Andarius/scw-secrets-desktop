@@ -47,6 +47,7 @@ describe("filterSecrets", () => {
 			pathFilter: string;
 			statusFilter: "all" | "ready" | "attention";
 			tagFilter: Set<string>;
+			typeFilter: string;
 		};
 		expectedIds: string[];
 	}> = [
@@ -62,6 +63,7 @@ describe("filterSecrets", () => {
 				pathFilter: "/prod",
 				statusFilter: "all",
 				tagFilter: new Set(),
+				typeFilter: "all",
 			},
 			expectedIds: ["1", "2"],
 		},
@@ -77,8 +79,73 @@ describe("filterSecrets", () => {
 				pathFilter: "all",
 				statusFilter: "attention",
 				tagFilter: new Set(),
+				typeFilter: "all",
 			},
 			expectedIds: ["2"],
+		},
+		{
+			name: "filters by secret type",
+			secrets: [
+				makeSecret({ id: "1", type: "opaque" }),
+				makeSecret({ id: "2", type: "key_value" }),
+				makeSecret({ id: "3", type: "ssh_key" }),
+			],
+			filters: {
+				query: "",
+				pathFilter: "all",
+				statusFilter: "all",
+				tagFilter: new Set(),
+				typeFilter: "key_value",
+			},
+			expectedIds: ["2"],
+		},
+		{
+			name: "typeFilter 'all' keeps every type",
+			secrets: [
+				makeSecret({ id: "1", type: "opaque" }),
+				makeSecret({ id: "2", type: "key_value" }),
+				makeSecret({ id: "3", type: undefined }),
+			],
+			filters: {
+				query: "",
+				pathFilter: "all",
+				statusFilter: "all",
+				tagFilter: new Set(),
+				typeFilter: "all",
+			},
+			expectedIds: ["1", "2", "3"],
+		},
+		{
+			name: "typeFilter matches secrets with undefined type using empty string",
+			secrets: [
+				makeSecret({ id: "1", type: "opaque" }),
+				makeSecret({ id: "2", type: undefined }),
+			],
+			filters: {
+				query: "",
+				pathFilter: "all",
+				statusFilter: "all",
+				tagFilter: new Set(),
+				typeFilter: "",
+			},
+			expectedIds: ["2"],
+		},
+		{
+			name: "typeFilter combines with other filters",
+			secrets: [
+				makeSecret({ id: "1", type: "opaque", status: "ready", tags: ["prod"] }),
+				makeSecret({ id: "2", type: "opaque", status: "locked", tags: ["prod"] }),
+				makeSecret({ id: "3", type: "key_value", status: "ready", tags: ["prod"] }),
+				makeSecret({ id: "4", type: "opaque", status: "ready", tags: ["dev"] }),
+			],
+			filters: {
+				query: "",
+				pathFilter: "all",
+				statusFilter: "ready",
+				tagFilter: new Set(["prod"]),
+				typeFilter: "opaque",
+			},
+			expectedIds: ["1"],
 		},
 	];
 

@@ -82,6 +82,7 @@ function MockApp() {
 		pathFilter,
 		statusFilter,
 		tagFilter,
+		typeFilter: "all",
 	});
 	const visibleSecrets = sortSecrets(filteredSecrets, {
 		sortKey,
@@ -144,6 +145,7 @@ function MockApp() {
 							title={expandedValues.title}
 							values={expandedValues.values}
 							onClose={() => setExpandedValues(null)}
+							onSaved={() => setExpandedValues(null)}
 						/>
 					</div>
 				) : (
@@ -159,12 +161,15 @@ function MockApp() {
 							secrets={visibleSecrets}
 							selectedSecretIds={selectedSecretIds}
 							onSelectionChange={setSelectedSecretIds}
+							onSecretDoubleClick={() => {}}
 							query={query}
 							onQueryChange={setQuery}
 							statusFilter={statusFilter}
 							onStatusFilterChange={setStatusFilter}
 							tagFilter={tagFilter}
 							onTagFilterChange={setTagFilter}
+							typeFilter="all"
+							onTypeFilterChange={() => {}}
 							allTags={Array.from(new Set(MOCK_SECRETS.flatMap((s) => s.tags))).sort()}
 							sortKey={sortKey}
 							sortDirection={sortDirection}

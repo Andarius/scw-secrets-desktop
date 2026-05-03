@@ -1,0 +1,27 @@
+name: scw-secrets
+version: "0.3.0"
+summary: Desktop UI for managing Scaleway secrets
+description: |
+  A desktop client for Scaleway Secret Manager built with Electrobun,
+  React, and TypeScript.
+license: MIT
+grade: devel
+confinement: classic
+base: core24
+platforms:
+  amd64:
+    build-on: [amd64]
+    build-for: [amd64]
+
+apps:
+  scw-secrets:
+    command: opt/scw-secrets/bin/launcher
+
+parts:
+  scw-secrets:
+    plugin: dump
+    source: build/dev-linux-x64/ScwSecrets-dev
+    organize:
+      "*": opt/scw-secrets/
+    stage-packages:
+      - libwebkit2gtk-4.1-0
