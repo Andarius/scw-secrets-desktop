@@ -3,6 +3,7 @@ import { Layers2, Loader2, Scissors, X } from "lucide-react";
 
 import { electrobun } from "../rpc";
 import type { Secret } from "../../shared/models";
+import { planKeepLatestVersionOnly } from "../secret-versions";
 
 type CleanupModalProps = {
 	secrets: Secret[];
@@ -11,7 +12,23 @@ type CleanupModalProps = {
 	projectId?: string;
 	onClose: () => void;
 	onSelectSecret: (secretId: string, secretName: string) => void;
+	onRefresh?: () => void;
 };
+
+async function keepLatestVersionOnly(
+	secretId: string,
+	profile?: string,
+	projectId?: string,
+): Promise<void> {
+	const versions = await electrobun.rpc!.request.getSecretVersions({ secretId, profile, projectId });
+	for (const action of planKeepLatestVersionOnly(versions)) {
+		if (action.type === "disable") {
+			await electrobun.rpc!.request.disableSecretVersion({ secretId, revision: action.revision, profile, projectId });
+			continue;
+		}
+		await electrobun.rpc!.request.destroySecretVersion({ secretId, revision: action.revision, profile, projectId });
+	}
+}
 
 const euroFormatter = new Intl.NumberFormat("en-US", {
 	style: "currency",
@@ -27,9 +44,15 @@ export function CleanupModal({
 	projectId,
 	onClose,
 	onSelectSecret,
+	onRefresh,
 }: CleanupModalProps) {
 	const [activeCounts, setActiveCounts] = useState<Map<string, number> | null>(null);
 	const [loading, setLoading] = useState(true);
+	const [confirmReclaim, setConfirmReclaim] = useState(false);
+	const [reclaiming, setReclaiming] = useState(false);
+	const [reclaimProgress, setReclaimProgress] = useState(0);
+	const [reclaimError, setReclaimError] = useState<string | null>(null);
+	const [reclaimFailed, setReclaimFailed] = useState<string[]>([]);
 
 	useEffect(() => {
 		function handleKey(e: KeyboardEvent) {
@@ -93,27 +116,97 @@ export function CleanupModal({
 	const totalPrunable = prunable.reduce((sum, entry) => sum + entry.prunableCount, 0);
 	const totalSavings = totalPrunable * storagePricePerVersionEur;
 
+	async function handleReclaimAll() {
+		if (!confirmReclaim) {
+			setConfirmReclaim(true);
+			return;
+		}
+		setReclaiming(true);
+		setReclaimError(null);
+		setReclaimFailed([]);
+		setReclaimProgress(0);
+		const failed: string[] = [];
+		try {
+			for (const { secret } of prunable) {
+				try {
+					await keepLatestVersionOnly(secret.id, profile, projectId);
+				} catch {
+					failed.push(secret.name);
+				}
+				setReclaimProgress((n) => n + 1);
+			}
+			setReclaimFailed(failed);
+			setConfirmReclaim(false);
+			onRefresh?.();
+			if (failed.length === 0) {
+				onClose();
+			}
+		} catch (err) {
+			setReclaimError(err instanceof Error ? err.message : String(err));
+		} finally {
+			setReclaiming(false);
+		}
+	}
+
 	return (
 		<div
 			className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm"
 			onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
 		>
 			<div className="bg-[#141414] border border-white/10 rounded-xl shadow-2xl w-[96%] max-w-3xl max-h-[90vh] flex flex-col overflow-hidden">
-				<div className="flex items-center justify-between px-5 py-4 border-b border-white/10">
-					<div>
+				<div className="flex items-center justify-between px-5 py-4 border-b border-white/10 gap-3">
+					<div className="min-w-0">
 						<h3 className="text-sm font-medium text-gray-300">Cleanup Plan</h3>
 						<p className="text-xs text-gray-500 mt-0.5">
 							Revisions that would be scheduled for deletion by Keep Latest
 						</p>
 					</div>
-					<button
-						type="button"
-						onClick={onClose}
-						className="p-1.5 hover:bg-white/10 rounded transition-colors"
-					>
-						<X className="w-4 h-4 text-gray-400" />
-					</button>
+					<div className="flex items-center gap-2 flex-shrink-0">
+						{onRefresh && prunable.length > 0 ? (
+							<button
+								type="button"
+								onClick={() => void handleReclaimAll()}
+								disabled={reclaiming || loading}
+								className={`flex items-center gap-1.5 px-3 py-1.5 text-xs border rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+									confirmReclaim
+										? "bg-amber-500/20 border-amber-500/30 text-amber-200 hover:bg-amber-500/30"
+										: "bg-white/5 border-white/10 text-gray-200 hover:bg-white/10"
+								}`}
+							>
+								{reclaiming ? (
+									<Loader2 className="w-3 h-3 animate-spin text-amber-400" />
+								) : (
+									<Layers2 className="w-3 h-3 text-amber-400" />
+								)}
+								<span>
+									{reclaiming
+										? `Reclaiming ${reclaimProgress} / ${prunable.length}…`
+										: confirmReclaim
+											? `Confirm Reclaim (${prunable.length} secrets, ${totalPrunable} revisions)`
+											: "Reclaim all"}
+								</span>
+							</button>
+						) : null}
+						<button
+							type="button"
+							onClick={onClose}
+							className="p-1.5 hover:bg-white/10 rounded transition-colors"
+						>
+							<X className="w-4 h-4 text-gray-400" />
+						</button>
+					</div>
 				</div>
+
+				{reclaimError ? (
+					<div className="mx-5 mt-3 px-4 py-2 rounded-lg border border-red-500/30 bg-red-500/10 text-red-300 text-xs">
+						{reclaimError}
+					</div>
+				) : null}
+				{reclaimFailed.length > 0 ? (
+					<div className="mx-5 mt-3 px-4 py-2 rounded-lg border border-amber-500/30 bg-amber-500/10 text-amber-200 text-xs">
+						Could not reclaim {reclaimFailed.length} secret{reclaimFailed.length === 1 ? "" : "s"}: {reclaimFailed.join(", ")}
+					</div>
+				) : null}
 
 				<div className="px-5 py-3 border-b border-white/10 bg-white/[0.03] flex items-center gap-6 text-xs">
 					<div className="flex items-center gap-2">

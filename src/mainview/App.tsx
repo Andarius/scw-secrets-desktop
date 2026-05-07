@@ -557,6 +557,7 @@ function App() {
 							setCleanupOpen(false);
 							setHistoryTarget({ secretId, secretName });
 						}}
+						onRefresh={() => setRefreshKey((k) => k + 1)}
 					/>
 				) : null}
 
