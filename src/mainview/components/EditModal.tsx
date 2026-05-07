@@ -108,7 +108,7 @@ export function EditModal({
 			className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm"
 			onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
 		>
-			<div className="bg-[#141414] border border-white/10 rounded-xl shadow-2xl w-[90%] max-w-3xl max-h-[85vh] flex flex-col overflow-hidden">
+			<div className="bg-[#141414] border border-white/10 rounded-xl shadow-2xl w-[90%] max-h-[85vh] flex flex-col overflow-hidden">
 				<div className="flex items-center justify-between px-5 py-4 border-b border-white/10">
 					<div>
 						<h3 className="text-sm font-medium text-gray-300">Edit Secret Value</h3>
