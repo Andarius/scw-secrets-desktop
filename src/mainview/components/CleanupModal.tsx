@@ -61,6 +61,11 @@ export function CleanupModal({
 				if (!cancelled) {
 					setActiveCounts(new Map(Object.entries(response.counts).map(([k, v]) => [k, Number(v)])));
 				}
+			} catch (err) {
+				if (!cancelled) {
+					console.error("Failed to fetch active version counts", err);
+					setActiveCounts(new Map());
+				}
 			} finally {
 				if (!cancelled) setLoading(false);
 			}
