@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { ScrollText, X } from "lucide-react";
+import { Eye, ScrollText, X } from "lucide-react";
 
 import type { AppSettings } from "../settings";
 
@@ -8,9 +8,11 @@ type SettingsModalProps = {
 	onChange: (settings: AppSettings) => void;
 	onClose: () => void;
 	onOpenLogs: () => void;
+	deepIndexSize?: number;
+	onClearDeepIndex?: () => void;
 };
 
-export function SettingsModal({ settings, onChange, onClose, onOpenLogs }: SettingsModalProps) {
+export function SettingsModal({ settings, onChange, onClose, onOpenLogs, deepIndexSize, onClearDeepIndex }: SettingsModalProps) {
 	useEffect(() => {
 		function handleKey(e: KeyboardEvent) {
 			if (e.key === "Escape") onClose();
@@ -56,6 +58,28 @@ export function SettingsModal({ settings, onChange, onClose, onOpenLogs }: Setti
 							</div>
 						</label>
 					</div>
+
+					{onClearDeepIndex ? (
+						<div className="border-t border-white/10 pt-5">
+							<div className="text-xs text-gray-400 uppercase tracking-wider mb-3">Deep search</div>
+							<button
+								type="button"
+								onClick={onClearDeepIndex}
+								disabled={!deepIndexSize}
+								className="flex items-center gap-3 px-4 py-3 w-full bg-white/5 border border-white/10 rounded-lg hover:bg-white/10 transition-colors text-sm text-left disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-white/5"
+							>
+								<Eye className="w-4 h-4 text-gray-400 flex-shrink-0" />
+								<div className="flex-1">
+									<div className="text-white">Clear cached values</div>
+									<div className="text-xs text-gray-500 mt-0.5">
+										{deepIndexSize
+											? `${deepIndexSize} secret${deepIndexSize === 1 ? "" : "s"} cached in memory for the current project`
+											: "No values cached"}
+									</div>
+								</div>
+							</button>
+						</div>
+					) : null}
 
 					<div className="border-t border-white/10 pt-5">
 						<div className="text-xs text-gray-400 uppercase tracking-wider mb-3">Diagnostics</div>

@@ -9,9 +9,10 @@ type StatsCardsProps = {
 	totalPrunableVersionCount: number;
 	pathCount: number;
 	currentPathFilter: string;
+	onCleanupClick?: () => void;
 };
 
-const STORAGE_PRICE_PER_VERSION_EUR = 0.04;
+export const STORAGE_PRICE_PER_VERSION_EUR = 0.04;
 const API_CALLS_PRICE_PER_10K_EUR = 0.03;
 
 const euroFormatter = new Intl.NumberFormat("en-US", {
@@ -34,6 +35,7 @@ export function StatsCards({
 	totalPrunableVersionCount,
 	pathCount,
 	currentPathFilter,
+	onCleanupClick,
 }: StatsCardsProps) {
 	const estimatedMonthlyStorage = totalVersionCount * STORAGE_PRICE_PER_VERSION_EUR;
 	const potentialMonthlySavings = totalPrunableVersionCount * STORAGE_PRICE_PER_VERSION_EUR;
@@ -58,10 +60,11 @@ export function StatsCards({
 		{
 			label: "Reclaimable",
 			value: String(visiblePrunableVersionCount),
-			subtitle: `${totalPrunableVersionCount} older revisions beyond latest`,
+			subtitle: `${totalPrunableVersionCount} older revisions (incl. already scheduled for deletion)`,
 			icon: Scissors,
 			color: "from-purple-500/20 to-purple-500/5",
 			iconColor: "text-purple-400",
+			onClick: totalPrunableVersionCount > 0 ? onCleanupClick : undefined,
 		},
 		{
 			label: "Paths",
@@ -93,11 +96,12 @@ export function StatsCards({
 		<div className="grid grid-cols-2 gap-4 min-w-0 overflow-hidden md:grid-cols-3 xl:grid-cols-6">
 			{stats.map((stat) => {
 				const Icon = stat.icon;
-				return (
-					<div
-						key={stat.label}
-						className="relative overflow-hidden rounded-xl border border-white/10 bg-gradient-to-br from-white/5 to-transparent p-5 backdrop-blur-sm hover:border-white/20 transition-all group"
-					>
+				const interactive = Boolean(stat.onClick);
+				const className = `relative overflow-hidden rounded-xl border border-white/10 bg-gradient-to-br from-white/5 to-transparent p-5 backdrop-blur-sm hover:border-white/20 transition-all group text-left ${
+					interactive ? "cursor-pointer focus:outline-none focus:ring-2 focus:ring-white/20" : ""
+				}`;
+				const content = (
+					<>
 						<div
 							className={`absolute inset-0 bg-gradient-to-br ${stat.color} opacity-50 group-hover:opacity-70 transition-opacity`}
 						/>
@@ -111,6 +115,15 @@ export function StatsCards({
 							<div className="text-3xl font-bold mb-1">{stat.value}</div>
 							<div className="text-xs text-gray-400">{stat.subtitle}</div>
 						</div>
+					</>
+				);
+				return interactive ? (
+					<button key={stat.label} type="button" onClick={stat.onClick} className={className}>
+						{content}
+					</button>
+				) : (
+					<div key={stat.label} className={className}>
+						{content}
 					</div>
 				);
 			})}

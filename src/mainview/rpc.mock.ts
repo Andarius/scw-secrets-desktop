@@ -6,6 +6,8 @@ const mockRpc = {
 		getSecrets: async () => [],
 		getSecretVersions: async () => [],
 		getSecretValue: async () => ({ value: "mock-value-placeholder" }),
+		prefetchSecretValues: async () => ({ values: {}, failed: [] }),
+		getActiveVersionCounts: async () => ({ counts: {}, failed: [] }),
 		deleteSecret: async () => ({ ok: true }),
 		openExternal: async () => ({ ok: true }),
 	},

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Copy, Search, X } from "lucide-react";
+import { Copy, Eye, Loader2, Search, X } from "lucide-react";
 
 import type { Secret } from "../../shared/models";
 
@@ -7,6 +7,10 @@ type SpotlightSearchProps = {
 	secrets: Secret[];
 	onSelect: (secretId: string) => void;
 	onClose: () => void;
+	deepIndex?: ReadonlyMap<string, string> | null;
+	deepIndexLoading?: boolean;
+	onEnableDeepSearch?: () => void;
+	onDisableDeepSearch?: () => void;
 };
 
 export type MatchedSecret = {
@@ -15,7 +19,23 @@ export type MatchedSecret = {
 	matchValue: string;
 };
 
-export function matchSecrets(secrets: Secret[], raw: string): MatchedSecret[] {
+const VALUE_SNIPPET_RADIUS = 40;
+
+function valueSnippet(value: string, query: string): string {
+	const idx = value.toLowerCase().indexOf(query);
+	if (idx === -1) return value.slice(0, VALUE_SNIPPET_RADIUS * 2);
+	const start = Math.max(0, idx - VALUE_SNIPPET_RADIUS);
+	const end = Math.min(value.length, idx + query.length + VALUE_SNIPPET_RADIUS);
+	const prefix = start > 0 ? "…" : "";
+	const suffix = end < value.length ? "…" : "";
+	return `${prefix}${value.slice(start, end)}${suffix}`;
+}
+
+export function matchSecrets(
+	secrets: Secret[],
+	raw: string,
+	deepIndex?: ReadonlyMap<string, string> | null,
+): MatchedSecret[] {
 	const trimmed = raw.trim();
 	if (!trimmed) return [];
 
@@ -25,7 +45,7 @@ export function matchSecrets(secrets: Secret[], raw: string): MatchedSecret[] {
 
 	if (colonIdx > 0) {
 		const prefix = trimmed.slice(0, colonIdx).toLowerCase();
-		if (["id", "name", "path", "tag", "type", "status"].includes(prefix)) {
+		if (["id", "name", "path", "tag", "type", "status", "value"].includes(prefix)) {
 			field = prefix;
 			query = trimmed.slice(colonIdx + 1).trim().toLowerCase();
 		} else {
@@ -56,6 +76,11 @@ export function matchSecrets(secrets: Secret[], raw: string): MatchedSecret[] {
 				results.push({ secret, matchField: "type", matchValue: secret.type ?? "" });
 			} else if (field === "status" && secret.status.toLowerCase().includes(query)) {
 				results.push({ secret, matchField: "status", matchValue: secret.status });
+			} else if (field === "value" && deepIndex) {
+				const value = deepIndex.get(secret.id);
+				if (value && value.toLowerCase().includes(query)) {
+					results.push({ secret, matchField: "value", matchValue: valueSnippet(value, query) });
+				}
 			}
 		} else {
 			if (secret.name.toLowerCase().includes(query)) {
@@ -69,6 +94,11 @@ export function matchSecrets(secrets: Secret[], raw: string): MatchedSecret[] {
 				results.push({ secret, matchField: "tag", matchValue: matchedTag });
 			} else if ((secret.type ?? "").toLowerCase().includes(query)) {
 				results.push({ secret, matchField: "type", matchValue: secret.type ?? "" });
+			} else if (deepIndex) {
+				const value = deepIndex.get(secret.id);
+				if (value && value.toLowerCase().includes(query)) {
+					results.push({ secret, matchField: "value", matchValue: valueSnippet(value, query) });
+				}
 			}
 		}
 	}
@@ -94,21 +124,30 @@ function extractQuery(raw: string): string {
 	const colonIdx = raw.indexOf(":");
 	if (colonIdx > 0) {
 		const prefix = raw.slice(0, colonIdx).toLowerCase();
-		if (["id", "name", "path", "tag", "type", "status"].includes(prefix)) {
+		if (["id", "name", "path", "tag", "type", "status", "value"].includes(prefix)) {
 			return raw.slice(colonIdx + 1).trim();
 		}
 	}
 	return raw.trim();
 }
 
-export function SpotlightSearch({ secrets, onSelect, onClose }: SpotlightSearchProps) {
+export function SpotlightSearch({
+	secrets,
+	onSelect,
+	onClose,
+	deepIndex,
+	deepIndexLoading,
+	onEnableDeepSearch,
+	onDisableDeepSearch,
+}: SpotlightSearchProps) {
 	const [query, setQuery] = useState("");
 	const [activeIndex, setActiveIndex] = useState(0);
 	const inputRef = useRef<HTMLInputElement>(null);
 	const listRef = useRef<HTMLDivElement>(null);
 
-	const results = useMemo(() => matchSecrets(secrets, query), [secrets, query]);
+	const results = useMemo(() => matchSecrets(secrets, query, deepIndex), [secrets, query, deepIndex]);
 	const highlightQuery = extractQuery(query);
+	const deepEnabled = !!deepIndex;
 
 	useEffect(() => {
 		setActiveIndex(0);
@@ -151,7 +190,17 @@ export function SpotlightSearch({ secrets, onSelect, onClose }: SpotlightSearchP
 		tag: "text-emerald-400 bg-emerald-500/15",
 		type: "text-pink-400 bg-pink-500/15",
 		status: "text-blue-400 bg-blue-500/15",
+		value: "text-rose-400 bg-rose-500/15",
 	};
+
+	function handleDeepToggle() {
+		if (deepIndexLoading) return;
+		if (deepEnabled) {
+			onDisableDeepSearch?.();
+		} else {
+			onEnableDeepSearch?.();
+		}
+	}
 
 	return (
 		<div
@@ -167,9 +216,33 @@ export function SpotlightSearch({ secrets, onSelect, onClose }: SpotlightSearchP
 						value={query}
 						onChange={(e) => setQuery(e.target.value)}
 						onKeyDown={handleKeyDown}
-						placeholder="Search secrets... (id:, name:, path:, tag:, type:)"
+						placeholder={deepEnabled
+							? "Search secrets... (id:, name:, path:, tag:, type:, value:)"
+							: "Search secrets... (id:, name:, path:, tag:, type:)"}
 						className="flex-1 bg-transparent text-sm text-white placeholder-gray-500 focus:outline-none"
 					/>
+					{onEnableDeepSearch ? (
+						<button
+							type="button"
+							onClick={handleDeepToggle}
+							disabled={deepIndexLoading}
+							title={deepEnabled
+								? "Deep search on — click to disable"
+								: `Enable deep search (fetches ${secrets.length} values; creates audit log entries)`}
+							className={`flex items-center gap-1 px-2 py-1 rounded text-[10px] font-mono transition-colors flex-shrink-0 border ${
+								deepEnabled
+									? "bg-rose-500/15 text-rose-300 border-rose-500/30 hover:bg-rose-500/25"
+									: "bg-white/5 text-gray-400 border-white/10 hover:bg-white/10 hover:text-gray-300"
+							} ${deepIndexLoading ? "opacity-60 cursor-wait" : ""}`}
+						>
+							{deepIndexLoading ? (
+								<Loader2 className="w-3 h-3 animate-spin" />
+							) : (
+								<Eye className="w-3 h-3" />
+							)}
+							deep
+						</button>
+					) : null}
 					<button
 						type="button"
 						onClick={onClose}
@@ -234,7 +307,10 @@ export function SpotlightSearch({ secrets, onSelect, onClose }: SpotlightSearchP
 								Type to search across all secrets
 							</div>
 							<div className="flex flex-wrap justify-center gap-1.5">
-								{["id:", "name:", "path:", "tag:", "type:"].map((prefix) => (
+								{(deepEnabled
+									? ["id:", "name:", "path:", "tag:", "type:", "value:"]
+									: ["id:", "name:", "path:", "tag:", "type:"]
+								).map((prefix) => (
 									<button
 										key={prefix}
 										type="button"
@@ -248,6 +324,13 @@ export function SpotlightSearch({ secrets, onSelect, onClose }: SpotlightSearchP
 									</button>
 								))}
 							</div>
+							{onEnableDeepSearch ? (
+								<div className="text-[10px] text-gray-600 pt-2">
+									{deepEnabled
+										? `Deep search on — ${deepIndex?.size ?? 0} value${deepIndex?.size === 1 ? "" : "s"} indexed`
+										: "Deep search is off — payload contents are not searched"}
+								</div>
+							) : null}
 						</div>
 					) : null}
 				</div>

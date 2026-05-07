@@ -2,7 +2,7 @@ import { BrowserView, BrowserWindow, Updater, type RPCSchema } from "electrobun/
 import { dlopen, FFIType, ptr as ffiPtr } from "bun:ffi";
 import { join } from "path";
 
-import { accessSecretVersion, clearHttpLogs, createSecret, createSecretVersion, deleteSecret, destroySecretVersion, disableSecretVersion, enableSecretVersion, getHttpLogs, getProfiles, getProjects, getSecrets, getSecretVersions, switchActiveProfile, updateSecret } from "./scw";
+import { accessSecretVersion, clearHttpLogs, createSecret, createSecretVersion, deleteSecret, destroySecretVersion, disableSecretVersion, enableSecretVersion, getActiveVersionCounts, getHttpLogs, getProfiles, getProjects, getSecrets, getSecretVersions, prefetchSecretValues, switchActiveProfile, updateSecret } from "./scw";
 import type { SecretFilters } from "../shared/models";
 import type { AppRPCContract } from "../shared/rpc";
 
@@ -47,6 +47,10 @@ const rpc = BrowserView.defineRPC<AppRPC>({
 			getSecretValue: async ({ secretId, revision, profile, projectId }: { secretId: string; revision: string; profile?: string; projectId?: string }) => ({
 				value: await accessSecretVersion(secretId, revision, profile, projectId),
 			}),
+			prefetchSecretValues: ({ secretIds, profile, projectId }: { secretIds: string[]; profile?: string; projectId?: string }) =>
+				prefetchSecretValues(secretIds, profile, projectId),
+			getActiveVersionCounts: ({ secretIds, profile, projectId }: { secretIds: string[]; profile?: string; projectId?: string }) =>
+				getActiveVersionCounts(secretIds, profile, projectId),
 			createSecret: async ({ name, path, type, value, tags, profile, projectId }: { name: string; path?: string; type?: string; value: string; tags?: string[]; profile?: string; projectId?: string }) => {
 				const secret = await createSecret(name, path ?? "/", type ?? "opaque", tags ?? [], profile, projectId);
 				await createSecretVersion(secret.id, value, profile, projectId);
