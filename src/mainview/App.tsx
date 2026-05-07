@@ -500,12 +500,28 @@ function App() {
 				{spotlightOpen ? (
 					<SpotlightSearch
 						secrets={secrets}
-						onSelect={(secretId) => {
+						onSelect={async (secretId) => {
+							const secret = secrets.find((s) => s.id === secretId);
 							setPathFilter("all");
 							setStatusFilter("all");
 							setTagFilter(new Set());
 							setQuery("");
 							setSelectedSecretIds(new Set([secretId]));
+							if (!secret) return;
+							try {
+								const response = await electrobun.rpc!.request.getSecretValue({
+									secretId,
+									revision: "latest_enabled",
+									profile: selectedProfileSummary?.name,
+									projectId: selectedProject?.id,
+								});
+								setExpandedValues({
+									title: secret.name,
+									values: [{ secretId: secret.id, name: secret.name, value: response.value }],
+								});
+							} catch {
+								// silently ignore — user can retry from the inventory
+							}
 						}}
 						onClose={() => setSpotlightOpen(false)}
 						deepIndex={deepIndex}
