@@ -40,5 +40,7 @@ parts:
       craftctl set version="${version}"
     organize:
       "*": opt/scw-secrets/
+    build-packages:
+      - zstd
     stage-packages:
       - libwebkit2gtk-4.1-0
