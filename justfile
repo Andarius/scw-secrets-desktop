@@ -93,21 +93,7 @@ snap-install:
 # Download and install the latest GitHub release .snap (or pass tag as arg)
 [group('snap')]
 snap-install-release tag="latest":
-    #!/usr/bin/env bash
-    set -euo pipefail
-    repo="Andarius/scw-secrets-desktop"
-    tmp="$(mktemp -d)"
-    trap 'rm -rf "${tmp}"' EXIT
-    if [[ "{{ tag }}" == "latest" ]]; then
-        echo "Resolving latest release..."
-        gh release download --repo "${repo}" --pattern '*.snap' --dir "${tmp}"
-    else
-        echo "Downloading release {{ tag }}..."
-        gh release download "{{ tag }}" --repo "${repo}" --pattern '*.snap' --dir "${tmp}"
-    fi
-    snap_file="$(ls "${tmp}"/*.snap | head -n1)"
-    echo "Installing ${snap_file}..."
-    sudo snap install --dangerous --classic "${snap_file}"
+    bin/snap-install-release.sh {{ tag }}
 
 # Build and install in one step
 [group('snap')]
