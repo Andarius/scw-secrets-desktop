@@ -544,6 +544,67 @@ export async function accessSecretVersion(
 	return atob(data.data);
 }
 
+const PREFETCH_CONCURRENCY = 8;
+const PREFETCH_MAX_VALUE_BYTES = 64 * 1024;
+
+function isVersionActive(status: string): boolean {
+	return status !== "scheduled_for_deletion" && status !== "destroyed";
+}
+
+export async function getActiveVersionCounts(
+	secretIds: string[],
+	profileName?: string,
+	projectId?: string,
+): Promise<{ counts: Record<string, number>; failed: string[] }> {
+	const counts: Record<string, number> = {};
+	const failed: string[] = [];
+	let cursor = 0;
+
+	async function worker(): Promise<void> {
+		while (true) {
+			const idx = cursor++;
+			if (idx >= secretIds.length) return;
+			const secretId = secretIds[idx];
+			try {
+				const versions = await getSecretVersions(secretId, profileName, projectId);
+				counts[secretId] = versions.filter((v) => isVersionActive(v.status)).length;
+			} catch {
+				failed.push(secretId);
+			}
+		}
+	}
+
+	await Promise.all(Array.from({ length: Math.min(PREFETCH_CONCURRENCY, secretIds.length) }, worker));
+	return { counts, failed };
+}
+
+export async function prefetchSecretValues(
+	secretIds: string[],
+	profileName?: string,
+	projectId?: string,
+): Promise<{ values: Record<string, string>; failed: string[] }> {
+	const values: Record<string, string> = {};
+	const failed: string[] = [];
+	let cursor = 0;
+
+	async function worker(): Promise<void> {
+		while (true) {
+			const idx = cursor++;
+			if (idx >= secretIds.length) return;
+			const secretId = secretIds[idx];
+			try {
+				const value = await accessSecretVersion(secretId, "latest_enabled", profileName, projectId);
+				values[secretId] = value.length > PREFETCH_MAX_VALUE_BYTES ? value.slice(0, PREFETCH_MAX_VALUE_BYTES) : value;
+			} catch {
+				failed.push(secretId);
+			}
+		}
+	}
+
+	await Promise.all(Array.from({ length: Math.min(PREFETCH_CONCURRENCY, secretIds.length) }, worker));
+	return { values, failed };
+}
+
 export async function createSecretVersion(
 	secretId: string,
 	value: string,

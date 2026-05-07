@@ -3,7 +3,8 @@ import { startTransition, useDeferredValue, useEffect, useState } from "react";
 import { electrobun } from "./rpc";
 import type { ProfilesResponse, Project, Secret } from "../shared/models";
 import { Header } from "./components/Header";
-import { StatsCards } from "./components/StatsCards";
+import { StatsCards, STORAGE_PRICE_PER_VERSION_EUR } from "./components/StatsCards";
+import { CleanupModal } from "./components/CleanupModal";
 import { Navigator } from "./components/Navigator";
 import { Inventory } from "./components/Inventory";
 import { DetailPanel, type ValueEntry } from "./components/DetailPanel";
@@ -70,6 +71,7 @@ function App() {
 	const [spotlightOpen, setSpotlightOpen] = useState(false);
 	const [settingsOpen, setSettingsOpen] = useState(false);
 	const [logsOpen, setLogsOpen] = useState(false);
+	const [cleanupOpen, setCleanupOpen] = useState(false);
 	const [settings, setSettings] = useState<AppSettings>(() => loadSettings());
 	const [query, setQuery] = useState("");
 	const [pathFilter, setPathFilter] = useState(saved.pathFilter ?? "all");
@@ -84,8 +86,36 @@ function App() {
 	const [loadingSecrets, setLoadingSecrets] = useState(false);
 	const [syncingProfile, setSyncingProfile] = useState(false);
 	const [refreshKey, setRefreshKey] = useState(0);
+	const [deepIndex, setDeepIndex] = useState<Map<string, string> | null>(null);
+	const [deepIndexLoading, setDeepIndexLoading] = useState(false);
 
 	const deferredQuery = useDeferredValue(query);
+
+	useEffect(() => {
+		setDeepIndex(null);
+	}, [selectedProfile, selectedProjectId, refreshKey]);
+
+	async function enableDeepSearch() {
+		if (deepIndexLoading || deepIndex) return;
+		if (secrets.length === 0) return;
+		setDeepIndexLoading(true);
+		try {
+			const response = await electrobun.rpc!.request.prefetchSecretValues({
+				secretIds: secrets.map((s) => s.id),
+				profile: selectedProfileSummary?.name,
+				projectId: selectedProjectId,
+			});
+			setDeepIndex(new Map(Object.entries(response.values)));
+		} catch (err) {
+			setError(err instanceof Error ? err.message : "Deep search failed");
+		} finally {
+			setDeepIndexLoading(false);
+		}
+	}
+
+	function disableDeepSearch() {
+		setDeepIndex(null);
+	}
 
 	useEffect(() => {
 		function handleKeyDown(e: KeyboardEvent) {
@@ -355,6 +385,7 @@ function App() {
 						totalPrunableVersionCount={totalPrunableVersionCount}
 						pathCount={paths.length}
 						currentPathFilter={pathFilter}
+						onCleanupClick={() => setCleanupOpen(true)}
 					/>
 
 				{error ? (
@@ -469,14 +500,34 @@ function App() {
 				{spotlightOpen ? (
 					<SpotlightSearch
 						secrets={secrets}
-						onSelect={(secretId) => {
+						onSelect={async (secretId) => {
+							const secret = secrets.find((s) => s.id === secretId);
 							setPathFilter("all");
 							setStatusFilter("all");
 							setTagFilter(new Set());
 							setQuery("");
 							setSelectedSecretIds(new Set([secretId]));
+							if (!secret) return;
+							try {
+								const response = await electrobun.rpc!.request.getSecretValue({
+									secretId,
+									revision: "latest_enabled",
+									profile: selectedProfileSummary?.name,
+									projectId: selectedProject?.id,
+								});
+								setExpandedValues({
+									title: secret.name,
+									values: [{ secretId: secret.id, name: secret.name, value: response.value }],
+								});
+							} catch {
+								// silently ignore — user can retry from the inventory
+							}
 						}}
 						onClose={() => setSpotlightOpen(false)}
+						deepIndex={deepIndex}
+						deepIndexLoading={deepIndexLoading}
+						onEnableDeepSearch={enableDeepSearch}
+						onDisableDeepSearch={disableDeepSearch}
 					/>
 				) : null}
 
@@ -495,6 +546,21 @@ function App() {
 					<LogsModal onClose={() => setLogsOpen(false)} />
 				) : null}
 
+				{cleanupOpen ? (
+					<CleanupModal
+						secrets={secrets}
+						storagePricePerVersionEur={STORAGE_PRICE_PER_VERSION_EUR}
+						profile={selectedProfileSummary?.name}
+						projectId={selectedProject?.id}
+						onClose={() => setCleanupOpen(false)}
+						onSelectSecret={(secretId, secretName) => {
+							setCleanupOpen(false);
+							setHistoryTarget({ secretId, secretName });
+						}}
+						onRefresh={() => setRefreshKey((k) => k + 1)}
+					/>
+				) : null}
+
 				{settingsOpen ? (
 					<SettingsModal
 						settings={settings}
@@ -504,6 +570,8 @@ function App() {
 						}}
 						onClose={() => setSettingsOpen(false)}
 						onOpenLogs={() => setLogsOpen(true)}
+						deepIndexSize={deepIndex?.size ?? 0}
+						onClearDeepIndex={disableDeepSearch}
 					/>
 				) : null}
 			</div>

@@ -27,6 +27,14 @@ export type AppRPCContract = {
 				params: { secretId: string; revision: string; profile?: string; projectId?: string };
 				response: { value: string };
 			};
+			prefetchSecretValues: {
+				params: { secretIds: string[]; profile?: string; projectId?: string };
+				response: { values: Record<string, string>; failed: string[] };
+			};
+			getActiveVersionCounts: {
+				params: { secretIds: string[]; profile?: string; projectId?: string };
+				response: { counts: Record<string, number>; failed: string[] };
+			};
 			createSecret: {
 				params: { name: string; path?: string; type?: string; value: string; tags?: string[]; profile?: string; projectId?: string };
 				response: { secretId: string };

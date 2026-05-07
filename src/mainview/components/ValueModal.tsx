@@ -65,6 +65,7 @@ function EditableEntry({
 	const [error, setError] = useState<string | null>(null);
 
 	const hasChanges = value !== formatted;
+	const initialRows = Math.min(Math.max(formatted.split("\n").length, 6), 25);
 
 	async function handleSave() {
 		setSaving(true);
@@ -133,8 +134,9 @@ function EditableEntry({
 			<textarea
 				value={value}
 				onChange={(e) => setValue(e.target.value)}
+				rows={initialRows}
 				spellCheck={false}
-				className="w-full min-h-[120px] bg-white/5 border border-white/10 rounded-lg p-3 text-sm text-cyan-200 font-mono resize-y focus:outline-none focus:border-cyan-500/50 focus:bg-white/[0.07] transition-colors"
+				className="w-full bg-white/5 border border-white/10 rounded-lg p-3 text-sm text-cyan-200 font-mono resize-y focus:outline-none focus:border-cyan-500/50 focus:bg-white/[0.07] transition-colors"
 			/>
 			{error ? (
 				<div className="mt-2 px-3 py-1.5 rounded-lg border border-red-500/30 bg-red-500/10 text-red-300 text-xs">

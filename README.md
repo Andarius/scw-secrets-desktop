@@ -15,6 +15,9 @@ This project is provided as-is, with no guarantee or warranty of any kind. Use i
 - **Profile & project switching** — reads `~/.config/scw/config.yaml` and environment variables
 - **Path navigator** — browse secrets organized by path hierarchy
 - **Secrets inventory** — searchable table with status and version badges, filter by status
+- **Spotlight search** — `Ctrl/Cmd+P` to search across all secrets, with `id:`, `name:`, `path:`, `tag:`, `type:` field prefixes
+- **Deep search** — opt-in mode that prefetches secret values for the current project so spotlight matches payload contents (`value:` prefix); cached in memory only, clearable from Settings
+- **Cleanup plan** — click the Reclaimable card to review prunable revisions per secret with accurate active-version counts (excludes already-scheduled deletions)
 - **Multi-select** — shift+click for range, ctrl+click to toggle, batch operations
 - **View secret values** — single or batch, displayed in a full-screen overlay with copy support
 - **Create secret** — create new secrets with name, path, type, value, and tags
