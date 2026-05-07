@@ -125,4 +125,71 @@ describe("matchSecrets", () => {
 		const results = matchSecrets(manySecrets, "secret");
 		expect(results).toHaveLength(50);
 	});
+
+	describe("deep search (value matching)", () => {
+		const deepIndex = new Map<string, string>([
+			["aaa-111", "postgres://user:hunter2@db.example.com:5432/app"],
+			["bbb-222", "sk_live_abcd1234"],
+			["ccc-333", "https://hooks.slack.com/T0/B0/secret"],
+			// ddd-444 intentionally absent — simulates a failed prefetch
+		]);
+
+		test("free-text falls through to value when nothing else matches", () => {
+			const results = matchSecrets(secrets, "hunter2", deepIndex);
+			expect(results).toHaveLength(1);
+			expect(results[0].matchField).toBe("value");
+			expect(results[0].secret.id).toBe("aaa-111");
+			expect(results[0].matchValue).toContain("hunter2");
+		});
+
+		test("name match takes precedence over value match for the same secret", () => {
+			// aaa-111's name is DATABASE_URL; its payload also contains "DATABASE".
+			// Free-text "DATABASE" should report the name match, not the value match.
+			const overlapIndex = new Map([["aaa-111", "this payload mentions DATABASE inside"]]);
+			const results = matchSecrets(secrets, "DATABASE", overlapIndex);
+			const aaa = results.find((r) => r.secret.id === "aaa-111");
+			expect(aaa).toBeDefined();
+			expect(aaa!.matchField).toBe("name");
+		});
+
+		test("value: prefix matches only payload contents", () => {
+			const results = matchSecrets(secrets, "value:slack", deepIndex);
+			expect(results).toHaveLength(1);
+			expect(results[0].matchField).toBe("value");
+			expect(results[0].secret.id).toBe("ccc-333");
+		});
+
+		test("value: prefix does not match name or path", () => {
+			const results = matchSecrets(secrets, "value:DATABASE_URL", deepIndex);
+			expect(results).toHaveLength(0);
+		});
+
+		test("returns empty when deepIndex is omitted even with value: prefix", () => {
+			const results = matchSecrets(secrets, "value:hunter2");
+			expect(results).toHaveLength(0);
+		});
+
+		test("ignores secrets missing from the deep index", () => {
+			// ddd-444 is not in deepIndex; query that would only match its (absent) value should not crash or match
+			const results = matchSecrets(secrets, "value:nonexistent-payload", deepIndex);
+			expect(results).toHaveLength(0);
+		});
+
+		test("snippet trims long payloads around the match with ellipses", () => {
+			const longPayload = `${"a".repeat(200)}NEEDLE${"b".repeat(200)}`;
+			const longIndex = new Map([["aaa-111", longPayload]]);
+			const results = matchSecrets(secrets, "value:NEEDLE", longIndex);
+			expect(results).toHaveLength(1);
+			expect(results[0].matchValue.startsWith("…")).toBe(true);
+			expect(results[0].matchValue.endsWith("…")).toBe(true);
+			expect(results[0].matchValue).toContain("NEEDLE");
+			expect(results[0].matchValue.length).toBeLessThan(longPayload.length);
+		});
+
+		test("value match is case-insensitive", () => {
+			const results = matchSecrets(secrets, "value:HUNTER2", deepIndex);
+			expect(results).toHaveLength(1);
+			expect(results[0].secret.id).toBe("aaa-111");
+		});
+	});
 });
