@@ -205,11 +205,21 @@ function App() {
 					});
 					setError(null);
 				});
-			} catch (reason) {
+			} catch {
+				// Project listing may fail if the API key lacks Account permissions.
+				// Fall back to the profile's default_project_id so secrets still load.
 				if (!cancelled) {
-					setError(reason instanceof Error ? reason.message : String(reason));
-					setProjects([]);
-					setSelectedProjectId("");
+					const fallbackId = selectedProfileSummary?.projectId ?? "";
+					if (fallbackId) {
+						startTransition(() => {
+							setProjects([{ id: fallbackId, name: "Default Project", description: "", created_at: "", updated_at: "" }]);
+							setSelectedProjectId(fallbackId);
+							setError(null);
+						});
+					} else {
+						setProjects([]);
+						setSelectedProjectId("");
+					}
 				}
 			} finally {
 				if (!cancelled) {
