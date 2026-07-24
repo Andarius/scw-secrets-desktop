@@ -1,11 +1,12 @@
 import { startTransition, useDeferredValue, useEffect, useState } from "react";
 
-import { electrobun } from "./rpc";
+import { api } from "./rpc";
 import type { ProfilesResponse, Project, Secret } from "../shared/models";
 import { Header } from "./components/Header";
 import { StatsCards, STORAGE_PRICE_PER_VERSION_EUR } from "./components/StatsCards";
 import { CleanupModal } from "./components/CleanupModal";
 import { Navigator } from "./components/Navigator";
+import { PaneRail } from "./components/PaneRail";
 import { Inventory } from "./components/Inventory";
 import { DetailPanel, type ValueEntry } from "./components/DetailPanel";
 import { ValueView } from "./components/ValueModal";
@@ -34,6 +35,8 @@ type PersistedState = {
 	statusFilter?: StatusFilter;
 	sortKey?: InventorySortKey;
 	sortDirection?: InventorySortDirection;
+	showPathsPane?: boolean;
+	showDetailPane?: boolean;
 };
 
 function loadPersistedState(): PersistedState {
@@ -80,6 +83,8 @@ function App() {
 	const [typeFilter, setTypeFilter] = useState("all");
 	const [sortKey, setSortKey] = useState<InventorySortKey>(saved.sortKey ?? "version_count");
 	const [sortDirection, setSortDirection] = useState<InventorySortDirection>(saved.sortDirection ?? "desc");
+	const [showPathsPane, setShowPathsPane] = useState(saved.showPathsPane ?? true);
+	const [showDetailPane, setShowDetailPane] = useState(saved.showDetailPane ?? true);
 	const [error, setError] = useState<string | null>(null);
 	const [loadingProfiles, setLoadingProfiles] = useState(true);
 	const [loadingProjects, setLoadingProjects] = useState(false);
@@ -100,7 +105,7 @@ function App() {
 		if (secrets.length === 0) return;
 		setDeepIndexLoading(true);
 		try {
-			const response = await electrobun.rpc!.request.prefetchSecretValues({
+			const response = await api.prefetchSecretValues({
 				secretIds: secrets.map((s) => s.id),
 				profile: selectedProfileSummary?.name,
 				projectId: selectedProjectId,
@@ -122,6 +127,19 @@ function App() {
 			if ((e.ctrlKey || e.metaKey) && e.key === "p") {
 				e.preventDefault();
 				setSpotlightOpen((open) => !open);
+				return;
+			}
+			if (e.ctrlKey || e.metaKey) {
+				return;
+			}
+			const target = e.target as HTMLElement | null;
+			if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable)) {
+				return;
+			}
+			if (e.key === "[") {
+				setShowPathsPane((show) => !show);
+			} else if (e.key === "]") {
+				setShowDetailPane((show) => !show);
 			}
 		}
 		window.addEventListener("keydown", handleKeyDown);
@@ -135,8 +153,10 @@ function App() {
 			statusFilter,
 			sortKey,
 			sortDirection,
+			showPathsPane,
+			showDetailPane,
 		});
-	}, [selectedProjectId, pathFilter, statusFilter, sortKey, sortDirection]);
+	}, [selectedProjectId, pathFilter, statusFilter, sortKey, sortDirection, showPathsPane, showDetailPane]);
 
 	const profiles = profilesResponse?.profiles ?? [];
 	const selectedProfileSummary =
@@ -150,7 +170,7 @@ function App() {
 
 		void (async () => {
 			try {
-				const response = await electrobun.rpc!.request.getProfiles({});
+				const response = await api.getProfiles({});
 				if (cancelled) {
 					return;
 				}
@@ -187,7 +207,7 @@ function App() {
 
 		void (async () => {
 			try {
-				const response = await electrobun.rpc!.request.getProjects({
+				const response = await api.getProjects({
 					profile: selectedProfile,
 				});
 				if (cancelled) {
@@ -245,7 +265,7 @@ function App() {
 
 		void (async () => {
 			try {
-				const response = await electrobun.rpc!.request.getSecrets({
+				const response = await api.getSecrets({
 					profile: selectedProfile,
 					projectId: selectedProjectId,
 				});
@@ -339,7 +359,7 @@ function App() {
 
 		setSyncingProfile(true);
 		try {
-			const response = await electrobun.rpc!.request.switchProfile({
+			const response = await api.switchProfile({
 				profile: nextProfile,
 			});
 			startTransition(() => {
@@ -393,8 +413,6 @@ function App() {
 						totalVersionCount={totalVersionCount}
 						visiblePrunableVersionCount={visiblePrunableVersionCount}
 						totalPrunableVersionCount={totalPrunableVersionCount}
-						pathCount={paths.length}
-						currentPathFilter={pathFilter}
 						onCleanupClick={() => setCleanupOpen(true)}
 					/>
 
@@ -404,13 +422,28 @@ function App() {
 					</div>
 				) : null}
 
-				<div className="mt-6 flex-1 grid grid-cols-[minmax(0,280px)_minmax(0,1fr)_minmax(0,360px)] gap-4 min-h-0 min-w-0 overflow-hidden">
-						<Navigator
-							paths={paths}
-							pathFilter={pathFilter}
-							onPathSelect={setPathFilter}
-							totalSecrets={secrets.length}
-						/>
+				<div
+					className={`mt-6 flex-1 grid gap-4 min-h-0 min-w-0 overflow-hidden ${
+						showPathsPane && showDetailPane
+							? "grid-cols-[minmax(0,280px)_minmax(0,1fr)_minmax(0,360px)]"
+							: showPathsPane
+								? "grid-cols-[minmax(0,280px)_minmax(0,1fr)_28px]"
+								: showDetailPane
+									? "grid-cols-[28px_minmax(0,1fr)_minmax(0,360px)]"
+									: "grid-cols-[28px_minmax(0,1fr)_28px]"
+					}`}
+				>
+						{showPathsPane ? (
+							<Navigator
+								paths={paths}
+								pathFilter={pathFilter}
+								onPathSelect={setPathFilter}
+								totalSecrets={secrets.length}
+								onCollapse={() => setShowPathsPane(false)}
+							/>
+						) : (
+							<PaneRail side="left" label="paths" onOpen={() => setShowPathsPane(true)} />
+						)}
 
 						<Inventory
 							secrets={visibleSecrets}
@@ -418,7 +451,7 @@ function App() {
 							onSelectionChange={setSelectedSecretIds}
 							onSecretDoubleClick={async (secret) => {
 								try {
-									const response = await electrobun.rpc!.request.getSecretValue({
+									const response = await api.getSecretValue({
 										secretId: secret.id,
 										revision: "latest_enabled",
 										profile: selectedProfileSummary?.name,
@@ -451,15 +484,20 @@ function App() {
 							totalCount={secrets.length}
 						/>
 
-						<DetailPanel
-							secrets={selectedSecrets}
-							selectedProject={selectedProject}
-							selectedProfileSummary={selectedProfileSummary}
-							onViewValues={(title, values) => setExpandedValues({ title, values })}
-							onEditValue={(entry) => setEditingEntry(entry)}
-							onViewHistory={(secretId, secretName) => setHistoryTarget({ secretId, secretName })}
-							onRefresh={() => setRefreshKey((k) => k + 1)}
-						/>
+						{showDetailPane ? (
+							<DetailPanel
+								secrets={selectedSecrets}
+								selectedProject={selectedProject}
+								selectedProfileSummary={selectedProfileSummary}
+								onViewValues={(title, values) => setExpandedValues({ title, values })}
+								onEditValue={(entry) => setEditingEntry(entry)}
+								onViewHistory={(secretId, secretName) => setHistoryTarget({ secretId, secretName })}
+								onRefresh={() => setRefreshKey((k) => k + 1)}
+								onCollapse={() => setShowDetailPane(false)}
+							/>
+						) : (
+							<PaneRail side="right" label="detail" onOpen={() => setShowDetailPane(true)} />
+						)}
 					</div>
 
 				{expandedValues ? (
@@ -519,7 +557,7 @@ function App() {
 							setSelectedSecretIds(new Set([secretId]));
 							if (!secret) return;
 							try {
-								const response = await electrobun.rpc!.request.getSecretValue({
+								const response = await api.getSecretValue({
 									secretId,
 									revision: "latest_enabled",
 									profile: selectedProfileSummary?.name,

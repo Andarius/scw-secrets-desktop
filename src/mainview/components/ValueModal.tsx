@@ -1,8 +1,36 @@
 import { useEffect, useMemo, useState } from "react";
-import { Copy, Loader2, Pencil, Save, X } from "lucide-react";
+import { Copy, Eye, Loader2, Pencil, Save, X } from "lucide-react";
 
-import { electrobun } from "../rpc";
+import { api } from "../rpc";
 import { planKeepLatestVersionOnly } from "../secret-versions";
+import { HighlightedTextarea } from "./HighlightedTextarea";
+import { ValueStructureEditor } from "./ValueStructureEditor";
+import { prefersTableMode, ValueViewer } from "./ValueViewer";
+
+export type EditTab = "raw" | "table" | "preview";
+
+export function EditTabs({ tab, onChange, size = "sm" }: { tab: EditTab; onChange: (tab: EditTab) => void; size?: "sm" | "md" }) {
+	const tabs: [EditTab, string][] = [
+		["raw", "Raw"],
+		["table", "Structure"],
+		["preview", "Preview"],
+	];
+	const pad = size === "sm" ? "px-2 py-0.5 text-[11px]" : "px-3 py-1.5 text-xs";
+	return (
+		<div className={`flex rounded-md border border-white/10 overflow-hidden ${size === "md" ? "rounded-lg" : ""}`}>
+			{tabs.map(([key, label]) => (
+				<button
+					key={key}
+					type="button"
+					onClick={() => onChange(key)}
+					className={`${pad} transition-colors ${tab === key ? "bg-cyan-500/20 text-cyan-200" : "text-gray-400 hover:bg-white/5"}`}
+				>
+					{label}
+				</button>
+			))}
+		</div>
+	);
+}
 
 type ValueEntry = { secretId: string; name: string; value: string };
 
@@ -36,16 +64,6 @@ function tryFormatJson(value: string): string | null {
 	}
 }
 
-function FormattedValue({ value }: { value: string }) {
-	const formatted = useMemo(() => tryFormatJson(value), [value]);
-
-	return (
-		<pre className="text-sm text-cyan-200 font-mono whitespace-pre-wrap break-all">
-			{formatted ?? value}
-		</pre>
-	);
-}
-
 function EditableEntry({
 	entry,
 	profile,
@@ -62,6 +80,7 @@ function EditableEntry({
 	const formatted = useMemo(() => tryFormatJson(entry.value) ?? entry.value, [entry.value]);
 	const [value, setValue] = useState(formatted);
 	const [saving, setSaving] = useState(false);
+	const [tab, setTab] = useState<EditTab>(() => (prefersTableMode() ? "table" : "raw"));
 	const [error, setError] = useState<string | null>(null);
 
 	const hasChanges = value !== formatted;
@@ -71,7 +90,7 @@ function EditableEntry({
 		setSaving(true);
 		setError(null);
 		try {
-			await electrobun.rpc!.request.updateSecretValue({
+			await api.updateSecretValue({
 				secretId: entry.secretId,
 				value,
 				profile,
@@ -79,21 +98,21 @@ function EditableEntry({
 			});
 
 			if (autoKeepLatest) {
-				const versions = await electrobun.rpc!.request.getSecretVersions({
+				const versions = await api.getSecretVersions({
 					secretId: entry.secretId,
 					profile,
 					projectId,
 				});
 				for (const action of planKeepLatestVersionOnly(versions)) {
 					if (action.type === "disable") {
-						await electrobun.rpc!.request.disableSecretVersion({
+						await api.disableSecretVersion({
 							secretId: entry.secretId,
 							revision: action.revision,
 							profile,
 							projectId,
 						});
 					} else {
-						await electrobun.rpc!.request.destroySecretVersion({
+						await api.destroySecretVersion({
 							secretId: entry.secretId,
 							revision: action.revision,
 							profile,
@@ -116,6 +135,9 @@ function EditableEntry({
 			<div className="flex items-center justify-between mb-2">
 				<span className="text-xs text-gray-400 font-medium">{entry.name}</span>
 				<div className="flex items-center gap-1">
+					<div className="mr-1.5">
+						<EditTabs tab={tab} onChange={setTab} />
+					</div>
 					<button
 						type="button"
 						onClick={() => void handleSave()}
@@ -131,13 +153,17 @@ function EditableEntry({
 					<CopyButton text={value} />
 				</div>
 			</div>
-			<textarea
-				value={value}
-				onChange={(e) => setValue(e.target.value)}
-				rows={initialRows}
-				spellCheck={false}
-				className="w-full bg-white/5 border border-white/10 rounded-lg p-3 text-sm text-cyan-200 font-mono resize-y focus:outline-none focus:border-cyan-500/50 focus:bg-white/[0.07] transition-colors"
-			/>
+			{tab === "preview" ? (
+				<div className="rounded-lg bg-black/30 border border-white/10 p-3">
+					<ValueViewer value={value} />
+				</div>
+			) : tab === "table" ? (
+				<div className="rounded-lg bg-black/30 border border-white/10 p-3">
+					<ValueStructureEditor value={value} onChange={setValue} />
+				</div>
+			) : (
+				<HighlightedTextarea value={value} onChange={setValue} rows={initialRows} />
+			)}
 			{error ? (
 				<div className="mt-2 px-3 py-1.5 rounded-lg border border-red-500/30 bg-red-500/10 text-red-300 text-xs">
 					{error}
@@ -154,7 +180,7 @@ function ReadOnlyEntry({ entry }: { entry: ValueEntry }) {
 				<span className="text-xs text-gray-400 font-medium">{entry.name}</span>
 				<CopyButton text={entry.value} />
 			</div>
-			<FormattedValue value={entry.value} />
+			<ValueViewer value={entry.value} />
 		</div>
 	);
 }
@@ -201,8 +227,8 @@ export function ValueView({ title, values, profile, projectId, autoKeepLatest, o
 									: "bg-white/5 border-white/10 hover:bg-white/10 text-gray-300"
 							}`}
 						>
-							<Pencil className="w-3 h-3" />
-							<span>Edit</span>
+							{editing ? <Eye className="w-3 h-3" /> : <Pencil className="w-3 h-3" />}
+							<span>{editing ? "View" : "Edit"}</span>
 						</button>
 						<button
 							type="button"

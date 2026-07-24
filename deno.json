@@ -1,0 +1,34 @@
+{
+	"name": "scw-secrets-desktop",
+	"version": "0.5.2",
+	"exports": "./src/deno/main.ts",
+	"unstable": ["raw-imports"],
+	"desktop": {
+		"app": {
+			"name": "Scw Secrets",
+			"identifier": "dev.julien.scw-secrets",
+			"icons": {
+				"linux": "./icon.png",
+				"macos": "./icon.png"
+			}
+		}
+	},
+	"tasks": {
+		"//": "Deno 2.9+ required for `deno desktop`.",
+		"dev": "deno desktop --hmr -A --exclude node_modules src/deno/main.ts",
+		"serve": "deno run -A src/deno/main.ts",
+		"embed": "deno run -A scripts/gen-embed.ts",
+		"check": "deno check src/deno/main.ts scripts/gen-embed.ts",
+		"bundle": "deno desktop -A --exclude node_modules --compress --output build/linux/ScwSecrets.AppImage src/deno/main.ts",
+		"bundle:deb": "deno desktop -A --exclude node_modules --compress --output build/linux/scw-secrets.deb src/deno/main.ts",
+		"bundle:dir": "deno desktop -A --exclude node_modules --output build/linux/scw-secrets src/deno/main.ts",
+		"bundle:mac": "deno desktop -A --exclude node_modules --output build/macos/ScwSecrets.dmg src/deno/main.ts",
+		"bundle:msi": "deno desktop -A --exclude node_modules --output build/win/ScwSecrets.msi src/deno/main.ts"
+	},
+	"imports": {
+		"@std/encoding": "jsr:@std/encoding@^1"
+	},
+	"compilerOptions": {
+		"lib": ["deno.window"]
+	}
+}

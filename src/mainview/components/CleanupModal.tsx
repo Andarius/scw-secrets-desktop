@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Layers2, Loader2, Scissors, X } from "lucide-react";
 
-import { electrobun } from "../rpc";
+import { api } from "../rpc";
 import type { Secret } from "../../shared/models";
 import { planKeepLatestVersionOnly } from "../secret-versions";
 
@@ -20,13 +20,13 @@ async function keepLatestVersionOnly(
 	profile?: string,
 	projectId?: string,
 ): Promise<void> {
-	const versions = await electrobun.rpc!.request.getSecretVersions({ secretId, profile, projectId });
+	const versions = await api.getSecretVersions({ secretId, profile, projectId });
 	for (const action of planKeepLatestVersionOnly(versions)) {
 		if (action.type === "disable") {
-			await electrobun.rpc!.request.disableSecretVersion({ secretId, revision: action.revision, profile, projectId });
+			await api.disableSecretVersion({ secretId, revision: action.revision, profile, projectId });
 			continue;
 		}
-		await electrobun.rpc!.request.destroySecretVersion({ secretId, revision: action.revision, profile, projectId });
+		await api.destroySecretVersion({ secretId, revision: action.revision, profile, projectId });
 	}
 }
 
@@ -76,7 +76,7 @@ export function CleanupModal({
 					if (!cancelled) setActiveCounts(new Map());
 					return;
 				}
-				const response = await electrobun.rpc!.request.getActiveVersionCounts({
+				const response = await api.getActiveVersionCounts({
 					secretIds: candidateIds,
 					profile,
 					projectId,

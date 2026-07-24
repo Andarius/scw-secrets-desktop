@@ -5,6 +5,7 @@ import { SpotlightSearch } from "./components/SpotlightSearch";
 import { Header } from "./components/Header";
 import { StatsCards } from "./components/StatsCards";
 import { Navigator } from "./components/Navigator";
+import { PaneRail } from "./components/PaneRail";
 import { Inventory } from "./components/Inventory";
 import { DetailPanel, type ValueEntry } from "./components/DetailPanel";
 import { ValueView } from "./components/ValueModal";
@@ -60,12 +61,27 @@ function MockApp() {
 	const [sortKey, setSortKey] = useState<InventorySortKey>("version_count");
 	const [sortDirection, setSortDirection] = useState<InventorySortDirection>("desc");
 	const [spotlightOpen, setSpotlightOpen] = useState(false);
+	const [showPathsPane, setShowPathsPane] = useState(true);
+	const [showDetailPane, setShowDetailPane] = useState(true);
 
 	useEffect(() => {
 		function handleKeyDown(e: KeyboardEvent) {
 			if ((e.ctrlKey || e.metaKey) && e.key === "p") {
 				e.preventDefault();
 				setSpotlightOpen((open) => !open);
+				return;
+			}
+			if (e.ctrlKey || e.metaKey) {
+				return;
+			}
+			const target = e.target as HTMLElement | null;
+			if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable)) {
+				return;
+			}
+			if (e.key === "[") {
+				setShowPathsPane((show) => !show);
+			} else if (e.key === "]") {
+				setShowDetailPane((show) => !show);
 			}
 		}
 		window.addEventListener("keydown", handleKeyDown);
@@ -135,8 +151,6 @@ function MockApp() {
 						totalVersionCount={totalVersionCount}
 						visiblePrunableVersionCount={visiblePrunableVersionCount}
 						totalPrunableVersionCount={totalPrunableVersionCount}
-						pathCount={paths.length}
-						currentPathFilter={pathFilter}
 					/>
 
 				{expandedValues ? (
@@ -149,13 +163,28 @@ function MockApp() {
 						/>
 					</div>
 				) : (
-					<div className="mt-6 flex-1 grid grid-cols-[minmax(0,280px)_minmax(0,1fr)_minmax(0,360px)] gap-4 min-h-0 min-w-0 overflow-hidden">
-						<Navigator
-							paths={paths}
-							pathFilter={pathFilter}
-							onPathSelect={setPathFilter}
-							totalSecrets={MOCK_SECRETS.length}
-						/>
+					<div
+						className={`mt-6 flex-1 grid gap-4 min-h-0 min-w-0 overflow-hidden ${
+							showPathsPane && showDetailPane
+								? "grid-cols-[minmax(0,280px)_minmax(0,1fr)_minmax(0,360px)]"
+								: showPathsPane
+									? "grid-cols-[minmax(0,280px)_minmax(0,1fr)_28px]"
+									: showDetailPane
+										? "grid-cols-[28px_minmax(0,1fr)_minmax(0,360px)]"
+										: "grid-cols-[28px_minmax(0,1fr)_28px]"
+						}`}
+					>
+						{showPathsPane ? (
+							<Navigator
+								paths={paths}
+								pathFilter={pathFilter}
+								onPathSelect={setPathFilter}
+								totalSecrets={MOCK_SECRETS.length}
+								onCollapse={() => setShowPathsPane(false)}
+							/>
+						) : (
+							<PaneRail side="left" label="paths" onOpen={() => setShowPathsPane(true)} />
+						)}
 
 						<Inventory
 							secrets={visibleSecrets}
@@ -181,15 +210,20 @@ function MockApp() {
 							totalCount={MOCK_SECRETS.length}
 						/>
 
-						<DetailPanel
-							secrets={selectedSecrets}
-							selectedProject={selectedProject}
-							selectedProfileSummary={selectedProfileSummary}
-							onViewValues={(title, values) => setExpandedValues({ title, values })}
-							onEditValue={() => {}}
-							onViewHistory={() => {}}
-							onRefresh={() => {}}
-						/>
+						{showDetailPane ? (
+							<DetailPanel
+								secrets={selectedSecrets}
+								selectedProject={selectedProject}
+								selectedProfileSummary={selectedProfileSummary}
+								onViewValues={(title, values) => setExpandedValues({ title, values })}
+								onEditValue={() => {}}
+								onViewHistory={() => {}}
+								onRefresh={() => {}}
+								onCollapse={() => setShowDetailPane(false)}
+							/>
+						) : (
+							<PaneRail side="right" label="detail" onOpen={() => setShowDetailPane(true)} />
+						)}
 					</div>
 				)}
 

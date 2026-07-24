@@ -32,7 +32,7 @@ if (!releaseTag) {
 	throw new Error("RELEASE_TAG is required");
 }
 
-const artifactsDir = join(process.cwd(), "artifacts");
+const artifactsDir = join(process.cwd(), "build");
 if (!existsSync(artifactsDir)) {
 	throw new Error(`Artifacts directory not found: ${artifactsDir}`);
 }

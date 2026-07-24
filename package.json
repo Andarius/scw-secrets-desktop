@@ -1,13 +1,13 @@
 {
 	"name": "scw-secrets-desktop",
 	"version": "0.5.2",
-	"description": "Electrobun desktop client for Scaleway Secret Manager",
+	"description": "Deno-desktop client for Scaleway Secret Manager",
 	"private": true,
 	"scripts": {
-		"build": "vite build",
-		"start": "vite build && electrobun dev",
-		"dev": "electrobun dev --watch",
-		"dev:hmr": "concurrently \"bun run hmr\" \"bun run start\"",
+		"build": "vite build && deno task embed",
+		"start": "vite build && deno task dev",
+		"dev": "vite build && deno task dev",
+		"dev:hmr": "concurrently \"bun run hmr\" \"deno task serve\"",
 		"hmr": "vite --port 5181",
 		"mock": "VITE_MOCK=1 vite --port 5199",
 		"mock:e2e": "VITE_MOCK=1 vite --host 127.0.0.1 --port 5199",
@@ -17,14 +17,13 @@
 		"screenshot": "bun scripts/update-screenshot.ts",
 		"typecheck": "tsc --noEmit",
 		"bump": "bun run scripts/bump.ts",
-		"build:canary": "vite build && electrobun build --env=canary",
-		"build:stable": "vite build && electrobun build --env=stable"
+		"bundle": "bun run build && deno task bundle"
 	},
 	"dependencies": {
-		"electrobun": "1.16.1-beta.0",
 		"lucide-react": "^1.0.1",
 		"react": "^18.3.1",
-		"react-dom": "^18.3.1"
+		"react-dom": "^18.3.1",
+		"smol-toml": "^1.7.0"
 	},
 	"devDependencies": {
 		"@playwright/test": "^1.58.2",

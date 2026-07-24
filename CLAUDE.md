@@ -4,15 +4,15 @@ This is a desktop UI for managing Scaleway secrets.
 ## Project
 
 - **Name**: SCW Secrets Desktop
-- **Stack**: Electrobun, React, TypeScript, Tailwind CSS 3, Vite, Bun
-- **Runtime**: Bun (backend/main process), Chromium webview (frontend)
+- **Stack**: Deno desktop (Deno 2.9+), React, TypeScript, Tailwind CSS 3, Vite, Bun (frontend tooling)
+- **Runtime**: Deno (backend, in-process HTTP server + native window), webkit webview (frontend)
 
 ## Structure
 
 - `src/mainview/` — React frontend entry (App.tsx, main.tsx, index.css, index.html)
 - `src/mainview/components/` — UI components (Header, StatsCards, Navigator, Inventory, DetailPanel)
-- `src/bun/` — Bun backend (Electrobun main process, Scaleway API calls)
-- `src/shared/` — Shared types (models.ts) and RPC contract (rpc.ts)
+- `src/deno/` — Deno backend (main.ts entrypoint, Scaleway API calls, generated embed.ts)
+- `src/shared/` — Shared types (models.ts) and API contract (rpc.ts, POST /api/<method>)
 - `src/types/` — TypeScript type declarations
 
 ## Scaleway API Reference
@@ -25,7 +25,10 @@ There is no public OpenAPI spec. The Go SDK file contains all endpoint paths, re
 
 ## Commands
 
-- `bun run dev` — Start Electrobun in dev mode
-- `bun run dev:hmr` — Start with Vite HMR
-- `bun run build` — Vite production build
-- `bun run typecheck` — TypeScript check (`tsc --noEmit`)
+The `justfile` abstracts the bun (frontend toolchain) / deno (app runtime) split — `just --list` for everything.
+
+- `just dev` — Vite build + desktop window (`deno desktop`)
+- `just dev-hmr` — Vite dev server (5181, proxies /api) + headless deno backend (8790)
+- `just mock` — browser preview with sample data (5199)
+- `just bundle` — Linux AppImage (build/linux/)
+- `just ci` — typecheck + deno check + unit tests + e2e

@@ -9,7 +9,9 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { execSync } from "node:child_process";
 
 const pkgPath = new URL("../package.json", import.meta.url).pathname;
+const denoPath = new URL("../deno.json", import.meta.url).pathname;
 const pkg = JSON.parse(readFileSync(pkgPath, "utf8"));
+const denoJson = JSON.parse(readFileSync(denoPath, "utf8"));
 const current = pkg.version as string;
 
 const arg = process.argv[2];
@@ -51,8 +53,10 @@ const run = (cmd: string) => execSync(cmd, { stdio: "inherit" });
 
 pkg.version = next;
 writeFileSync(pkgPath, `${JSON.stringify(pkg, null, "\t")}\n`);
+denoJson.version = next;
+writeFileSync(denoPath, `${JSON.stringify(denoJson, null, "\t")}\n`);
 
-run("git add package.json");
+run("git add package.json deno.json");
 run(`git commit -m "chore: bump version to ${next}"`);
 run(`git tag -a ${tag} -m ${tag}`);
 

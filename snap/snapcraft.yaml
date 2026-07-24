@@ -2,7 +2,7 @@ name: scw-secrets
 adopt-info: scw-secrets
 summary: Desktop UI for managing Scaleway secrets
 description: |
-  A desktop client for Scaleway Secret Manager built with Electrobun,
+  A desktop client for Scaleway Secret Manager built with Deno desktop,
   React, and TypeScript.
 license: MIT
 grade: stable
@@ -15,32 +15,18 @@ platforms:
 
 apps:
   scw-secrets:
-    command: opt/scw-secrets/bin/launcher
+    command: opt/scw-secrets/scw-secrets
 
 parts:
   scw-secrets:
     plugin: dump
-    source: build/stable-linux-x64/ScwSecrets
+    # Prebuilt by CI (deno task bundle:dir) before snapcraft runs — see release.yml
+    source: build/linux/scw-secrets
     override-pull: |
       craftctl default
-      # The Electrobun stable build ships a self-extracting installer:
-      # bin/launcher is a setup binary, and Resources/<hash>.tar.zst holds
-      # the runtime layout (real launcher + bun + libs). Extract the inner
-      # tarball so the snap ships the runtime form, not the installer.
-      inner_tar="$(find "${CRAFT_PART_SRC}/Resources" -maxdepth 1 -name '*.tar.zst' | head -n1)"
-      if [[ -n "${inner_tar}" ]]; then
-        tmp="$(mktemp -d)"
-        tar --use-compress-program=zstd -xf "${inner_tar}" -C "${tmp}"
-        extracted="$(find "${tmp}" -mindepth 1 -maxdepth 1 -type d | head -n1)"
-        rm -rf "${CRAFT_PART_SRC}"/*
-        cp -a "${extracted}"/. "${CRAFT_PART_SRC}/"
-        rm -rf "${tmp}"
-      fi
       version="$(sed -n 's/.*"version":[[:space:]]*"\([^"]*\)".*/\1/p' "${CRAFT_PROJECT_DIR}/package.json" | head -n1)"
       craftctl set version="${version}"
     organize:
       "*": opt/scw-secrets/
-    build-packages:
-      - zstd
     stage-packages:
       - libwebkit2gtk-4.1-0

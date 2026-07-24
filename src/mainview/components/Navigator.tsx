@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
-import { FolderTree, ChevronRight } from "lucide-react";
+import { FolderTree, ChevronRight, PanelLeftClose } from "lucide-react";
 
 type NavigatorProps = {
 	paths: [string, number][];
 	pathFilter: string;
 	onPathSelect: (path: string) => void;
 	totalSecrets: number;
+	onCollapse?: () => void;
 };
 
 type PathNode = {
@@ -72,6 +73,7 @@ export function Navigator({
 	pathFilter,
 	onPathSelect,
 	totalSecrets,
+	onCollapse,
 }: NavigatorProps) {
 	const tree = useMemo(() => buildPathTree(paths), [paths]);
 	const [expandedPaths, setExpandedPaths] = useState<Set<string>>(new Set());
@@ -177,11 +179,21 @@ export function Navigator({
 	return (
 		<div className="rounded-xl border border-white/10 bg-black/40 backdrop-blur-sm overflow-hidden flex flex-col h-full">
 			<div className="p-4 border-b border-white/10">
-				<div className="flex items-center justify-end mb-4">
+				<div className="flex items-center justify-end gap-2 mb-4">
 					<div className="flex items-center gap-1.5 text-xs text-gray-500">
 						<FolderTree className="w-3.5 h-3.5" />
 						<span>{paths.length}</span>
 					</div>
+					{onCollapse ? (
+						<button
+							type="button"
+							onClick={onCollapse}
+							title="Hide paths ( [ )"
+							className="p-1 rounded hover:bg-white/10 transition-colors group"
+						>
+							<PanelLeftClose className="w-3.5 h-3.5 text-gray-500 group-hover:text-cyan-400" />
+						</button>
+					) : null}
 				</div>
 				<div className="text-base font-medium">Paths</div>
 			</div>

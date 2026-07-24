@@ -1,6 +1,6 @@
-import { existsSync, readFileSync, writeFileSync } from "fs";
-import { join } from "path";
+import { decodeBase64, encodeBase64 } from "@std/encoding/base64";
 
+import { HOME_DIR } from "./config.ts";
 import type {
 	HttpLog,
 	ProfileSummary,
@@ -9,7 +9,7 @@ import type {
 	Secret,
 	SecretFilters,
 	SecretVersion,
-} from "../shared/models";
+} from "../shared/models.ts";
 
 const API_BASE = "https://api.scaleway.com";
 
@@ -40,18 +40,11 @@ export function getHttpLogs(): HttpLog[] {
 export function clearHttpLogs(): void {
 	httpLogs.length = 0;
 }
+
 const SECRET_MANAGER_REGION = "fr-par";
-const HOME_DIR = Bun.env.HOME ?? Bun.env.USERPROFILE ?? "";
-const SCW_CONFIG_PATH = HOME_DIR ? join(HOME_DIR, ".config", "scw", "config.yaml") : "";
+const SCW_CONFIG_PATH = `${HOME_DIR}/.config/scw/config.yaml`;
 
 type LoadedProfile = {
-	accessKey: string;
-	secretKey: string;
-	projectId: string;
-	organizationId: string;
-};
-
-type MutableProfile = {
 	accessKey: string;
 	secretKey: string;
 	projectId: string;
@@ -74,10 +67,10 @@ type VersionsResponse = {
 };
 
 function getEnvProfile(): LoadedProfile | null {
-	const secretKey = Bun.env.SCW_SECRET_KEY?.trim() ?? "";
-	const projectId = Bun.env.SCW_PROJECT_ID?.trim() ?? "";
-	const organizationId = Bun.env.SCW_ORGANIZATION_ID?.trim() ?? "";
-	const accessKey = Bun.env.SCW_ACCESS_KEY?.trim() ?? "";
+	const secretKey = Deno.env.get("SCW_SECRET_KEY")?.trim() ?? "";
+	const projectId = Deno.env.get("SCW_PROJECT_ID")?.trim() ?? "";
+	const organizationId = Deno.env.get("SCW_ORGANIZATION_ID")?.trim() ?? "";
+	const accessKey = Deno.env.get("SCW_ACCESS_KEY")?.trim() ?? "";
 
 	if (!secretKey || !projectId) {
 		return null;
@@ -91,14 +84,20 @@ function getEnvProfile(): LoadedProfile | null {
 	};
 }
 
-function getConfigText(): string {
-	if (!SCW_CONFIG_PATH || !existsSync(SCW_CONFIG_PATH)) {
-		throw new Error(
-			`scw config not found at ${SCW_CONFIG_PATH || "~/.config/scw/config.yaml"}`,
-		);
+function readConfigText(): string | null {
+	try {
+		return Deno.readTextFileSync(SCW_CONFIG_PATH);
+	} catch {
+		return null;
 	}
+}
 
-	return readFileSync(SCW_CONFIG_PATH, "utf8");
+function getConfigText(): string {
+	const text = readConfigText();
+	if (text === null) {
+		throw new Error(`scw config not found at ${SCW_CONFIG_PATH}`);
+	}
+	return text;
 }
 
 function readActiveProfile(configText: string): string | null {
@@ -110,8 +109,8 @@ function readActiveProfile(configText: string): string | null {
 	return null;
 }
 
-function parseProfiles(configText: string): Record<string, MutableProfile> {
-	const profiles: Record<string, MutableProfile> = {};
+function parseProfiles(configText: string): Record<string, LoadedProfile> {
+	const profiles: Record<string, LoadedProfile> = {};
 	let inProfiles = false;
 	let currentProfile: string | null = null;
 
@@ -180,8 +179,8 @@ export function getProfiles(): ProfilesResponse {
 	const summaries: ProfileSummary[] = [];
 
 	let active = envProfile ? "env" : null;
-	if (SCW_CONFIG_PATH && existsSync(SCW_CONFIG_PATH)) {
-		const configText = getConfigText();
+	const configText = readConfigText();
+	if (configText !== null) {
 		const configProfiles = parseProfiles(configText);
 		const configActive = readActiveProfile(configText);
 		if (!envProfile) {
@@ -240,7 +239,7 @@ export function switchActiveProfile(profile: string): { active: string } {
 		throw new Error("active_profile key not found in scw config");
 	}
 
-	writeFileSync(SCW_CONFIG_PATH, `${rewritten.join("\n")}\n`, "utf8");
+	Deno.writeTextFileSync(SCW_CONFIG_PATH, `${rewritten.join("\n")}\n`);
 	return { active: profile };
 }
 
@@ -268,12 +267,7 @@ function loadProfile(profile?: string): LoadedProfile {
 		throw new Error(`default_project_id not found in scw profile '${resolvedProfile}'`);
 	}
 
-	return {
-		accessKey: selected.accessKey,
-		secretKey: selected.secretKey,
-		projectId: selected.projectId,
-		organizationId: selected.organizationId,
-	};
+	return selected;
 }
 
 async function parseJson<T>(response: Response): Promise<T> {
@@ -297,10 +291,12 @@ async function parseJson<T>(response: Response): Promise<T> {
 	return (await response.json()) as T;
 }
 
-async function apiGet<T>(
+async function apiRequest<T>(
+	method: "GET" | "POST" | "PATCH" | "DELETE",
 	pathname: string,
 	profile: LoadedProfile,
 	params: Record<string, string>,
+	body?: unknown,
 ): Promise<T> {
 	const url = new URL(pathname, API_BASE);
 	for (const [key, value] of Object.entries(params)) {
@@ -309,86 +305,25 @@ async function apiGet<T>(
 		}
 	}
 
+	const headers: Record<string, string> = { "X-Auth-Token": profile.secretKey };
+	if (body !== undefined) {
+		headers["Content-Type"] = "application/json";
+	}
+
 	const start = performance.now();
 	const response = await fetch(url, {
-		headers: {
-			"X-Auth-Token": profile.secretKey,
-		},
+		method,
+		headers,
+		body: body !== undefined ? JSON.stringify(body) : undefined,
 	});
 	const durationMs = performance.now() - start;
 
 	try {
 		const result = await parseJson<T>(response);
-		recordLog("GET", url.toString(), response.status, durationMs);
+		recordLog(method, url.toString(), response.status, durationMs);
 		return result;
 	} catch (err) {
-		recordLog("GET", url.toString(), response.status, durationMs, err instanceof Error ? err.message : String(err));
-		throw err;
-	}
-}
-
-async function apiPost<T>(
-	pathname: string,
-	profile: LoadedProfile,
-	body: unknown,
-	params: Record<string, string> = {},
-): Promise<T> {
-	const url = new URL(pathname, API_BASE);
-	for (const [key, value] of Object.entries(params)) {
-		if (value) {
-			url.searchParams.set(key, value);
-		}
-	}
-	const start = performance.now();
-	const response = await fetch(url, {
-		method: "POST",
-		headers: {
-			"X-Auth-Token": profile.secretKey,
-			"Content-Type": "application/json",
-		},
-		body: JSON.stringify(body),
-	});
-	const durationMs = performance.now() - start;
-
-	try {
-		const result = await parseJson<T>(response);
-		recordLog("POST", url.toString(), response.status, durationMs);
-		return result;
-	} catch (err) {
-		recordLog("POST", url.toString(), response.status, durationMs, err instanceof Error ? err.message : String(err));
-		throw err;
-	}
-}
-
-async function apiPatch<T>(
-	pathname: string,
-	profile: LoadedProfile,
-	body: unknown,
-	params: Record<string, string> = {},
-): Promise<T> {
-	const url = new URL(pathname, API_BASE);
-	for (const [key, value] of Object.entries(params)) {
-		if (value) {
-			url.searchParams.set(key, value);
-		}
-	}
-	const start = performance.now();
-	const response = await fetch(url, {
-		method: "PATCH",
-		headers: {
-			"X-Auth-Token": profile.secretKey,
-			"Content-Type": "application/json",
-		},
-		body: JSON.stringify(body),
-	});
-	const durationMs = performance.now() - start;
-
-	try {
-		const result = await parseJson<T>(response);
-		recordLog("PATCH", url.toString(), response.status, durationMs);
-		return result;
-	} catch (err) {
-		recordLog("PATCH", url.toString(), response.status, durationMs, err instanceof Error ? err.message : String(err));
+		recordLog(method, url.toString(), response.status, durationMs, err instanceof Error ? err.message : String(err));
 		throw err;
 	}
 }
@@ -407,9 +342,7 @@ async function apiDelete(
 	const start = performance.now();
 	const response = await fetch(url, {
 		method: "DELETE",
-		headers: {
-			"X-Auth-Token": profile.secretKey,
-		},
+		headers: { "X-Auth-Token": profile.secretKey },
 	});
 	const durationMs = performance.now() - start;
 
@@ -421,6 +354,7 @@ async function apiDelete(
 			throw err;
 		}
 	}
+	await response.body?.cancel();
 	recordLog("DELETE", url.toString(), response.status, durationMs);
 }
 
@@ -436,13 +370,15 @@ async function apiGetAllPages<TResponse extends { total_count: number }, TItem>(
 	let page = 1;
 
 	for (;;) {
-		const data = await apiGet<TResponse>(pathname, profile, {
+		const data = await apiRequest<TResponse>("GET", pathname, profile, {
 			...params,
 			page: String(page),
 			page_size: String(PAGE_SIZE),
 		});
-		items.push(...extract(data));
-		if (items.length >= data.total_count) break;
+		const batch = extract(data);
+		items.push(...batch);
+		// empty page also stops: total_count can over-report if items vanish mid-listing
+		if (batch.length === 0 || items.length >= data.total_count) break;
 		page++;
 	}
 
@@ -536,12 +472,13 @@ export async function accessSecretVersion(
 	projectId?: string,
 ): Promise<string> {
 	const profile = loadProfile(profileName);
-	const data = await apiGet<{ data: string }>(
+	const data = await apiRequest<{ data: string }>(
+		"GET",
 		secretManagerPath("secrets", secretId, "versions", revision, "access"),
 		profile,
 		{ project_id: projectId || profile.projectId },
 	);
-	return atob(data.data);
+	return new TextDecoder().decode(decodeBase64(data.data));
 }
 
 const PREFETCH_CONCURRENCY = 8;
@@ -551,13 +488,11 @@ function isVersionActive(status: string): boolean {
 	return status !== "scheduled_for_deletion" && status !== "destroyed";
 }
 
-export async function getActiveVersionCounts(
+async function mapConcurrent(
 	secretIds: string[],
-	profileName?: string,
-	projectId?: string,
-): Promise<{ counts: Record<string, number>; failed: string[] }> {
-	const counts: Record<string, number> = {};
-	const failed: string[] = [];
+	run: (secretId: string) => Promise<void>,
+	onError: (secretId: string) => void,
+): Promise<void> {
 	let cursor = 0;
 
 	async function worker(): Promise<void> {
@@ -566,15 +501,32 @@ export async function getActiveVersionCounts(
 			if (idx >= secretIds.length) return;
 			const secretId = secretIds[idx];
 			try {
-				const versions = await getSecretVersions(secretId, profileName, projectId);
-				counts[secretId] = versions.filter((v) => isVersionActive(v.status)).length;
+				await run(secretId);
 			} catch {
-				failed.push(secretId);
+				onError(secretId);
 			}
 		}
 	}
 
 	await Promise.all(Array.from({ length: Math.min(PREFETCH_CONCURRENCY, secretIds.length) }, worker));
+}
+
+export async function getActiveVersionCounts(
+	secretIds: string[],
+	profileName?: string,
+	projectId?: string,
+): Promise<{ counts: Record<string, number>; failed: string[] }> {
+	const counts: Record<string, number> = {};
+	const failed: string[] = [];
+
+	await mapConcurrent(
+		secretIds,
+		async (secretId) => {
+			const versions = await getSecretVersions(secretId, profileName, projectId);
+			counts[secretId] = versions.filter((v) => isVersionActive(v.status)).length;
+		},
+		(secretId) => failed.push(secretId),
+	);
 	return { counts, failed };
 }
 
@@ -585,23 +537,15 @@ export async function prefetchSecretValues(
 ): Promise<{ values: Record<string, string>; failed: string[] }> {
 	const values: Record<string, string> = {};
 	const failed: string[] = [];
-	let cursor = 0;
 
-	async function worker(): Promise<void> {
-		while (true) {
-			const idx = cursor++;
-			if (idx >= secretIds.length) return;
-			const secretId = secretIds[idx];
-			try {
-				const value = await accessSecretVersion(secretId, "latest_enabled", profileName, projectId);
-				values[secretId] = value.length > PREFETCH_MAX_VALUE_BYTES ? value.slice(0, PREFETCH_MAX_VALUE_BYTES) : value;
-			} catch {
-				failed.push(secretId);
-			}
-		}
-	}
-
-	await Promise.all(Array.from({ length: Math.min(PREFETCH_CONCURRENCY, secretIds.length) }, worker));
+	await mapConcurrent(
+		secretIds,
+		async (secretId) => {
+			const value = await accessSecretVersion(secretId, "latest_enabled", profileName, projectId);
+			values[secretId] = value.length > PREFETCH_MAX_VALUE_BYTES ? value.slice(0, PREFETCH_MAX_VALUE_BYTES) : value;
+		},
+		(secretId) => failed.push(secretId),
+	);
 	return { values, failed };
 }
 
@@ -612,12 +556,13 @@ export async function createSecretVersion(
 	projectId?: string,
 ): Promise<SecretVersion> {
 	const profile = loadProfile(profileName);
-	const encoded = btoa(value);
-	return apiPost<SecretVersion>(
+	const encoded = encodeBase64(new TextEncoder().encode(value));
+	return apiRequest<SecretVersion>(
+		"POST",
 		secretManagerPath("secrets", secretId, "versions"),
 		profile,
-		{ data: encoded },
 		{ project_id: projectId || profile.projectId },
+		{ data: encoded },
 	);
 }
 
@@ -653,11 +598,7 @@ export async function createSecret(
 		body.tags = tags;
 	}
 
-	return apiPost<Secret>(
-		secretManagerPath("secrets"),
-		profile,
-		body,
-	);
+	return apiRequest<Secret>("POST", secretManagerPath("secrets"), profile, {}, body);
 }
 
 export async function updateSecret(
@@ -667,11 +608,12 @@ export async function updateSecret(
 	projectId?: string,
 ): Promise<Secret> {
 	const profile = loadProfile(profileName);
-	return apiPatch<Secret>(
+	return apiRequest<Secret>(
+		"PATCH",
 		secretManagerPath("secrets", secretId),
 		profile,
-		updates,
 		{ project_id: projectId || profile.projectId },
+		updates,
 	);
 }
 
@@ -682,11 +624,12 @@ export async function enableSecretVersion(
 	projectId?: string,
 ): Promise<SecretVersion> {
 	const profile = loadProfile(profileName);
-	return apiPost<SecretVersion>(
+	return apiRequest<SecretVersion>(
+		"POST",
 		secretManagerPath("secrets", secretId, "versions", String(revision), "enable"),
 		profile,
-		{},
 		{ project_id: projectId || profile.projectId },
+		{},
 	);
 }
 
@@ -697,11 +640,12 @@ export async function disableSecretVersion(
 	projectId?: string,
 ): Promise<SecretVersion> {
 	const profile = loadProfile(profileName);
-	return apiPost<SecretVersion>(
+	return apiRequest<SecretVersion>(
+		"POST",
 		secretManagerPath("secrets", secretId, "versions", String(revision), "disable"),
 		profile,
-		{},
 		{ project_id: projectId || profile.projectId },
+		{},
 	);
 }
 
@@ -710,22 +654,13 @@ export async function destroySecretVersion(
 	revision: number,
 	profileName?: string,
 	projectId?: string,
-): Promise<SecretVersion> {
+): Promise<void> {
 	const profile = loadProfile(profileName);
 	await apiDelete(
 		secretManagerPath("secrets", secretId, "versions", String(revision)),
 		profile,
 		{ project_id: projectId || profile.projectId },
 	);
-	return {
-		revision,
-		secret_id: secretId,
-		status: "scheduled_for_deletion",
-		created_at: "",
-		updated_at: "",
-		description: "",
-		latest: false,
-	};
 }
 
 export async function deleteSecret(
@@ -734,9 +669,9 @@ export async function deleteSecret(
 	projectId?: string,
 ): Promise<void> {
 	const profile = loadProfile(profileName);
-	const url = new URL(secretManagerPath("secrets", secretId), API_BASE);
-	if (projectId || profile.projectId) {
-		url.searchParams.set("project_id", projectId || profile.projectId);
-	}
-	await apiDelete(url.pathname, profile, Object.fromEntries(url.searchParams.entries()));
+	await apiDelete(
+		secretManagerPath("secrets", secretId),
+		profile,
+		{ project_id: projectId || profile.projectId },
+	);
 }

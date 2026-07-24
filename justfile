@@ -4,40 +4,60 @@ set quiet
 default:
     @just --list
 
-# Install dependencies
+# Install dependencies (frontend toolchain)
 [group('setup')]
 install:
     bun install
 
-# Start Electrobun in dev mode (watch)
+# Desktop app: vite build + native window (Deno 2.9+, backend hot-reload)
 [group('dev')]
 dev:
     bun run dev
 
-# Start with Vite HMR (concurrent)
+# Frontend HMR on :5181 (proxies /api) + headless deno backend on :8790
 [group('dev')]
 dev-hmr:
     bun run dev:hmr
 
-# Run mock frontend (Vite only, no Electrobun)
+# Headless backend only — open http://localhost:8790 in a browser
+[group('dev')]
+serve:
+    deno task serve
+
+# Run mock frontend (Vite only, no backend, sample data) on :5199
 [group('dev')]
 mock:
     bun run mock
 
-# Vite production build
+# Vite production build → dist/ (also regenerates src/deno/embed.ts)
 [group('build')]
 build:
     bun run build
 
-# Build canary release
+# Linux AppImage → build/linux/ScwSecrets.AppImage
 [group('build')]
-build-canary:
-    bun run build:canary
+bundle: build
+    deno task bundle
 
-# Build stable release
+# Linux .deb
 [group('build')]
-build-stable:
-    bun run build:stable
+bundle-deb: build
+    deno task bundle:deb
+
+# Plain directory bundle (snap source) → build/linux/scw-secrets
+[group('build')]
+bundle-dir: build
+    deno task bundle:dir
+
+# macOS .dmg
+[group('build')]
+bundle-mac: build
+    deno task bundle:mac
+
+# Windows .msi
+[group('build')]
+bundle-msi: build
+    deno task bundle:msi
 
 # Run unit tests (bun test)
 [group('test')]
@@ -54,35 +74,39 @@ e2e *args:
 e2e-record:
     bun run test:e2e:record
 
-# TypeScript check
+# TypeScript check (frontend)
 [group('check')]
 typecheck:
     bun run typecheck
 
-# Typecheck + unit tests + e2e
+# Type-check the deno backend (needs embed.ts in sync — `just build` regenerates it)
 [group('check')]
-ci: typecheck test e2e
+deno-check:
+    deno task check
+
+# Typecheck + deno check + unit tests + e2e
+[group('check')]
+ci: typecheck build deno-check test e2e
 
 # Update screenshot
 [group('tools')]
 screenshot:
     bun run screenshot
 
-# Bump version (e.g. just bump patch)
+# Bump version in package.json + deno.json (e.g. just bump patch)
 [group('tools')]
 bump *args:
     bun run bump {{ args }}
 
 # Clean build artifacts
-[confirm('Delete dist/, build/, artifacts/, test-results/? Continue?')]
+[confirm('Delete dist/, build/, test-results/, videos/? Continue?')]
 [group('tools')]
 clean:
-    rm -rf dist build artifacts test-results videos
+    rm -rf dist build test-results videos
 
-# Build .snap package (runs a stable electrobun build first)
+# Build .snap package (dir bundle first — snapcraft dumps build/linux/scw-secrets)
 [group('snap')]
-snap-build:
-    bun run build:stable
+snap-build: bundle-dir
     snapcraft pack
 
 # Install the locally-built .snap (classic confinement, unsigned)

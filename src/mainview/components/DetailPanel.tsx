@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
-import { Copy, CopyPlus, Eye, Pencil, Clock, Key as KeyIcon, Settings, Loader2, ExternalLink, Trash2, Layers2, X, Plus, Tag } from "lucide-react";
+import { Copy, CopyPlus, Eye, Pencil, Clock, Key as KeyIcon, Settings, Loader2, ExternalLink, Trash2, Layers2, X, Plus, Tag, PanelRightClose } from "lucide-react";
 
-import { electrobun } from "../rpc";
+import { api } from "../rpc";
 import type { ProfileSummary, Project, Secret } from "../../shared/models";
 import { planKeepLatestVersionOnly } from "../secret-versions";
 
@@ -17,6 +17,7 @@ type DetailPanelProps = {
 	onEditValue: (entry: ValueEntry) => void;
 	onViewHistory: (secretId: string, secretName: string) => void;
 	onRefresh: () => void;
+	onCollapse?: () => void;
 };
 
 function formatDate(value: string): string {
@@ -65,14 +66,14 @@ async function keepLatestVersionOnly(
 	profile?: string,
 	projectId?: string,
 ) {
-	const versions = await electrobun.rpc!.request.getSecretVersions({
+	const versions = await api.getSecretVersions({
 		secretId,
 		profile,
 		projectId,
 	});
 	for (const action of planKeepLatestVersionOnly(versions)) {
 		if (action.type === "disable") {
-			await electrobun.rpc!.request.disableSecretVersion({
+			await api.disableSecretVersion({
 				secretId,
 				revision: action.revision,
 				profile,
@@ -81,7 +82,7 @@ async function keepLatestVersionOnly(
 			continue;
 		}
 
-		await electrobun.rpc!.request.destroySecretVersion({
+		await api.destroySecretVersion({
 			secretId,
 			revision: action.revision,
 			profile,
@@ -94,6 +95,7 @@ function SingleSecretDetail({
 	secret,
 	selectedProject,
 	selectedProfileSummary,
+	onCollapse,
 	onViewValues,
 	onEditValue,
 	onViewHistory,
@@ -106,6 +108,7 @@ function SingleSecretDetail({
 	onEditValue: (entry: ValueEntry) => void;
 	onViewHistory: (secretId: string, secretName: string) => void;
 	onRefresh: () => void;
+	onCollapse?: () => void;
 }) {
 	const [loadingValue, setLoadingValue] = useState(false);
 	const [valueError, setValueError] = useState<string | null>(null);
@@ -148,7 +151,7 @@ function SingleSecretDetail({
 		setLoadingValue(true);
 		setValueError(null);
 		try {
-			const response = await electrobun.rpc!.request.getSecretValue({
+			const response = await api.getSecretValue({
 				secretId: secret.id,
 				revision: "latest_enabled",
 				profile: selectedProfileSummary?.name,
@@ -166,7 +169,7 @@ function SingleSecretDetail({
 		setLoadingEdit(true);
 		setEditError(null);
 		try {
-			const response = await electrobun.rpc!.request.getSecretValue({
+			const response = await api.getSecretValue({
 				secretId: secret.id,
 				revision: "latest_enabled",
 				profile: selectedProfileSummary?.name,
@@ -208,7 +211,7 @@ function SingleSecretDetail({
 		setDeletingSecret(true);
 		setDeleteSecretError(null);
 		try {
-			await electrobun.rpc!.request.deleteSecret({
+			await api.deleteSecret({
 				secretId: secret.id,
 				profile: selectedProfileSummary?.name,
 				projectId: selectedProject?.id,
@@ -226,7 +229,7 @@ function SingleSecretDetail({
 		setDuplicating(true);
 		setDuplicateError(null);
 		try {
-			await electrobun.rpc!.request.duplicateSecret({
+			await api.duplicateSecret({
 				secretId: secret.id,
 				name: duplicateName,
 				path: secret.path,
@@ -253,7 +256,7 @@ function SingleSecretDetail({
 		setSavingTags(true);
 		setTagError(null);
 		try {
-			await electrobun.rpc!.request.updateSecret({
+			await api.updateSecret({
 				secretId: secret.id,
 				tags: finalTags,
 				profile: selectedProfileSummary?.name,
@@ -272,7 +275,7 @@ function SingleSecretDetail({
 
 	function handleManageSecret() {
 		const url = `https://console.scaleway.com/secret-manager/secrets/${SECRET_MANAGER_REGION}/${secret.id}/overview`;
-		void electrobun.rpc!.request.openExternal({ url });
+		void api.openExternal({ url });
 	}
 
 	const isReady = secret.status === "ready";
@@ -285,14 +288,26 @@ function SingleSecretDetail({
 					<h2 className="text-sm font-medium text-gray-400 uppercase tracking-wider">
 						Detail
 					</h2>
-					<div
-						className={`text-xs px-2 py-1 rounded font-medium border ${
-							isReady
-								? "bg-emerald-500/20 text-emerald-300 border-emerald-500/30"
-								: "bg-amber-500/20 text-amber-300 border-amber-500/30"
-						}`}
-					>
-						{secret.status.toUpperCase()}
+					<div className="flex items-center gap-1.5">
+						<div
+							className={`text-xs px-2 py-1 rounded font-medium border ${
+								isReady
+									? "bg-emerald-500/20 text-emerald-300 border-emerald-500/30"
+									: "bg-amber-500/20 text-amber-300 border-amber-500/30"
+							}`}
+						>
+							{secret.status.toUpperCase()}
+						</div>
+						{onCollapse ? (
+							<button
+								type="button"
+								onClick={onCollapse}
+								title="Hide detail ( ] )"
+								className="p-1 rounded hover:bg-white/10 transition-colors group"
+							>
+								<PanelRightClose className="w-3.5 h-3.5 text-gray-500 group-hover:text-cyan-400" />
+							</button>
+						) : null}
 					</div>
 				</div>
 				<div className="text-base font-medium">Selection</div>
@@ -703,12 +718,14 @@ function MultiSecretDetail({
 	selectedProfileSummary,
 	onViewValues,
 	onRefresh,
+	onCollapse,
 }: {
 	secrets: Secret[];
 	selectedProject: Project | null;
 	selectedProfileSummary: ProfileSummary | null;
 	onViewValues: (title: string, values: ValueEntry[]) => void;
 	onRefresh: () => void;
+	onCollapse?: () => void;
 }) {
 	const [loadingValues, setLoadingValues] = useState(false);
 	const [valuesError, setValuesError] = useState<string | null>(null);
@@ -734,7 +751,7 @@ function MultiSecretDetail({
 		try {
 			const results = await Promise.all(
 				secrets.map(async (secret) => {
-					const response = await electrobun.rpc!.request.getSecretValue({
+					const response = await api.getSecretValue({
 						secretId: secret.id,
 						revision: "latest_enabled",
 						profile: selectedProfileSummary?.name,
@@ -762,7 +779,7 @@ function MultiSecretDetail({
 		try {
 			await Promise.all(
 				secrets.map((secret) =>
-					electrobun.rpc!.request.deleteSecret({
+					api.deleteSecret({
 						secretId: secret.id,
 						profile: selectedProfileSummary?.name,
 						projectId: selectedProject?.id,
@@ -807,8 +824,20 @@ function MultiSecretDetail({
 					<h2 className="text-sm font-medium text-gray-400 uppercase tracking-wider">
 						Batch Actions
 					</h2>
-					<div className="text-xs px-2 py-1 rounded font-medium border bg-cyan-500/20 text-cyan-300 border-cyan-500/30">
-						{secrets.length} SELECTED
+					<div className="flex items-center gap-1.5">
+						<div className="text-xs px-2 py-1 rounded font-medium border bg-cyan-500/20 text-cyan-300 border-cyan-500/30">
+							{secrets.length} SELECTED
+						</div>
+						{onCollapse ? (
+							<button
+								type="button"
+								onClick={onCollapse}
+								title="Hide detail ( ] )"
+								className="p-1 rounded hover:bg-white/10 transition-colors group"
+							>
+								<PanelRightClose className="w-3.5 h-3.5 text-gray-500 group-hover:text-cyan-400" />
+							</button>
+						) : null}
 					</div>
 				</div>
 			</div>
@@ -955,10 +984,21 @@ export function DetailPanel({
 	onEditValue,
 	onViewHistory,
 	onRefresh,
+	onCollapse,
 }: DetailPanelProps) {
 	if (secrets.length === 0) {
 		return (
-			<div className="rounded-xl border border-white/10 bg-black/40 backdrop-blur-sm p-8 flex items-center justify-center h-full">
+			<div className="relative rounded-xl border border-white/10 bg-black/40 backdrop-blur-sm p-8 flex items-center justify-center h-full">
+				{onCollapse ? (
+					<button
+						type="button"
+						onClick={onCollapse}
+						title="Hide detail ( ] )"
+						className="absolute top-3 right-3 p-1 rounded hover:bg-white/10 transition-colors group"
+					>
+						<PanelRightClose className="w-3.5 h-3.5 text-gray-500 group-hover:text-cyan-400" />
+					</button>
+				) : null}
 				<div className="text-center">
 					<div className="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center mx-auto mb-4">
 						<KeyIcon className="w-8 h-8 text-gray-600" />
@@ -982,6 +1022,7 @@ export function DetailPanel({
 					onEditValue={onEditValue}
 					onViewHistory={onViewHistory}
 					onRefresh={onRefresh}
+					onCollapse={onCollapse}
 				/>
 			) : (
 				<MultiSecretDetail
@@ -990,6 +1031,7 @@ export function DetailPanel({
 					selectedProfileSummary={selectedProfileSummary}
 					onViewValues={onViewValues}
 					onRefresh={onRefresh}
+					onCollapse={onCollapse}
 				/>
 			)}
 		</div>

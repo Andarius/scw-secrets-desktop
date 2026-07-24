@@ -2,7 +2,7 @@
 
 Desktop app for browsing and managing [Scaleway Secret Manager](https://www.scaleway.com/en/secret-manager/) secrets.
 
-Built with [Electrobun](https://electrobun.dev), React, TypeScript, and Tailwind CSS.
+Built with [Deno desktop](https://docs.deno.com/go/desktop), React, TypeScript, and Tailwind CSS.
 
 ## Disclaimer
 
@@ -39,9 +39,9 @@ This project is provided as-is, with no guarantee or warranty of any kind. Use i
 bun install
 ```
 
-### macOS
+Requires [Deno](https://deno.com) 2.9+ for `deno desktop`.
 
-When installing from a `.dmg`, copy the app to `/Applications` before launching — running directly from the disk image will fail due to an Electrobun self-extraction limitation.
+### macOS
 
 If macOS shows "app is damaged and can't be opened", clear the quarantine attribute:
 
@@ -52,8 +52,8 @@ xattr -c "/Applications/Scw Secrets.app"
 ## Development
 
 ```bash
-bun run dev          # Electrobun dev mode
-bun run dev:hmr      # Electrobun + Vite HMR
+bun run dev          # Vite build + desktop window (deno desktop)
+bun run dev:hmr      # Vite dev server (port 5181) + headless deno backend (port 8790)
 bun run mock         # Browser preview with mock data (port 5199)
 ```
 
@@ -68,55 +68,38 @@ bun run test:e2e     # E2E tests (Playwright against mock mode)
 
 ```bash
 bun run build        # Vite production build
-bun run build:canary # Vite build + Electrobun canary
-bun run build:stable # Vite build + Electrobun stable
-bun run typecheck    # TypeScript check
+bun run bundle       # Vite build + embed assets + Linux AppImage (build/linux)
+deno task bundle:mac # macOS .dmg
+deno task bundle:msi # Windows .msi
+bun run typecheck    # TypeScript check (frontend)
+deno task check      # Type-check the deno backend
 ```
 
 ## Linux Release
 
-Download the Linux release from the GitHub releases page:
-
-- `stable-linux-x64-ScwSecrets-Setup.tar.gz`
-- `stable-linux-x64-ScwSecrets.tar.zst`
-
-Using the installer bundle (`.tar.gz`):
+Download the Linux release from the GitHub releases page: the `.AppImage`, `.snap`, or the
+`scw-secrets` directory bundle. The AppImage is self-contained:
 
 ```bash
-curl -LO https://github.com/Andarius/scw-secrets-desktop/releases/download/v0.1.0/stable-linux-x64-ScwSecrets-Setup.tar.gz
-tar -xzf stable-linux-x64-ScwSecrets-Setup.tar.gz
-./installer
+chmod +x ScwSecrets.AppImage
+./ScwSecrets.AppImage
 ```
 
-The installer extracts the app to `~/.local/share/dev.julien.scw-secrets/stable/app` and creates a desktop shortcut.
-
-Using the direct app bundle (`.tar.zst`):
-
-```bash
-curl -LO https://github.com/Andarius/scw-secrets-desktop/releases/download/v0.1.0/stable-linux-x64-ScwSecrets.tar.zst
-tar --zstd -xf stable-linux-x64-ScwSecrets.tar.zst
-cd ScwSecrets
-./bin/launcher
-```
-
-The app needs a graphical session. If you launch it from a plain shell without a usable display, GTK will fail with `cannot open display`.
-
-If the extracted directory name changes in a future release, locate the launcher with:
-
-```bash
-find . -type f -name launcher
-```
+The app needs a graphical session (webkit2gtk). If you launch it from a plain shell without
+a usable display, GTK will fail with `cannot open display`.
 
 ## Project Structure
 
 ```
 src/
-├── bun/
-│   ├── index.ts              # Electrobun main process and RPC handlers
-│   └── scw.ts                # Scaleway config parsing and API client
+├── deno/
+│   ├── main.ts               # Deno-desktop entrypoint: HTTP server, /api routes, window
+│   ├── scw.ts                # Scaleway config parsing and API client
+│   ├── config.ts             # Env-overridable settings (port, data dir)
+│   └── embed.ts              # Generated asset embeds (deno task embed)
 ├── mainview/
 │   ├── App.tsx               # React application shell
-│   ├── rpc.ts                # Typed Electrobun webview RPC setup
+│   ├── rpc.ts                # Typed fetch client for the /api backend
 │   ├── main.tsx              # React entry point
 │   ├── secret-list.ts        # Filtering, sorting, and selection reconciliation
 │   ├── secret-versions.ts    # Version pruning plan logic
@@ -133,5 +116,5 @@ src/
 │       └── HistoryModal.tsx  # Version history modal with actions
 └── shared/
     ├── models.ts             # Shared types
-    └── rpc.ts                # RPC contract
+    └── rpc.ts                # API contract (POST /api/<method>)
 ```

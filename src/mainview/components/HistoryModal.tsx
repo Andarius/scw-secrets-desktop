@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Loader2, Power, PowerOff, Bomb, X, RefreshCw } from "lucide-react";
 
-import { electrobun } from "../rpc";
+import { api } from "../rpc";
 import type { SecretVersion } from "../../shared/models";
 
 type HistoryModalProps = {
@@ -64,7 +64,7 @@ export function HistoryModal({
 		setLoading(true);
 		setError(null);
 		try {
-			const response = await electrobun.rpc!.request.getSecretVersions({
+			const response = await api.getSecretVersions({
 				secretId,
 				profile,
 				projectId,
@@ -99,16 +99,16 @@ export function HistoryModal({
 		try {
 			const params = { secretId, revision: version.revision, profile, projectId };
 			if (action === "enable") {
-				await electrobun.rpc!.request.enableSecretVersion(params);
+				await api.enableSecretVersion(params);
 			} else if (action === "disable") {
-				await electrobun.rpc!.request.disableSecretVersion(params);
+				await api.disableSecretVersion(params);
 			} else {
 				if (version.status === "enabled") {
-					await electrobun.rpc!.request.disableSecretVersion(params);
+					await api.disableSecretVersion(params);
 				}
-				await electrobun.rpc!.request.destroySecretVersion(params);
+				await api.destroySecretVersion(params);
 			}
-			const response = await electrobun.rpc!.request.getSecretVersions({
+			const response = await api.getSecretVersions({
 				secretId,
 				profile,
 				projectId,

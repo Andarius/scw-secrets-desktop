@@ -1,8 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
 import { Loader2, Save, X } from "lucide-react";
 
-import { electrobun } from "../rpc";
+import { api } from "../rpc";
 import { planKeepLatestVersionOnly } from "../secret-versions";
+import { HighlightedTextarea } from "./HighlightedTextarea";
+import { EditTabs, type EditTab } from "./ValueModal";
+import { ValueStructureEditor } from "./ValueStructureEditor";
+import { prefersTableMode, ValueViewer } from "./ValueViewer";
 
 type EditModalProps = {
 	secretId: string;
@@ -39,6 +43,7 @@ export function EditModal({
 
 	const [value, setValue] = useState(formatted);
 	const [saving, setSaving] = useState(false);
+	const [tab, setTab] = useState<EditTab>(() => (prefersTableMode() ? "table" : "raw"));
 	const [error, setError] = useState<string | null>(null);
 
 	const hasChanges = value !== formatted;
@@ -63,7 +68,7 @@ export function EditModal({
 		setSaving(true);
 		setError(null);
 		try {
-			await electrobun.rpc!.request.updateSecretValue({
+			await api.updateSecretValue({
 				secretId,
 				value,
 				profile,
@@ -71,21 +76,21 @@ export function EditModal({
 			});
 
 			if (autoKeepLatest) {
-				const versions = await electrobun.rpc!.request.getSecretVersions({
+				const versions = await api.getSecretVersions({
 					secretId,
 					profile,
 					projectId,
 				});
 				for (const action of planKeepLatestVersionOnly(versions)) {
 					if (action.type === "disable") {
-						await electrobun.rpc!.request.disableSecretVersion({
+						await api.disableSecretVersion({
 							secretId,
 							revision: action.revision,
 							profile,
 							projectId,
 						});
 					} else {
-						await electrobun.rpc!.request.destroySecretVersion({
+						await api.destroySecretVersion({
 							secretId,
 							revision: action.revision,
 							profile,
@@ -115,6 +120,7 @@ export function EditModal({
 						<p className="text-xs text-gray-500 mt-0.5">{name}</p>
 					</div>
 					<div className="flex items-center gap-2">
+						<EditTabs tab={tab} onChange={setTab} size="md" />
 						<button
 							type="button"
 							onClick={() => {
@@ -151,12 +157,21 @@ export function EditModal({
 				</div>
 
 				<div className="flex-1 overflow-y-auto p-5">
-					<textarea
-						value={value}
-						onChange={(e) => setValue(e.target.value)}
-						spellCheck={false}
-						className="w-full h-full min-h-[300px] bg-white/5 border border-white/10 rounded-lg p-4 text-sm text-cyan-200 font-mono resize-y focus:outline-none focus:border-cyan-500/50 focus:bg-white/[0.07] transition-colors"
-					/>
+					{tab === "preview" ? (
+						<div className="rounded-lg bg-black/30 border border-white/10 p-4">
+							<ValueViewer value={value} />
+						</div>
+					) : tab === "table" ? (
+						<div className="rounded-lg bg-black/30 border border-white/10 p-4">
+							<ValueStructureEditor value={value} onChange={setValue} />
+						</div>
+					) : (
+						<HighlightedTextarea
+							value={value}
+							onChange={setValue}
+							rows={Math.min(Math.max(value.split("\n").length, 14), 30)}
+						/>
+					)}
 				</div>
 
 				{error ? (

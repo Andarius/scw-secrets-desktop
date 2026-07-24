@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Loader2, RefreshCw, Trash2, X } from "lucide-react";
 
-import { electrobun } from "../rpc";
+import { api } from "../rpc";
 import type { HttpLog } from "../../shared/models";
 
 type LogsModalProps = {
@@ -57,7 +57,7 @@ export function LogsModal({ onClose }: LogsModalProps) {
 	async function fetchLogs() {
 		setLoading(true);
 		try {
-			const result = await electrobun.rpc!.request.getHttpLogs({});
+			const result = await api.getHttpLogs({});
 			setLogs(result);
 		} finally {
 			setLoading(false);
@@ -65,7 +65,7 @@ export function LogsModal({ onClose }: LogsModalProps) {
 	}
 
 	async function handleClear() {
-		await electrobun.rpc!.request.clearHttpLogs({});
+		await api.clearHttpLogs({});
 		setLogs([]);
 	}
 

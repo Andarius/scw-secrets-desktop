@@ -1,9 +1,6 @@
-import { resolve } from "path";
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import packageJson from "./package.json";
-
-const isMock = process.env.VITE_MOCK === "1";
 
 export default defineConfig({
 	plugins: [react()],
@@ -15,15 +12,12 @@ export default defineConfig({
 		outDir: "../../dist",
 		emptyOutDir: true,
 	},
-	resolve: isMock
-		? {
-				alias: {
-					"electrobun/view": resolve(__dirname, "src/mainview/rpc.mock.ts"),
-				},
-			}
-		: undefined,
 	server: {
 		port: 5181,
 		strictPort: true,
+		// deno backend (deno task serve)
+		proxy: {
+			"/api": "http://127.0.0.1:8790",
+		},
 	},
 });

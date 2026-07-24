@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Loader2, Plus, X } from "lucide-react";
 
-import { electrobun } from "../rpc";
+import { api } from "../rpc";
 
 type CreateSecretModalProps = {
 	profile?: string;
@@ -101,7 +101,7 @@ export function CreateSecretModal({
 		setSaving(true);
 		setError(null);
 		try {
-			await electrobun.rpc!.request.createSecret({
+			await api.createSecret({
 				name: name.trim(),
 				path: normalizedPath,
 				type,
