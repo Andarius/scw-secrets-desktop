@@ -6,7 +6,7 @@ import {
 	rmSync,
 	statSync,
 } from "node:fs";
-import { basename, join, relative } from "node:path";
+import { basename, join } from "node:path";
 
 function collectFiles(root: string): string[] {
 	const entries = readdirSync(root);
@@ -37,9 +37,12 @@ if (!existsSync(artifactsDir)) {
 	throw new Error(`Artifacts directory not found: ${artifactsDir}`);
 }
 
-const artifactFiles = collectFiles(artifactsDir);
+// only distributables — bundling leaves intermediate dirs (extracted AppImage
+// payloads, partial .app trees) under build/ that must not reach the release
+const DIST_EXT_RE = /\.(AppImage|deb|rpm|dmg|msi|zip|snap)$/i;
+const artifactFiles = collectFiles(artifactsDir).filter((file) => DIST_EXT_RE.test(file));
 if (artifactFiles.length === 0) {
-	throw new Error(`No artifact files found in ${artifactsDir}`);
+	throw new Error(`No distributable files found in ${artifactsDir}`);
 }
 
 const stagingDir = join(process.cwd(), ".release-assets");
@@ -48,9 +51,7 @@ mkdirSync(stagingDir, { recursive: true });
 
 const stagedFiles: string[] = [];
 for (const filePath of artifactFiles) {
-	const relativePath = relative(artifactsDir, filePath);
-	const safeName = relativePath.replaceAll("\\", "__").replaceAll("/", "__");
-	const stagedPath = join(stagingDir, safeName);
+	const stagedPath = join(stagingDir, basename(filePath));
 	cpSync(filePath, stagedPath);
 	stagedFiles.push(stagedPath);
 }

@@ -125,6 +125,13 @@ jobs:
       - name: Build desktop bundle
         run: deno task ${{ matrix.bundle }}
 
+      - name: Package macOS app
+        if: runner.os == 'macOS'
+        # zipped .app instead of hdiutil DMG — hdiutil is flaky on GitHub runners
+        run: |
+          ditto -c -k --keepParent build/macos/ScwSecrets.app "build/macos/ScwSecrets-${{ matrix.target }}.app.zip"
+          rm -rf build/macos/ScwSecrets.app
+
       - name: Upload release assets
         env:
           GH_TOKEN: ${{ github.token }}

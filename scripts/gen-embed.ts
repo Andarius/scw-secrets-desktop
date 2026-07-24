@@ -2,7 +2,8 @@
 // bundles carry the assets in the compile VFS (no disk layout needed).
 // USAGE: deno task embed  (after `bun run build`)
 
-const ROOT = new URL("../", import.meta.url).pathname;
+// import.meta.dirname is OS-native (URL.pathname breaks on Windows: "/C:/…")
+const ROOT = `${import.meta.dirname}/../`;
 
 async function listDist(dir: string): Promise<string[]> {
 	const out: string[] = [];
