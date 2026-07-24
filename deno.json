@@ -1,8 +1,10 @@
 {
 	"name": "scw-secrets-desktop",
-	"version": "0.5.2",
+	"version": "0.6.0",
 	"exports": "./src/deno/main.ts",
-	"unstable": ["raw-imports"],
+	"unstable": [
+		"raw-imports"
+	],
 	"desktop": {
 		"app": {
 			"name": "Scw Secrets",
@@ -29,6 +31,8 @@
 		"@std/encoding": "jsr:@std/encoding@^1"
 	},
 	"compilerOptions": {
-		"lib": ["deno.window"]
+		"lib": [
+			"deno.window"
+		]
 	}
 }
