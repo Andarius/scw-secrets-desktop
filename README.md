@@ -33,6 +33,20 @@ This project is provided as-is, with no guarantee or warranty of any kind. Use i
 - **Manage secret** — opens the Scaleway console for the selected secret
 - **Schedule deletion** — single or batch delete with confirmation
 
+## Install
+
+### Quickstart
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/Andarius/scw-secrets-desktop/master/bin/quickstart.sh | bash
+```
+
+Installs the latest packaged app for the platform: snap or AppImage on Linux x64
+(`SCW_SECRETS_APP=appimage` forces the AppImage, no sudo), zipped `.app` on macOS
+(quarantine cleared automatically). `SCW_SECRETS_VERSION=v0.6.0` pins a release,
+`SCW_SECRETS_APP=source` clones and builds from the checkout instead
+(`SCW_SECRETS_DIR` overrides the default `~/scw-secrets-desktop`).
+
 ## Setup
 
 ```bash
