@@ -3,6 +3,7 @@
 // (open http://localhost:8790 in a browser).
 import { APP_ROOT, HOST, PORT, WINDOW_FILE } from "./config.ts";
 import { ASSETS } from "./embed.ts";
+import { attachWindowLifecycle, type Geometry } from "./window.ts";
 import type { ApiMethod, ApiRequests } from "../shared/rpc.ts";
 import {
 	accessSecretVersion,
@@ -211,55 +212,38 @@ if (BW) {
 }
 void server;
 
-// Desktop window: adopt the auto-opened window, restore saved geometry, persist on change.
+// Desktop window: adopt the auto-opened window, restore saved geometry, persist on
+// change, and quit when it's closed.
 if (BW) {
-	let geo: { width?: number; height?: number; x?: number; y?: number } = {};
+	const TITLE = "Scw Secrets";
+	const DEFAULT_SIZE = [1440, 920] as const;
+
+	let saved: Geometry = {};
 	try {
-		geo = JSON.parse(await Deno.readTextFile(WINDOW_FILE));
+		saved = JSON.parse(await Deno.readTextFile(WINDOW_FILE));
 	} catch {
 		// first run
 	}
 	const win = new BW({
-		title: "Scw Secrets",
-		width: geo.width ?? 1440,
-		height: geo.height ?? 920,
-		x: geo.x,
-		y: geo.y,
+		title: TITLE,
+		width: saved.width ?? DEFAULT_SIZE[0],
+		height: saved.height ?? DEFAULT_SIZE[1],
+		x: saved.x,
+		y: saved.y,
 	});
-	// ctor opts may not apply when adopting — enforce explicitly
-	if (geo.width && geo.height) win.setSize(geo.width, geo.height);
-	else win.setSize(1440, 920);
-	if (geo.x != null && geo.y != null) win.setPosition(geo.x, geo.y);
-	win.setTitle("Scw Secrets");
-	// macOS resets the title to the binary name after webview init — re-apply
-	for (const ms of [300, 1200, 4000]) {
-		setTimeout(() => {
+	attachWindowLifecycle(win, {
+		title: TITLE,
+		defaultSize: DEFAULT_SIZE,
+		saved,
+		// sync: the close path writes this immediately before exiting
+		persist: (geo) => {
 			try {
-				win.setTitle("Scw Secrets");
+				Deno.mkdirSync(WINDOW_FILE.replace(/\/[^/]+$/, ""), { recursive: true });
+				Deno.writeTextFileSync(WINDOW_FILE, JSON.stringify(geo));
 			} catch {
-				// window gone
+				// best effort — geometry is a convenience, not state we can fail on
 			}
-		}, ms);
-	}
-	try {
-		win.addEventListener("focus", () => win.setTitle("Scw Secrets"));
-	} catch {
-		// focus events unsupported on this backend
-	}
-	let t: ReturnType<typeof setTimeout> | undefined;
-	const persist = () => {
-		clearTimeout(t);
-		t = setTimeout(async () => {
-			try {
-				const [width, height] = win.getSize();
-				const [x, y] = win.getPosition();
-				await Deno.mkdir(WINDOW_FILE.replace(/\/[^/]+$/, ""), { recursive: true });
-				await Deno.writeTextFile(WINDOW_FILE, JSON.stringify({ width, height, x, y }));
-			} catch {
-				// window gone
-			}
-		}, 400);
-	};
-	win.addEventListener("resize", persist);
-	win.addEventListener("move", persist);
+		},
+		quit: () => Deno.exit(0),
+	});
 }
