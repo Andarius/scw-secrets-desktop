@@ -23,8 +23,20 @@ test.beforeEach(async ({ page }) => {
 test("loads the mock inventory with the default selection", async ({ page }) => {
 	await expect(inventoryRows(page)).toHaveCount(12);
 	await expect(page.locator("tbody tr").filter({ hasText: "DATABASE_URL" })).toHaveCount(1);
-	await expect(page.locator("header select").nth(1).locator("option:checked")).toHaveText("webapp-api");
+	await expect(page.locator("header").getByRole("button", { name: /^Project/ })).toContainText("webapp-api");
 	await expect(page.getByRole("button", { name: "View Secret Value" })).toBeVisible();
+});
+
+test("switches project from the header dropdown", async ({ page }) => {
+	await page.locator("header").getByRole("button", { name: /^Project/ }).click();
+
+	const listbox = page.getByRole("listbox");
+	await expect(listbox.getByRole("option")).toHaveCount(3);
+
+	await listbox.getByRole("option", { name: "data-pipeline" }).click();
+
+	await expect(page.getByRole("listbox")).toBeHidden();
+	await expect(page.locator("header").getByRole("button", { name: /^Project/ })).toContainText("data-pipeline");
 });
 
 test("filters the inventory by search term", async ({ page }) => {

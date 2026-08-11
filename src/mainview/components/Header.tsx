@@ -1,6 +1,7 @@
 import { Loader2, Lock, Plus, RefreshCw, Settings } from "lucide-react";
 
 import type { ProfileSummary, Project } from "../../shared/models";
+import { HeaderSelect } from "./HeaderSelect";
 
 type HeaderProps = {
 	profiles: ProfileSummary[];
@@ -19,21 +20,6 @@ type HeaderProps = {
 	refreshing: boolean;
 	onOpenSettings: () => void;
 };
-
-function SelectChip({
-	label,
-	children,
-}: {
-	label: string;
-	children: React.ReactNode;
-}) {
-	return (
-		<label className="flex items-center gap-2 px-3 py-2 bg-white/5 border border-white/10 rounded-lg hover:bg-white/10 transition-colors min-w-0">
-			<span className="text-[10px] text-gray-500 uppercase tracking-wider">{label}</span>
-			{children}
-		</label>
-	);
-}
 
 export function Header({
 	profiles,
@@ -61,36 +47,26 @@ export function Header({
 				</div>
 
 				<div className="flex items-center gap-2 min-w-0">
-					<SelectChip label="Profile">
-						<select
-							value={selectedProfile}
-							onChange={(e) => onProfileChange(e.target.value)}
-							disabled={loadingProfiles || profiles.length === 0}
-							className="bg-transparent text-sm text-white appearance-none focus:outline-none min-w-0 max-w-[180px] disabled:opacity-50"
-						>
-							{profiles.map((profile) => (
-								<option key={profile.name} value={profile.name}>
-									{profile.name}
-									{profile.isActive ? " (active)" : ""}
-								</option>
-							))}
-						</select>
-					</SelectChip>
+					<HeaderSelect
+						label="Profile"
+						value={selectedProfile}
+						onChange={onProfileChange}
+						disabled={loadingProfiles || profiles.length === 0}
+						maxWidth="max-w-[180px]"
+						options={profiles.map((profile) => ({
+							value: profile.name,
+							label: profile.name,
+							hint: profile.isActive ? "active" : undefined,
+						}))}
+					/>
 					<span className="text-gray-600">/</span>
-					<SelectChip label="Project">
-						<select
-							value={selectedProjectId}
-							onChange={(e) => onProjectChange(e.target.value)}
-							disabled={loadingProjects || projects.length === 0}
-							className="bg-transparent text-sm text-white appearance-none focus:outline-none min-w-0 max-w-[200px] disabled:opacity-50"
-						>
-							{projects.map((project) => (
-								<option key={project.id} value={project.id}>
-									{project.name}
-								</option>
-							))}
-						</select>
-					</SelectChip>
+					<HeaderSelect
+						label="Project"
+						value={selectedProjectId}
+						onChange={onProjectChange}
+						disabled={loadingProjects || projects.length === 0}
+						options={projects.map((project) => ({ value: project.id, label: project.name }))}
+					/>
 					{syncingProfile ? <Loader2 className="w-4 h-4 text-cyan-400 animate-spin shrink-0" /> : null}
 				</div>
 
