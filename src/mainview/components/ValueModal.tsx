@@ -33,7 +33,7 @@ export function EditTabs({ tab, onChange, size = "sm" }: { tab: EditTab; onChang
 	);
 }
 
-type ValueEntry = { secretId: string; name: string; value: string };
+type ValueEntry = { secretId: string; name: string; path?: string; value: string };
 
 type ValueViewProps = {
 	title: string;
@@ -134,7 +134,7 @@ function EditableEntry({
 	return (
 		<div className="rounded-lg bg-white/5 border border-white/5 p-4">
 			<div className="flex items-center justify-between mb-2">
-				<span className="text-xs text-gray-400 font-medium">{entry.name}</span>
+				<EntryLabel entry={entry} />
 				<div className="flex items-center gap-1">
 					<div className="mr-1.5">
 						<EditTabs tab={tab} onChange={setTab} />
@@ -174,11 +174,22 @@ function EditableEntry({
 	);
 }
 
+function EntryLabel({ entry }: { entry: ValueEntry }) {
+	return (
+		<div className="flex items-baseline gap-2 min-w-0">
+			<span className="text-xs text-gray-400 font-medium">{entry.name}</span>
+			{entry.path ? (
+				<span className="text-[11px] text-gray-500 font-mono truncate" title={entry.path}>{entry.path}</span>
+			) : null}
+		</div>
+	);
+}
+
 function ReadOnlyEntry({ entry }: { entry: ValueEntry }) {
 	return (
 		<div className="rounded-lg bg-white/5 border border-white/5 p-4">
 			<div className="flex items-center justify-between mb-2">
-				<span className="text-xs text-gray-400 font-medium">{entry.name}</span>
+				<EntryLabel entry={entry} />
 				<CopyButton text={entry.value} />
 			</div>
 			<ValueViewer value={entry.value} />
@@ -211,7 +222,12 @@ export function ValueView({ title, values, profile, projectId, autoKeepLatest, o
 		>
 			<div className="bg-[#141414] border border-white/10 rounded-xl shadow-2xl w-[90%] max-h-[85vh] flex flex-col overflow-hidden">
 				<div className="flex items-center justify-between px-5 py-4 border-b border-white/10">
-					<h3 className="text-sm font-medium text-gray-300">{title}</h3>
+					<div className="flex items-baseline gap-3 min-w-0">
+						<h3 className="text-sm font-medium text-gray-300 shrink-0">{title}</h3>
+						{values.length === 1 && values[0].path ? (
+							<span className="text-xs text-gray-500 font-mono truncate" title={values[0].path}>{values[0].path}</span>
+						) : null}
+					</div>
 					<div className="flex items-center gap-2">
 						{values.length > 1 ? (
 							<button

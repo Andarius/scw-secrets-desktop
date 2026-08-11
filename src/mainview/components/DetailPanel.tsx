@@ -6,7 +6,7 @@ import type { ProfileSummary, Project, Secret } from "../../shared/models";
 import { secretConsoleUrl } from "../console";
 import { planKeepLatestVersionOnly } from "../secret-versions";
 
-export type ValueEntry = { secretId: string; name: string; value: string };
+export type ValueEntry = { secretId: string; name: string; path?: string; value: string };
 
 type DetailPanelProps = {
 	secrets: Secret[];
@@ -158,7 +158,7 @@ function SingleSecretDetail({
 				profile: selectedProfileSummary?.name,
 				projectId: selectedProject?.id,
 			});
-			onViewValues(secret.name, [{ secretId: secret.id, name: secret.name, value: response.value }]);
+			onViewValues(secret.name, [{ secretId: secret.id, name: secret.name, path: secret.path, value: response.value }]);
 		} catch (reason) {
 			setValueError(reason instanceof Error ? reason.message : String(reason));
 		} finally {
@@ -176,7 +176,7 @@ function SingleSecretDetail({
 				profile: selectedProfileSummary?.name,
 				projectId: selectedProject?.id,
 			});
-			onEditValue({ secretId: secret.id, name: secret.name, value: response.value });
+			onEditValue({ secretId: secret.id, name: secret.name, path: secret.path, value: response.value });
 		} catch (reason) {
 			setEditError(reason instanceof Error ? reason.message : String(reason));
 		} finally {
@@ -783,7 +783,7 @@ function MultiSecretDetail({
 						profile: selectedProfileSummary?.name,
 						projectId: selectedProject?.id,
 					});
-					return { secretId: secret.id, name: secret.name, value: response.value };
+					return { secretId: secret.id, name: secret.name, path: secret.path, value: response.value };
 				}),
 			);
 			onViewValues(`${secrets.length} Secrets`, results);
