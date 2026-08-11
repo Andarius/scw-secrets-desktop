@@ -118,6 +118,34 @@ describe("matchSecrets", () => {
 		});
 	});
 
+	describe("pasted URL", () => {
+		const uuid = "0a1b2c3d-4e5f-6071-8293-a4b5c6d7e8f9";
+		const withUuid = [...secrets, makeSecret({ id: uuid, name: "SHARED_SECRET" })];
+
+		test.each([
+			{
+				label: "console share link",
+				url: `https://console.scaleway.com/secret-manager/secrets/fr-par/${uuid}/overview`,
+			},
+			{ label: "any URL containing the UUID", url: `myapp://secret/${uuid}` },
+		])("$label resolves to an exact ID match", ({ url }) => {
+			const results = matchSecrets(withUuid, url);
+			expect(results).toHaveLength(1);
+			expect(results[0].matchField).toBe("id");
+			expect(results[0].secret.name).toBe("SHARED_SECRET");
+		});
+
+		test("URL without a UUID matches nothing", () => {
+			expect(matchSecrets(withUuid, "https://console.scaleway.com/secret-manager")).toHaveLength(0);
+		});
+
+		test("bare UUID still matches by free-text id fallback", () => {
+			const results = matchSecrets(withUuid, uuid);
+			expect(results).toHaveLength(1);
+			expect(results[0].matchField).toBe("id");
+		});
+	});
+
 	test("limits results to 50", () => {
 		const manySecrets = Array.from({ length: 100 }, (_, i) =>
 			makeSecret({ id: `id-${i}`, name: `secret-${i}` }),

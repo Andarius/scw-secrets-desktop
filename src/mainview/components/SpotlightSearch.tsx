@@ -21,6 +21,14 @@ export type MatchedSecret = {
 
 const VALUE_SNIPPET_RADIUS = 40;
 
+const UUID_RE = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i;
+
+// A pasted URL (e.g. a shared console link) resolves to an ID lookup on its embedded UUID.
+function uuidFromUrl(raw: string): string | null {
+	if (!raw.includes("://")) return null;
+	return raw.match(UUID_RE)?.[0] ?? null;
+}
+
 function valueSnippet(value: string, query: string): string {
 	const idx = value.toLowerCase().indexOf(query);
 	if (idx === -1) return value.slice(0, VALUE_SNIPPET_RADIUS * 2);
@@ -43,7 +51,11 @@ export function matchSecrets(
 	let field: string | null = null;
 	let query: string;
 
-	if (colonIdx > 0) {
+	const pastedId = uuidFromUrl(trimmed);
+	if (pastedId) {
+		field = "id";
+		query = pastedId.toLowerCase();
+	} else if (colonIdx > 0) {
 		const prefix = trimmed.slice(0, colonIdx).toLowerCase();
 		if (["id", "name", "path", "tag", "type", "status", "value"].includes(prefix)) {
 			field = prefix;
@@ -121,6 +133,10 @@ function HighlightMatch({ text, query }: { text: string; query: string }) {
 }
 
 function extractQuery(raw: string): string {
+	const pastedId = uuidFromUrl(raw.trim());
+	if (pastedId) {
+		return pastedId;
+	}
 	const colonIdx = raw.indexOf(":");
 	if (colonIdx > 0) {
 		const prefix = raw.slice(0, colonIdx).toLowerCase();

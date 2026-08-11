@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
-import { Copy, Eye, Loader2, Pencil, Save, X } from "lucide-react";
+import { Check, Copy, Eye, Loader2, Pencil, Save, Share2, X } from "lucide-react";
 
 import { api } from "../rpc";
+import { secretConsoleUrl } from "../console";
 import { planKeepLatestVersionOnly } from "../secret-versions";
 import { HighlightedTextarea } from "./HighlightedTextarea";
 import { ValueStructureEditor } from "./ValueStructureEditor";
@@ -187,6 +188,13 @@ function ReadOnlyEntry({ entry }: { entry: ValueEntry }) {
 
 export function ValueView({ title, values, profile, projectId, autoKeepLatest, onClose, onSaved }: ValueViewProps) {
 	const [editing, setEditing] = useState(false);
+	const [shareCopied, setShareCopied] = useState(false);
+
+	function handleShare() {
+		void navigator.clipboard.writeText(secretConsoleUrl(values[0].secretId));
+		setShareCopied(true);
+		setTimeout(() => setShareCopied(false), 2000);
+	}
 
 	useEffect(() => {
 		function handleKey(e: KeyboardEvent) {
@@ -216,6 +224,17 @@ export function ValueView({ title, values, profile, projectId, autoKeepLatest, o
 							>
 								<Copy className="w-3 h-3 text-cyan-400" />
 								<span>Copy All as KEY=VALUE</span>
+							</button>
+						) : null}
+						{values.length === 1 ? (
+							<button
+								type="button"
+								onClick={handleShare}
+								title="Copy console link"
+								className="flex items-center gap-1.5 px-3 py-1.5 text-xs bg-white/5 border border-white/10 rounded-lg hover:bg-white/10 transition-colors text-gray-300"
+							>
+								{shareCopied ? <Check className="w-3 h-3 text-emerald-400" /> : <Share2 className="w-3 h-3 text-blue-400" />}
+								<span>{shareCopied ? "Copied" : "Share"}</span>
 							</button>
 						) : null}
 						<button

@@ -1,11 +1,10 @@
 import { useEffect, useState } from "react";
-import { Copy, CopyPlus, Eye, Pencil, Clock, Key as KeyIcon, Settings, Loader2, ExternalLink, Trash2, Layers2, X, Plus, Tag, PanelRightClose } from "lucide-react";
+import { Check, Copy, CopyPlus, Eye, Pencil, Clock, Key as KeyIcon, Settings, Loader2, ExternalLink, Trash2, Layers2, X, Plus, Share2, Tag, PanelRightClose } from "lucide-react";
 
 import { api } from "../rpc";
 import type { ProfileSummary, Project, Secret } from "../../shared/models";
+import { secretConsoleUrl } from "../console";
 import { planKeepLatestVersionOnly } from "../secret-versions";
-
-const SECRET_MANAGER_REGION = "fr-par";
 
 export type ValueEntry = { secretId: string; name: string; value: string };
 
@@ -130,6 +129,7 @@ function SingleSecretDetail({
 	const [deletingSecret, setDeletingSecret] = useState(false);
 	const [deleteSecretError, setDeleteSecretError] = useState<string | null>(null);
 	const [confirmDeleteSecret, setConfirmDeleteSecret] = useState(false);
+	const [shareCopied, setShareCopied] = useState(false);
 
 	const secretId = secret.id;
 	const [prevSecretId, setPrevSecretId] = useState<string>(secretId);
@@ -145,6 +145,7 @@ function SingleSecretDetail({
 		setTagError(null);
 		setDeleteSecretError(null);
 		setConfirmDeleteSecret(false);
+		setShareCopied(false);
 	}
 
 	async function handleViewValue() {
@@ -274,8 +275,13 @@ function SingleSecretDetail({
 	}
 
 	function handleManageSecret() {
-		const url = `https://console.scaleway.com/secret-manager/secrets/${SECRET_MANAGER_REGION}/${secret.id}/overview`;
-		void api.openExternal({ url });
+		void api.openExternal({ url: secretConsoleUrl(secret.id) });
+	}
+
+	function handleShareSecret() {
+		void navigator.clipboard.writeText(secretConsoleUrl(secret.id));
+		setShareCopied(true);
+		setTimeout(() => setShareCopied(false), 2000);
 	}
 
 	const isReady = secret.status === "ready";
@@ -662,6 +668,19 @@ function SingleSecretDetail({
 							) : null}
 						</>
 					) : null}
+
+					<button
+						type="button"
+						onClick={handleShareSecret}
+						className="w-full flex items-center gap-3 px-4 py-3 bg-white/5 border border-white/10 rounded-lg hover:bg-white/10 transition-colors text-sm"
+					>
+						{shareCopied ? (
+							<Check className="w-4 h-4 text-emerald-400" />
+						) : (
+							<Share2 className="w-4 h-4 text-blue-400" />
+						)}
+						<span>{shareCopied ? "Link Copied" : "Share Secret"}</span>
+					</button>
 
 					<button
 						type="button"
