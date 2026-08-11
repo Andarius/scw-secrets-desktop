@@ -355,8 +355,15 @@ function SingleSecretDetail({
 						<div className="text-xs text-gray-400 uppercase tracking-wider mb-1.5">
 							Path
 						</div>
-						<div className="text-sm text-gray-300 font-mono">
-							{secret.path}
+						<div className="flex items-center gap-2">
+							<div className="text-sm text-gray-300 font-mono break-words">
+								{secret.path === "/"
+									? "/"
+									: secret.path.split("/").filter(Boolean).map((segment, i) => (
+											<span key={i}>/{segment}<wbr /></span>
+										))}
+							</div>
+							<CopyButton text={secret.path} />
 						</div>
 					</div>
 
@@ -870,7 +877,7 @@ function MultiSecretDetail({
 						>
 							<div className="min-w-0">
 								<div className="text-sm text-white truncate">{secret.name}</div>
-								<div className="text-xs text-gray-500 font-mono">{secret.path}</div>
+								<div className="text-xs text-gray-500 font-mono truncate" title={secret.path}>{secret.path}</div>
 							</div>
 							<div className="text-xs text-gray-500">{secret.version_count} versions</div>
 						</div>
