@@ -8,7 +8,7 @@
 	"desktop": {
 		"app": {
 			"name": "Scw Secrets",
-			"identifier": "dev.julien.scw-secrets",
+			"identifier": "io.github.andarius.scw-secrets",
 			"icons": {
 				"linux": "./icon.png",
 				"macos": "./icon.png"
