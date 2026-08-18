@@ -39,7 +39,7 @@ export function Header({
 	onOpenSettings,
 }: HeaderProps) {
 	return (
-		<header className="border-b border-white/10 bg-black/40 backdrop-blur-sm">
+		<header className="relative z-40 border-b border-white/10 bg-black/40 backdrop-blur-sm">
 			<div className="px-6 py-3 flex items-center gap-4">
 				<div className="flex items-center gap-2 shrink-0">
 					<Lock className="w-4 h-4 text-cyan-400" />
