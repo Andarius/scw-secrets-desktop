@@ -1,6 +1,6 @@
 {
 	"name": "scw-secrets-desktop",
-	"version": "0.8.0",
+	"version": "0.8.1",
 	"exports": "./src/deno/main.ts",
 	"unstable": [
 		"raw-imports"
