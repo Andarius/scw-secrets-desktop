@@ -176,9 +176,15 @@ jobs:
       - name: Build desktop dir bundle
         run: bun run build && deno task embed && deno task bundle:dir
 
+      - name: Install snapcraft
+        run: sudo snap install snapcraft --classic
+
       - name: Build snap
-        uses: snapcore/action-build@3bdaa03e1ba6bf59a65f84a751d943d549a54e79 # v1.3.0
         id: snapcraft
+        # destructive mode: base core24 matches the ubuntu-24.04 runner, no LXD needed
+        run: |
+          snapcraft pack --destructive-mode --verbosity=error
+          echo "snap=$(ls scw-secrets_*.snap)" >> "${GITHUB_OUTPUT}"
 
       - name: Upload snap to release
         env:
