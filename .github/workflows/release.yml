@@ -176,14 +176,11 @@ jobs:
       - name: Build desktop dir bundle
         run: bun run build && deno task embed && deno task bundle:dir
 
-      - name: Install snapcraft
-        run: sudo snap install snapcraft --classic
-
       - name: Build snap
         id: snapcraft
-        # destructive mode: base core24 matches the ubuntu-24.04 runner, no LXD needed
+        # official snapcraft OCI image — the docs-recommended CI path (snapcore/action-build is unmaintained, node20)
         run: |
-          snapcraft pack --destructive-mode --verbosity=error
+          docker run --rm -v "${PWD}:/project" ghcr.io/canonical/snapcraft:8_core24 pack
           echo "snap=$(ls scw-secrets_*.snap)" >> "${GITHUB_OUTPUT}"
 
       - name: Upload snap to release
