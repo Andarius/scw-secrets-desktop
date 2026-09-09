@@ -23,4 +23,5 @@ fi
 
 snap_file="$(ls "${tmp}"/*.snap | head -n1)"
 echo "Installing ${snap_file}..."
+pkill -f '/snap/scw-secrets/' || true
 sudo snap install --dangerous --classic "${snap_file}"

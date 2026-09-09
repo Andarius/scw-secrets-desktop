@@ -112,7 +112,8 @@ snap-build: bundle-dir
 # Install the locally-built .snap (classic confinement, unsigned)
 [group('snap')]
 snap-install:
-    sudo snap install --dangerous --classic scw-secrets_*.snap
+    -pkill -f '/snap/scw-secrets/'
+    sudo snap install --dangerous --classic "scw-secrets_$(jq -r .version package.json)_amd64.snap"
 
 # Download and install the latest GitHub release .snap (or pass tag as arg)
 [group('snap')]

@@ -10,3 +10,9 @@ videos/
 artifacts/
 *.snap
 .scratch/
+
+# snapcraft build dirs
+parts/
+stage/
+prime/
+.craft/
