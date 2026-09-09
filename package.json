@@ -5,9 +5,9 @@
 	"private": true,
 	"scripts": {
 		"build": "vite build && deno task embed",
-		"start": "vite build && deno task dev",
-		"dev": "vite build && deno task dev",
-		"dev:hmr": "concurrently \"bun run hmr\" \"deno task serve\"",
+		"start": "bun run build && deno task dev",
+		"dev": "bun run build && deno task dev",
+		"dev:hmr": "bun run build && concurrently \"bun run hmr\" \"deno task serve\"",
 		"hmr": "vite --port 5181",
 		"mock": "VITE_MOCK=1 vite --port 5199",
 		"mock:e2e": "VITE_MOCK=1 vite --host 127.0.0.1 --port 5199",
