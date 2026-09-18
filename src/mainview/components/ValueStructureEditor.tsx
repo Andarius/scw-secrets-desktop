@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Check, ChevronDown, ChevronRight, Plus, Search, Trash2, X } from "lucide-react";
+import { ValueRenderBoundary } from "./ValueViewer";
 
 import {
 	applyStructOp,
@@ -275,6 +276,10 @@ function AddSectionRow({ onAdd }: { onAdd: (title: string) => void }) {
 // Design D: structured tree editor — sections as collapsible groups, typed leaves,
 // array chips, add/remove keys/sections, key filter. Mutations flow through applyStructOp.
 export function ValueStructureEditor({ value, onChange }: { value: string; onChange: (value: string) => void }) {
+	return <ValueRenderBoundary value={value}><ValueStructureEditorContent value={value} onChange={onChange} /></ValueRenderBoundary>;
+}
+
+function ValueStructureEditorContent({ value, onChange }: { value: string; onChange: (value: string) => void }) {
 	const groups = useMemo(() => buildStructure(value), [value]);
 	const format = useMemo(() => detectFormat(value), [value]);
 	const [collapsed, setCollapsed] = useState<Set<string>>(new Set());

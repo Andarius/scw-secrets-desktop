@@ -17,7 +17,7 @@ export default defineConfig({
 		strictPort: true,
 		// deno backend (deno task serve)
 		proxy: {
-			"/api": "http://127.0.0.1:8790",
+			"/api": { target: "http://127.0.0.1:8790", changeOrigin: false },
 		},
 	},
 });

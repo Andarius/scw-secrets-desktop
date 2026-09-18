@@ -71,6 +71,11 @@ bun run dev:hmr      # Vite dev server (port 5181) + headless deno backend (port
 bun run mock         # Browser preview with mock data (port 5199)
 ```
 
+Headless/HMR startup prints an authenticated launch URL containing `#token=...`; open
+that URL for the corresponding port. Treat it as a credential and do not share it.
+Each backend restart issues a new token. The desktop window authenticates automatically.
+Production assets are embedded at build time; rebuild and restart to update them.
+
 ## Testing
 
 ```bash

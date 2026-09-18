@@ -25,7 +25,7 @@
         "npm:postcss@^8.4.49",
         "npm:react-dom@^18.3.1",
         "npm:react@^18.3.1",
-        "npm:smol-toml@^1.7.0",
+        "npm:smol-toml@^1.7.1",
         "npm:tailwindcss@^3.4.16",
         "npm:typescript@^5.7.2",
         "npm:vite@^6.0.3"

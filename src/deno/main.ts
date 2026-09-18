@@ -1,10 +1,10 @@
 // Deno-desktop entrypoint. `deno desktop src/deno/main.ts` (Deno 2.9+) opens a native
 // window pointed at this in-process HTTP server. `deno task serve` runs it headless
 // (open http://localhost:8790 in a browser).
-import { APP_ROOT, HOST, PORT, WINDOW_FILE } from "./config.ts";
+import { HOST, PORT, WINDOW_FILE } from "./config.ts";
 import { ASSETS } from "./embed.ts";
 import { attachWindowLifecycle, type Geometry } from "./window.ts";
-import type { ApiMethod, ApiRequests } from "../shared/rpc.ts";
+import { createHttpHandler, externalCommand, type Handlers } from "./http.ts";
 import {
 	accessSecretVersion,
 	clearHttpLogs,
@@ -25,34 +25,13 @@ import {
 	updateSecret,
 } from "./scw.ts";
 
-// Loopback = the app itself (vite dev proxies /api); an attacker page keeps its own
-// public origin even when it rebinds DNS to 127.0.0.1.
-const LOOPBACK_ORIGIN = /^https?:\/\/(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$/;
-
-function isCrossSite(req: Request): boolean {
-	const site = req.headers.get("sec-fetch-site");
-	if (site && site !== "same-origin" && site !== "none") return true;
-	const origin = req.headers.get("origin");
-	return Boolean(origin) && !LOOPBACK_ORIGIN.test(origin!);
-}
-
 function openExternal(url: string): void {
-	if (!/^https?:\/\//.test(url)) {
-		throw new Error("only http(s) URLs can be opened");
-	}
-	const [cmd, ...args] = Deno.build.os === "darwin"
-		? ["open", url]
-		: Deno.build.os === "windows"
-		? ["cmd", "/c", "start", "", url]
-		: ["xdg-open", url];
-	new Deno.Command(cmd, { args, stdout: "null", stderr: "null" }).spawn().unref();
+	const [cmd, args] = externalCommand(url, Deno.build.os);
+	const executable = Deno.build.os === "windows"
+		? `${Deno.env.get("SystemRoot") ?? "C:\\Windows"}\\System32\\${cmd}`
+		: `/usr/bin/${cmd}`;
+	new Deno.Command(executable, { args, stdout: "null", stderr: "null" }).spawn().unref();
 }
-
-type Handlers = {
-	[K in ApiMethod]: (
-		params: ApiRequests[K]["params"],
-	) => Promise<ApiRequests[K]["response"]> | ApiRequests[K]["response"];
-};
 
 const handlers: Handlers = {
 	getProfiles: () => getProfiles(),
@@ -111,14 +90,6 @@ const handlers: Handlers = {
 	},
 };
 
-const json = (data: unknown, status = 200) =>
-	new Response(JSON.stringify(data), {
-		status,
-		headers: { "content-type": "application/json" },
-	});
-
-const WEB_DIST = `${APP_ROOT}/dist`;
-
 const CONTENT_TYPES: Record<string, string> = {
 	js: "text/javascript",
 	css: "text/css",
@@ -141,58 +112,13 @@ async function serveStatic(pathname: string): Promise<Response> {
 			? "public, max-age=31536000, immutable"
 			: "no-cache",
 	};
-	try {
-		// dev: read from disk so `bun run build` refreshes live
-		const body = await Deno.readFile(`${WEB_DIST}/${p}`);
-		return new Response(body, { headers });
-	} catch {
-		// bundled installs: assets embedded in the compile VFS
-		const embedded = ASSETS[p];
-		if (embedded) return new Response(new Uint8Array(embedded), { headers });
-		// a missing asset must 404 — an HTML body here makes dynamic import() fail with a MIME error
-		if (p.startsWith("assets/")) {
-			return new Response("not found", { status: 404 });
-		}
-		return new Response(
-			`<h1>Scw Secrets</h1><p>Frontend not built — run <code>bun run build</code>.</p>`,
-			{ headers: { "content-type": "text/html" } },
-		);
-	}
+	const embedded = Object.hasOwn(ASSETS, p) ? ASSETS[p] : undefined;
+	if (embedded) return new Response(new Uint8Array(embedded), { headers });
+	return new Response("not found", { status: 404 });
 }
 
-async function serveHandler(req: Request): Promise<Response> {
-	const { pathname } = new URL(req.url);
-
-	if (!pathname.startsWith("/api/")) {
-		return req.method === "GET" ? serveStatic(pathname) : json({ error: "method not allowed" }, 405);
-	}
-
-	if (isCrossSite(req)) {
-		return json({ error: "cross-site requests are not allowed" }, 403);
-	}
-	if (req.method !== "POST") {
-		return json({ error: "method not allowed" }, 405);
-	}
-
-	const method = pathname.slice("/api/".length);
-	if (!Object.hasOwn(handlers, method)) {
-		return json({ error: "not found" }, 404);
-	}
-	const fn = handlers[method as ApiMethod] as (params: unknown) => unknown;
-
-	let params: unknown = {};
-	try {
-		params = await req.json();
-	} catch {
-		// empty body — keep {}
-	}
-
-	try {
-		return json(await fn(params));
-	} catch (err) {
-		return json({ error: err instanceof Error ? err.message : String(err) }, 500);
-	}
-}
+const sessionToken = crypto.randomUUID();
+const serveHandler = createHttpHandler(handlers, serveStatic, sessionToken);
 
 // `Deno.BrowserWindow` only exists under the `deno desktop` runtime — the env var
 // alternative fails in bundles, where compile-time env doesn't reach the binary.
@@ -205,12 +131,16 @@ const BW = (Deno as any).BrowserWindow;
 let server: Deno.HttpServer<Deno.NetAddr>;
 if (BW) {
 	console.log("Scw Secrets (desktop)");
-	server = Deno.serve(serveHandler);
+	server = Deno.serve({ hostname: "127.0.0.1" }, serveHandler);
 } else {
-	console.log(`Scw Secrets → http://localhost:${PORT}`);
+	console.log(`Scw Secrets → http://localhost:${PORT}/#token=${sessionToken}`);
+	console.log(`HMR frontend → http://localhost:5181/#token=${sessionToken}`);
 	server = Deno.serve({ port: PORT, hostname: HOST }, serveHandler);
 }
-void server;
+if (!["127.0.0.1", "::1"].includes(server.addr.hostname)) {
+	await server.shutdown();
+	throw new Error("Secret server must bind to loopback");
+}
 
 // Desktop window: adopt the auto-opened window, restore saved geometry, persist on
 // change, and quit when it's closed.
@@ -231,6 +161,7 @@ if (BW) {
 		x: saved.x,
 		y: saved.y,
 	});
+	win.navigate(`http://127.0.0.1:${server.addr.port}/index.html#token=${sessionToken}`);
 	attachWindowLifecycle(win, {
 		title: TITLE,
 		defaultSize: DEFAULT_SIZE,

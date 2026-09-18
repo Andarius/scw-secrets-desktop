@@ -28,7 +28,7 @@ if (!files.includes("index.html")) {
 const imports: string[] = [];
 const entries: string[] = [];
 files.sort().forEach((f, i) => {
-	imports.push(`import a${i} from "../../dist/${f}" with { type: "bytes" };`);
+	imports.push(`import a${i} from ${JSON.stringify(`../../dist/${f}`)} with { type: "bytes" };`);
 	entries.push(`\t${JSON.stringify(f)}: a${i},`);
 });
 

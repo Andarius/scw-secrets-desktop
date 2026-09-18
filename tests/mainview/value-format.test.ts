@@ -305,6 +305,33 @@ describe("jsonToToml", () => {
 });
 
 describe("tomlToJson", () => {
+	test.each([
+		'__proto__.scwPolluted = "yes"\nx=1\nx=2',
+		'[__proto__]\nscwPolluted = "yes"\nx=1\nx=2',
+		'[[__proto__]]\nscwPolluted = "yes"\nx=1\nx=2',
+		'[constructor.prototype]\nscwPolluted = "yes"\nx=1\nx=2',
+	])("preserves prototype-like keys without pollution: %s", (value) => {
+		const parsed = tomlToJson(value);
+		expect(Object.prototype.hasOwnProperty.call(Object.prototype, "scwPolluted")).toBe(false);
+		expect(JSON.stringify(parsed)).toContain('"scwPolluted":"yes"');
+	});
+
+	test("malformed inline comments terminate in the patched parser", async () => {
+		const subprocess = Bun.spawn([process.execPath, "-e", 'import {tomlToJson} from "./src/mainview/value-format"; tomlToJson("x = { a = 1 # c"); tomlToJson("x = [1 # c");'], { stdout: "ignore", stderr: "pipe" });
+		const timeout = setTimeout(() => subprocess.kill(), 2000);
+		try {
+			expect(await subprocess.exited).toBe(0);
+		} finally {
+			clearTimeout(timeout);
+		}
+	});
+
+	test.each([
+		`${"a.".repeat(2000)}a = 1`,
+		`x = ${"[".repeat(2000)}1${"]".repeat(2000)}`,
+	])("bounds deeply nested TOML conversion: %.30s", (value) => {
+		expect(JSON.stringify(tomlToJson(value))).toContain("Nesting limit reached");
+	});
 	test("parses sections, scalars, and arrays", () => {
 		expect(
 			tomlToJson('# c\nname = "app"\n\n[db]\nhost = "x" # main\nport = 5432\nssl = true\nreplicas = ["a", \'b\']\n'),
@@ -344,6 +371,9 @@ describe("tomlToJson", () => {
 });
 
 describe("envToJson", () => {
+	test("preserves a literal prototype key", () => {
+		expect(JSON.stringify(envToJson("__proto__=literal"))).toBe('{"__proto__":"literal"}');
+	});
 	test("maps lines to string values", () => {
 		expect(envToJson(ENV_SAMPLE)).toEqual({
 			DATABASE_URL: "postgres://x",

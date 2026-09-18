@@ -1,6 +1,7 @@
 import { decodeBase64, encodeBase64 } from "@std/encoding/base64";
 
 import { HOME_DIR } from "./config.ts";
+import { REVISION_PATTERN, UUID_PATTERN } from "../shared/validation.ts";
 import type {
 	HttpLog,
 	ProfileSummary,
@@ -110,7 +111,7 @@ function readActiveProfile(configText: string): string | null {
 }
 
 function parseProfiles(configText: string): Record<string, LoadedProfile> {
-	const profiles: Record<string, LoadedProfile> = {};
+	const profiles: Record<string, LoadedProfile> = Object.create(null);
 	let inProfiles = false;
 	let currentProfile: string | null = null;
 
@@ -313,6 +314,7 @@ async function apiRequest<T>(
 	const start = performance.now();
 	const response = await fetch(url, {
 		method,
+		redirect: "error",
 		headers,
 		body: body !== undefined ? JSON.stringify(body) : undefined,
 	});
@@ -342,6 +344,7 @@ async function apiDelete(
 	const start = performance.now();
 	const response = await fetch(url, {
 		method: "DELETE",
+		redirect: "error",
 		headers: { "X-Auth-Token": profile.secretKey },
 	});
 	const durationMs = performance.now() - start;
@@ -386,6 +389,13 @@ async function apiGetAllPages<TResponse extends { total_count: number }, TItem>(
 }
 
 function secretManagerPath(...parts: string[]): string {
+	if (
+		parts.some((part) => typeof part !== "string" || !/^[a-zA-Z0-9_-]+$/.test(part)) ||
+		(parts.length > 1 && !UUID_PATTERN.test(parts[1])) ||
+		(parts.length > 3 && !REVISION_PATTERN.test(parts[3]))
+	) {
+		throw new Error("invalid Secret Manager path segment");
+	}
 	return [
 		"/secret-manager/v1beta1/regions",
 		SECRET_MANAGER_REGION,
@@ -516,7 +526,7 @@ export async function getActiveVersionCounts(
 	profileName?: string,
 	projectId?: string,
 ): Promise<{ counts: Record<string, number>; failed: string[] }> {
-	const counts: Record<string, number> = {};
+	const counts: Record<string, number> = Object.create(null);
 	const failed: string[] = [];
 
 	await mapConcurrent(
@@ -535,7 +545,7 @@ export async function prefetchSecretValues(
 	profileName?: string,
 	projectId?: string,
 ): Promise<{ values: Record<string, string>; failed: string[] }> {
-	const values: Record<string, string> = {};
+	const values: Record<string, string> = Object.create(null);
 	const failed: string[] = [];
 
 	await mapConcurrent(
