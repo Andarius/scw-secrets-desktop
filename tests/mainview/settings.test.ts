@@ -2,14 +2,14 @@ import { afterEach, describe, expect, test } from "bun:test";
 
 // Minimal localStorage polyfill for Bun test environment
 const store = new Map<string, string>();
-globalThis.localStorage = {
+Object.defineProperty(globalThis, "localStorage", { configurable: true, value: {
 	getItem: (key: string) => store.get(key) ?? null,
 	setItem: (key: string, value: string) => { store.set(key, value); },
 	removeItem: (key: string) => { store.delete(key); },
 	clear: () => { store.clear(); },
 	get length() { return store.size; },
 	key: (index: number) => [...store.keys()][index] ?? null,
-} as Storage;
+} as Storage });
 
 // Import after localStorage is available
 const { loadSettings, saveSettings } = await import("../../src/mainview/settings");
