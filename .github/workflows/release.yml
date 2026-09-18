@@ -33,9 +33,12 @@ jobs:
       - name: Resolve release tag
         id: tag
         shell: bash
+        env:
+          INPUT_TAG: ${{ inputs.tag }}
         run: |
+          set -euo pipefail
           if [[ "${GITHUB_EVENT_NAME}" == "workflow_dispatch" ]]; then
-            tag="${{ inputs.tag }}"
+            tag="${INPUT_TAG}"
             tag="${tag#refs/tags/}"
             if [[ "${tag}" != v* ]]; then
               tag="v${tag}"
@@ -44,8 +47,8 @@ jobs:
             tag="${GITHUB_REF_NAME}"
           fi
 
-          if [[ -z "${tag}" ]]; then
-            echo "Release tag is required" >&2
+          if [[ ! "${tag}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?(\+[0-9A-Za-z.-]+)?$ ]]; then
+            echo "Release tag must be a version such as v1.2.3" >&2
             exit 1
           fi
 
@@ -54,7 +57,9 @@ jobs:
           echo "value=${tag}" >> "${GITHUB_OUTPUT}"
 
       - name: Checkout release tag
-        run: git checkout "${{ steps.tag.outputs.value }}"
+        env:
+          RELEASE_TAG: ${{ steps.tag.outputs.value }}
+        run: git checkout --detach "refs/tags/${RELEASE_TAG}"
 
       - name: Verify tag matches package version
         env:
@@ -187,7 +192,8 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
-        run: gh release upload "${RELEASE_TAG}" "${{ steps.snapcraft.outputs.snap }}" --repo "${GH_REPO}" --clobber
+          SNAP_FILE: ${{ steps.snapcraft.outputs.snap }}
+        run: gh release upload "${RELEASE_TAG}" "${SNAP_FILE}" --repo "${GH_REPO}" --clobber
 
   publish:
     needs:

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Check, Copy, Eye, Loader2, Pencil, Save, Share2, X } from "lucide-react";
 
 import { api } from "../rpc";
+import { copySecret } from "../clipboard";
 import { secretConsoleUrl } from "../console";
 import { planKeepLatestVersionOnly } from "../secret-versions";
 import { HighlightedTextarea } from "./HighlightedTextarea";
@@ -46,13 +47,16 @@ type ValueViewProps = {
 };
 
 function CopyButton({ text }: { text: string }) {
+	const [failed, setFailed] = useState(false);
 	return (
 		<button
 			type="button"
-			onClick={() => navigator.clipboard.writeText(text)}
+			onClick={() => { void copySecret(text).then(() => setFailed(false), () => setFailed(true)); }}
+			title={failed ? "Copy failed" : "Copy value (clears after 45 seconds when clipboard access is available)"}
 			className="p-1.5 hover:bg-white/10 rounded transition-colors flex-shrink-0"
 		>
 			<Copy className="w-3.5 h-3.5 text-gray-400" />
+			{failed ? <span className="text-xs text-red-300">Copy failed</span> : null}
 		</button>
 	);
 }
@@ -199,6 +203,7 @@ function ReadOnlyEntry({ entry }: { entry: ValueEntry }) {
 
 export function ValueView({ title, values, profile, projectId, autoKeepLatest, onClose, onSaved }: ValueViewProps) {
 	const [editing, setEditing] = useState(false);
+	const [copyFailed, setCopyFailed] = useState(false);
 	const [shareCopied, setShareCopied] = useState(false);
 
 	function handleShare() {
@@ -234,12 +239,12 @@ export function ValueView({ title, values, profile, projectId, autoKeepLatest, o
 								type="button"
 								onClick={() => {
 									const text = values.map((v) => `${v.name}=${v.value}`).join("\n");
-									navigator.clipboard.writeText(text);
+									void copySecret(text).then(() => setCopyFailed(false), () => setCopyFailed(true));
 								}}
 								className="flex items-center gap-1.5 px-3 py-1.5 text-xs bg-white/5 border border-white/10 rounded-lg hover:bg-white/10 transition-colors"
 							>
 								<Copy className="w-3 h-3 text-cyan-400" />
-								<span>Copy All as KEY=VALUE</span>
+								<span>{copyFailed ? "Copy failed" : "Copy All as KEY=VALUE"}</span>
 							</button>
 						) : null}
 						{values.length === 1 ? (

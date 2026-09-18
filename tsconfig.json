@@ -17,5 +17,5 @@
 		"noFallthroughCasesInSwitch": true
 	},
 	"include": ["src", "tests", "src/types/**/*.d.ts"],
-	"exclude": ["node_modules", "dist", "build", "src/deno"]
+	"exclude": ["node_modules", "dist", "build", "src/deno", "tests/deno/*.deno.ts"]
 }

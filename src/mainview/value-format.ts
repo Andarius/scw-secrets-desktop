@@ -3,6 +3,20 @@ import { parse as parseTomlStrict } from "smol-toml";
 export type ValueFormat = "json" | "toml" | "env" | "plain";
 export type EmbeddedFormat = "json" | "toml" | null;
 
+export const MAX_VALUE_DEPTH = 64;
+const NESTING_LIMIT = "[Nesting limit reached; use Raw view]";
+
+function withinDepthLimit(root: unknown): boolean {
+	const pending: [unknown, number][] = [[root, 0]];
+	while (pending.length) {
+		const [node, depth] = pending.pop()!;
+		if (node === null || typeof node !== "object") continue;
+		if (depth >= MAX_VALUE_DEPTH) return false;
+		for (const child of Object.values(node)) pending.push([child, depth + 1]);
+	}
+	return true;
+}
+
 export type Token = {
 	type: "comment" | "section" | "key" | "punct" | "string" | "number" | "bool" | "text";
 	text: string;
@@ -15,7 +29,8 @@ export function parseJsonContainer(value: string): unknown | undefined {
 		return undefined;
 	}
 	try {
-		return JSON.parse(trimmed) as unknown;
+		const parsed: unknown = JSON.parse(trimmed);
+		return withinDepthLimit(parsed) ? parsed : undefined;
 	} catch {
 		return undefined;
 	}
@@ -208,14 +223,15 @@ export type FlatRow = {
 };
 
 // Dot-path rows for the table view; embedded JSON strings flatten in place.
-export function flattenJson(node: unknown, prefix = ""): FlatRow[] {
+export function flattenJson(node: unknown, prefix = "", depth = 0): FlatRow[] {
+	if (depth >= MAX_VALUE_DEPTH) return [{ key: prefix, value: NESTING_LIMIT, kind: "string" }];
 	if (node === null || node === undefined) {
 		return [{ key: prefix, value: "null", kind: "null" }];
 	}
 	if (typeof node === "string") {
 		const embedded = parseJsonContainer(node);
 		if (embedded !== undefined) {
-			return flattenJson(embedded, prefix);
+			return flattenJson(embedded, prefix, depth + 1);
 		}
 		if (node.includes("\n") && looksLikeToml(node)) {
 			return flattenToml(node).map((row) => ({ ...row, key: `${prefix}.${row.key}` }));
@@ -232,13 +248,13 @@ export function flattenJson(node: unknown, prefix = ""): FlatRow[] {
 		if (node.length === 0) {
 			return [{ key: prefix, value: "[]", kind: "null" }];
 		}
-		return node.flatMap((item, i) => flattenJson(item, `${prefix}[${i}]`));
+		return node.flatMap((item, i) => flattenJson(item, `${prefix}[${i}]`, depth + 1));
 	}
 	const entries = Object.entries(node as Record<string, unknown>);
 	if (entries.length === 0) {
 		return [{ key: prefix, value: "{}", kind: "null" }];
 	}
-	return entries.flatMap(([key, item]) => flattenJson(item, prefix ? `${prefix}.${key}` : key));
+	return entries.flatMap(([key, item]) => flattenJson(item, prefix ? `${prefix}.${key}` : key, depth + 1));
 }
 
 function scalarKind(rhs: string): FlatRow["kind"] {
@@ -287,6 +303,7 @@ export type PathSeg = string | number | { embedded: "json" | "toml" };
 export type EditableRow = FlatRow & { path: PathSeg[] };
 
 function flattenJsonEditable(node: unknown, prefix: string, path: PathSeg[]): EditableRow[] {
+	if (path.length >= MAX_VALUE_DEPTH) throw new RangeError("Value nesting is too deep for structured editing");
 	if (node === null || node === undefined) {
 		return [{ key: prefix, value: "null", kind: "null", path }];
 	}
@@ -617,6 +634,7 @@ function buildJsonStructure(
 	basePath: PathSeg[],
 	out: StructureGroup[],
 ): void {
+	if (basePath.length >= MAX_VALUE_DEPTH) throw new RangeError("Value nesting is too deep for structured editing");
 	const group: StructureGroup = { title, path: basePath, leaves: [] };
 	out.push(group);
 	const nested: (() => void)[] = [];
@@ -826,7 +844,8 @@ function tomlKey(key: string): string {
 	return /^[A-Za-z0-9_-]+$/.test(key) ? key : JSON.stringify(key);
 }
 
-function tomlScalar(value: unknown): string {
+function tomlScalar(value: unknown, depth = 0): string {
+	if (depth >= MAX_VALUE_DEPTH) return JSON.stringify(NESTING_LIMIT);
 	if (typeof value === "string") {
 		if (value.includes("\n") && !value.includes('"""')) {
 			return `"""\n${value.replace(/\\/g, "\\\\")}\n"""`;
@@ -834,7 +853,7 @@ function tomlScalar(value: unknown): string {
 		return JSON.stringify(value);
 	}
 	if (typeof value === "number" || typeof value === "boolean") return String(value);
-	if (Array.isArray(value)) return `[${value.map(tomlScalar).join(", ")}]`;
+	if (Array.isArray(value)) return `[${value.map((item) => tomlScalar(item, depth + 1)).join(", ")}]`;
 	return '""'; // TOML has no null
 }
 
@@ -861,7 +880,11 @@ function prefixTomlText(text: string, prefix: string, out: string[]): void {
 	}
 }
 
-function emitToml(obj: Record<string, unknown>, prefix: string, out: string[]): void {
+function emitToml(obj: Record<string, unknown>, prefix: string, out: string[], depth = 0): void {
+	if (depth >= MAX_VALUE_DEPTH) {
+		out.push(`# ${NESTING_LIMIT}`);
+		return;
+	}
 	const scalars: [string, unknown][] = [];
 	const sections: [string, Record<string, unknown>][] = [];
 	const tomlBlobs: [string, string][] = [];
@@ -894,7 +917,7 @@ function emitToml(obj: Record<string, unknown>, prefix: string, out: string[]): 
 	for (const [key, value] of sections) {
 		const path = prefix ? `${prefix}.${tomlKey(key)}` : tomlKey(key);
 		out.push("", `[${path}]`);
-		emitToml(value, path, out);
+		emitToml(value, path, out, depth + 1);
 	}
 	for (const [key, blob] of tomlBlobs) {
 		prefixTomlText(blob, prefix ? `${prefix}.${tomlKey(key)}` : tomlKey(key), out);
@@ -903,7 +926,7 @@ function emitToml(obj: Record<string, unknown>, prefix: string, out: string[]): 
 		const path = prefix ? `${prefix}.${tomlKey(key)}` : tomlKey(key);
 		for (const item of items) {
 			out.push("", `[[${path}]]`);
-			emitToml(item, path, out);
+			emitToml(item, path, out, depth + 1);
 		}
 	}
 }
@@ -942,7 +965,8 @@ function splitTopLevel(text: string): string[] {
 	return parts;
 }
 
-function parseTomlScalar(rhs: string): unknown {
+function parseTomlScalar(rhs: string, depth = 0): unknown {
+	if (depth >= MAX_VALUE_DEPTH) return NESTING_LIMIT;
 	const t = rhs.trim();
 	if (t.startsWith('"')) {
 		try {
@@ -956,7 +980,7 @@ function parseTomlScalar(rhs: string): unknown {
 	if (t === "false") return false;
 	if (/^[+-]?\d[\d_]*(\.[\d_]+)?([eE][+-]?\d+)?$/.test(t)) return Number(t.replace(/_/g, ""));
 	if (t.startsWith("[") && t.endsWith("]")) {
-		return splitTopLevel(t.slice(1, -1)).map(parseTomlScalar);
+		return splitTopLevel(t.slice(1, -1)).map((item) => parseTomlScalar(item, depth + 1));
 	}
 	return t; // dates, inline tables, anything exotic — keep as text
 }
@@ -970,7 +994,7 @@ function ensurePath(obj: Record<string, unknown>, segs: string[]): Record<string
 			continue;
 		}
 		if (!isPlainObject(existing)) {
-			current[seg] = {};
+			current[seg] = Object.create(null);
 		}
 		current = current[seg] as Record<string, unknown>;
 	}
@@ -981,11 +1005,12 @@ function parseKeySegs(key: string): string[] {
 	return key.split(".").map((seg) => unquote(seg.trim()));
 }
 
-function normalizeTomlValue(value: unknown): unknown {
+function normalizeTomlValue(value: unknown, depth = 0): unknown {
+	if (depth >= MAX_VALUE_DEPTH) return NESTING_LIMIT;
 	if (value instanceof Date) return value.toISOString();
-	if (Array.isArray(value)) return value.map(normalizeTomlValue);
+	if (Array.isArray(value)) return value.map((item) => normalizeTomlValue(item, depth + 1));
 	if (isPlainObject(value)) {
-		return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, normalizeTomlValue(item)]));
+		return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, normalizeTomlValue(item, depth + 1)]));
 	}
 	return value;
 }
@@ -995,14 +1020,14 @@ function normalizeTomlValue(value: unknown): unknown {
 // covers toml-ish content the strict parser rejects.
 export function tomlToJson(text: string): Record<string, unknown> {
 	try {
-		return normalizeTomlValue(parseTomlStrict(text)) as Record<string, unknown>;
+		return normalizeTomlValue(parseTomlStrict(text, { maxDepth: MAX_VALUE_DEPTH })) as Record<string, unknown>;
 	} catch {
-		return tomlToJsonFallback(text);
+		return normalizeTomlValue(tomlToJsonFallback(text)) as Record<string, unknown>;
 	}
 }
 
 function tomlToJsonFallback(text: string): Record<string, unknown> {
-	const root: Record<string, unknown> = {};
+	const root: Record<string, unknown> = Object.create(null);
 	let current = root;
 	for (const raw of text.split(/\r?\n/)) {
 		const line = raw.trim();
@@ -1013,7 +1038,7 @@ function tomlToJsonFallback(text: string): Record<string, unknown> {
 			const parent = ensurePath(root, segs.slice(0, -1));
 			const key = segs[segs.length - 1];
 			if (!Array.isArray(parent[key])) parent[key] = [];
-			const item: Record<string, unknown> = {};
+			const item: Record<string, unknown> = Object.create(null);
 			(parent[key] as unknown[]).push(item);
 			current = item;
 			continue;
@@ -1034,7 +1059,7 @@ function tomlToJsonFallback(text: string): Record<string, unknown> {
 }
 
 export function envToJson(text: string): Record<string, string> {
-	const result: Record<string, string> = {};
+	const result: Record<string, string> = Object.create(null);
 	for (const row of flattenEnv(text)) {
 		result[row.key] = row.value;
 	}

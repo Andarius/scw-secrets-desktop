@@ -1,4 +1,4 @@
-import { useMemo, useState, type ReactNode } from "react";
+import { Component, useMemo, useState, type ReactNode } from "react";
 import { ChevronDown, ChevronRight } from "lucide-react";
 
 import {
@@ -12,6 +12,7 @@ import {
 	parseJsonContainer,
 	tomlToJson,
 	tokenizeLines,
+	MAX_VALUE_DEPTH,
 	type FlatRow,
 	type Token,
 	type ValueFormat,
@@ -142,6 +143,7 @@ function renderJsonNode(
 	ctx: JsonNodesCtx,
 	trailing: ReactNode = null,
 ): ReactNode {
+	if (indent.length >= MAX_VALUE_DEPTH * 2) return <span>[Nesting limit reached; use Raw view]</span>;
 	if (typeof node === "string") {
 		return renderJsonString(node, indent, path, ctx, trailing);
 	}
@@ -264,7 +266,27 @@ function loadPreferredMode(): ViewMode {
 	return "formatted";
 }
 
+export class ValueRenderBoundary extends Component<{ value: string; children: ReactNode }, { failed: boolean }> {
+	state = { failed: false };
+	static getDerivedStateFromError() {
+		return { failed: true };
+	}
+	componentDidUpdate(previous: { value: string }) {
+		if (this.state.failed && previous.value !== this.props.value) this.setState({ failed: false });
+	}
+	render() {
+		if (this.state.failed) {
+			return <div><p>Structured view unavailable. Raw value:</p><pre className="whitespace-pre-wrap break-all">{this.props.value}</pre></div>;
+		}
+		return this.props.children;
+	}
+}
+
 export function ValueViewer({ value }: { value: string }) {
+	return <ValueRenderBoundary value={value}><ValueViewerContent value={value} /></ValueRenderBoundary>;
+}
+
+function ValueViewerContent({ value }: { value: string }) {
 	const format = useMemo(() => detectFormat(value), [value]);
 	const [mode, setModeState] = useState<ViewMode>(loadPreferredMode);
 	const [expanded, setExpanded] = useState<Set<string>>(new Set());
