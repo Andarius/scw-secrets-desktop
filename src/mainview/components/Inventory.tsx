@@ -311,7 +311,7 @@ export function Inventory({
 					</div>
 				) : (
 					<table className="w-full">
-						<thead className="sticky top-0 bg-black/60 backdrop-blur-sm border-b border-white/10">
+						<thead className="sticky top-0 bg-[#0d0d0d] border-b border-white/10">
 							<tr className="text-left">
 								<th className="px-4 py-3 text-xs font-medium text-gray-400 uppercase tracking-wider">
 									<button
