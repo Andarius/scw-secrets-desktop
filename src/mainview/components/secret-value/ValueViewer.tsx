@@ -2,7 +2,7 @@ import { Component, useMemo, useState, type ReactNode } from "react";
 import { ChevronDown, ChevronRight } from "lucide-react";
 
 import { useStableMinHeight } from "../../hooks/useStableMinHeight";
-import { KeyFilterInput } from "../inputs/KeyFilterInput";
+import { KeyFilterInput, useKeyFilter } from "../inputs/KeyFilterInput";
 import {
 	detectEmbedded,
 	detectFormat,
@@ -234,7 +234,7 @@ function flattenValue(value: string, format: ValueFormat): FlatRow[] {
 const FILTER_MIN_ROWS = 5;
 
 function TableView({ rows }: { rows: FlatRow[] }) {
-	const [filter, setFilter] = useState("");
+	const [filter, setFilter] = useKeyFilter();
 	const query = filter.trim().toLowerCase();
 	const visibleRows = query
 		? rows.filter((row) => row.key.toLowerCase().includes(query) || row.value.toLowerCase().includes(query))

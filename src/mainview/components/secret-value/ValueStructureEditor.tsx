@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Check, ChevronDown, ChevronRight, Plus, Trash2, X } from "lucide-react";
-import { KeyFilterInput } from "../inputs/KeyFilterInput";
+import { KeyFilterInput, useKeyFilter } from "../inputs/KeyFilterInput";
 import { ValueRenderBoundary } from "./ValueViewer";
 
 import {
@@ -284,7 +284,7 @@ function ValueStructureEditorContent({ value, onChange }: { value: string; onCha
 	const groups = useMemo(() => buildStructure(value), [value]);
 	const format = useMemo(() => detectFormat(value), [value]);
 	const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
-	const [filter, setFilter] = useState("");
+	const [filter, setFilter] = useKeyFilter();
 
 	if (!groups || groups.length === 0) {
 		return (

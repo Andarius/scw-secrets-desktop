@@ -18,6 +18,8 @@ import { LogsModal } from "./components/modals/LogsModal";
 import { UpdateBanner } from "./components/layout/UpdateBanner";
 import { useAvailableUpdate } from "./hooks/useAvailableUpdate";
 import { loadSettings, saveSettings, type AppSettings } from "./lib/settings";
+import { activeVersionCount } from "./lib/secret-versions";
+import { useActiveVersionCounts } from "./hooks/useActiveVersionCounts";
 import {
 	filterSecrets,
 	getPathEntries,
@@ -319,12 +321,13 @@ function App() {
 	});
 	const visibleVersionCount = visibleSecrets.reduce((sum, secret) => sum + secret.version_count, 0);
 	const totalVersionCount = secrets.reduce((sum, secret) => sum + secret.version_count, 0);
+	const { activeCounts, loading: loadingActiveCounts } = useActiveVersionCounts(secrets, selectedProfile, selectedProjectId);
 	const visiblePrunableVersionCount = visibleSecrets.reduce(
-		(sum, secret) => sum + Math.max(secret.version_count - 1, 0),
+		(sum, secret) => sum + Math.max(activeVersionCount(secret, activeCounts) - 1, 0),
 		0,
 	);
 	const totalPrunableVersionCount = secrets.reduce(
-		(sum, secret) => sum + Math.max(secret.version_count - 1, 0),
+		(sum, secret) => sum + Math.max(activeVersionCount(secret, activeCounts) - 1, 0),
 		0,
 	);
 
@@ -586,6 +589,8 @@ function App() {
 					<CleanupModal
 						secrets={secrets}
 						storagePricePerVersionEur={STORAGE_PRICE_PER_VERSION_EUR}
+						activeCounts={activeCounts}
+						loading={loadingActiveCounts}
 						profile={selectedProfileSummary?.name}
 						projectId={selectedProject?.id}
 						onClose={() => setCleanupOpen(false)}

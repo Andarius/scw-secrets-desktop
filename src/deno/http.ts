@@ -71,15 +71,16 @@ export function createHttpHandler(
 		if (!url.pathname.startsWith("/api/")) {
 			return req.method === "GET" ? serveStatic(url.pathname) : json({ error: "method not allowed" }, 405);
 		}
-		if (req.headers.get("authorization") !== `Bearer ${token}`) {
-			onUnauthorized?.();
-			return json({ error: "unauthorized" }, 401);
-		}
+		// before the token check so other sites can't trigger onUnauthorized
 		const site = req.headers.get("sec-fetch-site");
 		const origin = req.headers.get("origin");
 		if ((site && site !== "same-origin" && site !== "none") ||
 			(origin !== null && origin !== requestOrigin)) {
 			return json({ error: "cross-site requests are not allowed" }, 403);
+		}
+		if (req.headers.get("authorization") !== `Bearer ${token}`) {
+			onUnauthorized?.();
+			return json({ error: "unauthorized" }, 401);
 		}
 		if (req.method !== "POST") return json({ error: "method not allowed" }, 405);
 		if (req.headers.get("content-type")?.split(";", 1)[0].trim().toLowerCase() !== "application/json") {

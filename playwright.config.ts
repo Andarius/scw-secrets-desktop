@@ -24,7 +24,8 @@ export default defineConfig({
 		baseURL: "http://127.0.0.1:5199",
 		trace: "retain-on-failure",
 		screenshot: "only-on-failure",
-		...(recordVideo ? { video: "on" } : {}),
+		// full viewport size; Playwright otherwise scales videos down to 800x450
+		...(recordVideo ? { video: { mode: "on", size: { width: 1280, height: 720 } } } : {}),
 	},
 	webServer: {
 		command: "bun run mock:e2e",

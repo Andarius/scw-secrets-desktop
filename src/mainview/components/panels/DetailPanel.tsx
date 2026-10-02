@@ -4,7 +4,7 @@ import { Check, Copy, CopyPlus, Eye, Pencil, Clock, Key as KeyIcon, Globe, Loade
 import { api } from "../../lib/rpc";
 import type { ProfileSummary, Project, Secret } from "../../../shared/models";
 import { secretConsoleUrl } from "../../lib/console";
-import { planKeepLatestVersionOnly } from "../../lib/secret-versions";
+import { keepLatestVersionOnly } from "../../lib/secret-versions";
 
 export type ValueEntry = { secretId: string; name: string; path?: string; value: string };
 
@@ -61,36 +61,6 @@ function formatSecretType(type?: string): string {
 	};
 
 	return labels[type] ?? type.split("_").map((part) => part.charAt(0).toUpperCase() + part.slice(1)).join(" ");
-}
-
-async function keepLatestVersionOnly(
-	secretId: string,
-	profile?: string,
-	projectId?: string,
-) {
-	const versions = await api.getSecretVersions({
-		secretId,
-		profile,
-		projectId,
-	});
-	for (const action of planKeepLatestVersionOnly(versions)) {
-		if (action.type === "disable") {
-			await api.disableSecretVersion({
-				secretId,
-				revision: action.revision,
-				profile,
-				projectId,
-			});
-			continue;
-		}
-
-		await api.destroySecretVersion({
-			secretId,
-			revision: action.revision,
-			profile,
-			projectId,
-		});
-	}
 }
 
 function SingleSecretDetail({

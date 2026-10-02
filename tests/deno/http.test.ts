@@ -9,8 +9,9 @@ function setup() {
 		calls.push(params);
 		return { ok: true };
 	}])) as unknown as Handlers;
-	const handle = createHttpHandler(handlers, async () => new Response("public asset"), token);
-	return { calls, handle };
+	const unauthorized: unknown[] = [];
+	const handle = createHttpHandler(handlers, async () => new Response("public asset"), token, () => unauthorized.push(1));
+	return { calls, handle, unauthorized };
 }
 function request(method = "getProfiles", body = "{}", headers: Record<string, string> = {}, host = "localhost:8790") {
 	return new Request(`http://${host}/api/${method}`, {
@@ -59,6 +60,15 @@ test("caps streamed bodies before dispatch and never publishes capability", asyn
 	expect(asset.headers.get("content-security-policy")).toContain("frame-ancestors 'none'");
 	const result = await handle(request());
 	expect(result.headers.get("cache-control")).toBe("no-store");
+});
+
+test.each([
+	["same-origin tokenless call", {}, 1],
+	["cross-site tokenless call", { origin: "https://evil.example", "sec-fetch-site": "cross-site" }, 0],
+] as const)("%s triggers onUnauthorized %d time(s)", async (_name, headers, count) => {
+	const { handle, unauthorized } = setup();
+	await handle(request("getProfiles", "{}", { authorization: "", ...headers }));
+	expect(unauthorized).toHaveLength(count);
 });
 
 test("authenticated native requests do not need browser-only headers", async () => {

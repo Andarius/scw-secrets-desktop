@@ -123,18 +123,27 @@ for (let i = 0; i < clips.length; i++) {
 	], { stdout: "pipe" });
 	const probe = JSON.parse(probeRes.stdout.toString()) as { format: { duration: string } };
 	const duration = Number.parseFloat(probe.format.duration) || 3;
-	const fadeOut = Math.max(duration - 0.3, 0);
+
+	// Skip the pure-black frames recorded before the page first paints (the app's own background is #0a0a0a).
+	const black = Bun.spawnSync([
+		"ffmpeg", "-i", clip.videoPath, "-vf", "blackdetect=d=0.04:pix_th=0.02", "-an", "-f", "null", "-",
+	], { stdout: "pipe", stderr: "pipe" });
+	const leading = /black_start:0(?:\.0+)?\s+black_end:([\d.]+)/.exec(black.stderr.toString());
+	const start = leading ? Math.min(Number.parseFloat(leading[1]), Math.max(duration - 1, 0)) : 0;
+	const fadeOut = Math.max(duration - start - 0.3, 0);
 
 	// Re-encode clip to h264 with counter + test name banner and fades
 	const overlay = Bun.spawnSync([
 		"ffmpeg", "-y",
+		"-ss", start.toFixed(2),
 		"-i", clip.videoPath,
 		"-vf", [
 			`fade=t=in:st=0:d=0.3`,
 			`fade=t=out:st=${fadeOut.toFixed(2)}:d=0.3`,
-			`drawbox=x=0:y=0:w=iw:h=28:color=0x0a0a0a@0.8:t=fill`,
-			`drawtext=text='${escapedCounter}':fontcolor=0x666666:fontsize=13:x=8:y=7:fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf`,
-			`drawtext=text='${escapedTitle}':fontcolor=0x67e8f9:fontsize=13:x=50:y=7:fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf`,
+			// banner in its own strip above the page, so it never hides the app header
+			`pad=iw:ih+36:0:36:color=0x0a0a0a`,
+			`drawtext=text='${escapedCounter}':fontcolor=0x888888:fontsize=18:x=12:y=9:fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf`,
+			`drawtext=text='${escapedTitle}':fontcolor=0x67e8f9:fontsize=18:x=90:y=9:fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf`,
 		].join(","),
 		"-c:v", "libx264", "-pix_fmt", "yuv420p", "-r", "25",
 		overlaidPath,
