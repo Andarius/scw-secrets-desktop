@@ -11,6 +11,7 @@ This is a desktop UI for managing Scaleway secrets.
 
 - `src/mainview/` — React frontend entry (App.tsx, main.tsx, index.css, index.html)
 - `src/mainview/components/` — UI components (Header, StatsCards, Navigator, Inventory, DetailPanel)
+- `src/mainview/hooks/` — React hooks, one per file (`useXxx.ts`)
 - `src/deno/` — Deno backend (main.ts entrypoint, Scaleway API calls, generated embed.ts)
 - `src/shared/` — Shared types (models.ts) and API contract (rpc.ts, POST /api/<method>)
 - `src/types/` — TypeScript type declarations

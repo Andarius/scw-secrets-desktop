@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 
 import type { SecretVersion } from "../../src/shared/models";
-import { isVersionDeleted, planKeepLatestVersionOnly } from "../../src/mainview/secret-versions";
+import { isVersionDeleted, nextRevision, planKeepLatestVersionOnly } from "../../src/mainview/secret-versions";
 
 function makeVersion(overrides: Partial<SecretVersion>): SecretVersion {
 	return {
@@ -79,4 +79,19 @@ describe("planKeepLatestVersionOnly", () => {
 			expect(actions).toEqual(expectedActions);
 		});
 	}
+});
+
+describe("nextRevision", () => {
+	test("returns 1 when the secret has no versions", () => {
+		expect(nextRevision([])).toBe(1);
+	});
+
+	test("returns one above the highest revision, whatever the order or status", () => {
+		const versions = [
+			makeVersion({ revision: 3, latest: true }),
+			makeVersion({ revision: 7, status: "destroyed" }),
+			makeVersion({ revision: 5, status: "disabled" }),
+		];
+		expect(nextRevision(versions)).toBe(8);
+	});
 });

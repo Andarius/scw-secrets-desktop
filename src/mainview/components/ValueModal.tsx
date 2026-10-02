@@ -1,10 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { Check, Copy, Eye, Loader2, Pencil, Save, Share2, X } from "lucide-react";
-
-import { api } from "../rpc";
 import { copySecret } from "../clipboard";
 import { secretConsoleUrl } from "../console";
-import { planKeepLatestVersionOnly } from "../secret-versions";
+import { useNextRevision } from "../hooks/useNextRevision";
+import { useSaveSecretValue } from "../hooks/useSaveSecretValue";
 import { HighlightedTextarea } from "./HighlightedTextarea";
 import { ValueStructureEditor } from "./ValueStructureEditor";
 import { prefersTableMode, ValueViewer } from "./ValueViewer";
@@ -35,6 +34,16 @@ export function EditTabs({ tab, onChange, size = "sm" }: { tab: EditTab; onChang
 }
 
 type ValueEntry = { secretId: string; name: string; path?: string; value: string };
+
+// What a save will do — Scaleway versions are immutable, so there is no in-place edit.
+export function SaveHint({ revision, autoKeepLatest }: { revision: number | null; autoKeepLatest?: boolean }) {
+	return (
+		<p className="text-xs text-gray-500">
+			{revision === null ? "Saving creates a new version." : `Saving creates version ${revision}.`}
+			{autoKeepLatest ? <span className="text-amber-300/80"> Older versions will be scheduled for deletion (Keep Latest is on).</span> : null}
+		</p>
+	);
+}
 
 type ValueViewProps = {
 	title: string;
@@ -84,56 +93,12 @@ function EditableEntry({
 }) {
 	const formatted = useMemo(() => tryFormatJson(entry.value) ?? entry.value, [entry.value]);
 	const [value, setValue] = useState(formatted);
-	const [saving, setSaving] = useState(false);
 	const [tab, setTab] = useState<EditTab>(() => (prefersTableMode() ? "table" : "raw"));
-	const [error, setError] = useState<string | null>(null);
-
+	const target = { secretId: entry.secretId, profile, projectId, autoKeepLatest };
+	const { save, saving, error } = useSaveSecretValue(target, onSaved);
 	const hasChanges = value !== formatted;
+	const revision = useNextRevision(target, hasChanges);
 	const initialRows = Math.min(Math.max(formatted.split("\n").length, 6), 25);
-
-	async function handleSave() {
-		setSaving(true);
-		setError(null);
-		try {
-			await api.updateSecretValue({
-				secretId: entry.secretId,
-				value,
-				profile,
-				projectId,
-			});
-
-			if (autoKeepLatest) {
-				const versions = await api.getSecretVersions({
-					secretId: entry.secretId,
-					profile,
-					projectId,
-				});
-				for (const action of planKeepLatestVersionOnly(versions)) {
-					if (action.type === "disable") {
-						await api.disableSecretVersion({
-							secretId: entry.secretId,
-							revision: action.revision,
-							profile,
-							projectId,
-						});
-					} else {
-						await api.destroySecretVersion({
-							secretId: entry.secretId,
-							revision: action.revision,
-							profile,
-							projectId,
-						});
-					}
-				}
-			}
-
-			onSaved();
-		} catch (reason) {
-			setError(reason instanceof Error ? reason.message : String(reason));
-		} finally {
-			setSaving(false);
-		}
-	}
 
 	return (
 		<div className="rounded-lg bg-white/5 border border-white/5 p-4">
@@ -145,15 +110,16 @@ function EditableEntry({
 					</div>
 					<button
 						type="button"
-						onClick={() => void handleSave()}
+						onClick={() => void save(value)}
 						disabled={!hasChanges || saving}
-						className="p-1.5 hover:bg-white/10 rounded transition-colors flex-shrink-0 disabled:opacity-30 disabled:cursor-not-allowed"
+						className="flex items-center gap-1 px-2 py-0.5 text-[11px] bg-cyan-500/20 border border-cyan-500/30 rounded-md hover:bg-cyan-500/30 transition-colors flex-shrink-0 disabled:opacity-30 disabled:cursor-not-allowed text-cyan-300"
 					>
 						{saving ? (
-							<Loader2 className="w-3.5 h-3.5 text-cyan-400 animate-spin" />
+							<Loader2 className="w-3 h-3 animate-spin" />
 						) : (
-							<Save className="w-3.5 h-3.5 text-cyan-400" />
+							<Save className="w-3 h-3" />
 						)}
+						<span>Save</span>
 					</button>
 					<CopyButton text={value} />
 				</div>
@@ -172,6 +138,11 @@ function EditableEntry({
 			{error ? (
 				<div className="mt-2 px-3 py-1.5 rounded-lg border border-red-500/30 bg-red-500/10 text-red-300 text-xs">
 					{error}
+				</div>
+			) : null}
+			{hasChanges ? (
+				<div className="mt-2">
+					<SaveHint revision={revision} autoKeepLatest={autoKeepLatest} />
 				</div>
 			) : null}
 		</div>

@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { Loader2, Save, X } from "lucide-react";
 
-import { api } from "../rpc";
-import { planKeepLatestVersionOnly } from "../secret-versions";
+import { useNextRevision } from "../hooks/useNextRevision";
+import { useSaveSecretValue } from "../hooks/useSaveSecretValue";
 import { HighlightedTextarea } from "./HighlightedTextarea";
-import { EditTabs, type EditTab } from "./ValueModal";
+import { EditTabs, SaveHint, type EditTab } from "./ValueModal";
 import { ValueStructureEditor } from "./ValueStructureEditor";
 import { prefersTableMode, ValueViewer } from "./ValueViewer";
 
@@ -42,11 +42,12 @@ export function EditModal({
 	}, [initialValue]);
 
 	const [value, setValue] = useState(formatted);
-	const [saving, setSaving] = useState(false);
 	const [tab, setTab] = useState<EditTab>(() => (prefersTableMode() ? "table" : "raw"));
-	const [error, setError] = useState<string | null>(null);
+	const target = { secretId, profile, projectId, autoKeepLatest };
+	const { save, saving, error } = useSaveSecretValue(target, onSaved);
 
 	const hasChanges = value !== formatted;
+	const revision = useNextRevision(target, hasChanges);
 	const formattedJson = useMemo(() => tryFormatJson(value), [value]);
 	const canFormatJson = formattedJson !== null && formattedJson !== value;
 
@@ -56,57 +57,13 @@ export function EditModal({
 			if ((e.ctrlKey || e.metaKey) && e.key === "s") {
 				e.preventDefault();
 				if (hasChanges && !saving) {
-					void handleSave();
+					void save(value);
 				}
 			}
 		}
 		window.addEventListener("keydown", handleKey);
 		return () => window.removeEventListener("keydown", handleKey);
-	}, [onClose, hasChanges, saving]);
-
-	async function handleSave() {
-		setSaving(true);
-		setError(null);
-		try {
-			await api.updateSecretValue({
-				secretId,
-				value,
-				profile,
-				projectId,
-			});
-
-			if (autoKeepLatest) {
-				const versions = await api.getSecretVersions({
-					secretId,
-					profile,
-					projectId,
-				});
-				for (const action of planKeepLatestVersionOnly(versions)) {
-					if (action.type === "disable") {
-						await api.disableSecretVersion({
-							secretId,
-							revision: action.revision,
-							profile,
-							projectId,
-						});
-					} else {
-						await api.destroySecretVersion({
-							secretId,
-							revision: action.revision,
-							profile,
-							projectId,
-						});
-					}
-				}
-			}
-
-			onSaved();
-		} catch (reason) {
-			setError(reason instanceof Error ? reason.message : String(reason));
-		} finally {
-			setSaving(false);
-		}
-	}
+	}, [onClose, hasChanges, saving, value]);
 
 	return (
 		<div
@@ -135,7 +92,7 @@ export function EditModal({
 						</button>
 						<button
 							type="button"
-							onClick={() => void handleSave()}
+							onClick={() => void save(value)}
 							disabled={!hasChanges || saving}
 							className="flex items-center gap-1.5 px-3 py-1.5 text-xs bg-cyan-500/20 border border-cyan-500/30 rounded-lg hover:bg-cyan-500/30 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-cyan-300"
 						>
@@ -144,7 +101,7 @@ export function EditModal({
 							) : (
 								<Save className="w-3 h-3" />
 							)}
-							<span>Save as new version</span>
+							<span>Save</span>
 						</button>
 						<button
 							type="button"
@@ -180,11 +137,13 @@ export function EditModal({
 					</div>
 				) : null}
 
-				{!hasChanges ? (
-					<div className="px-5 pb-4">
+				<div className="px-5 pb-4">
+					{hasChanges ? (
+						<SaveHint revision={revision} autoKeepLatest={autoKeepLatest} />
+					) : (
 						<p className="text-xs text-gray-500">No changes yet. Ctrl+S to save.</p>
-					</div>
-				) : null}
+					)}
+				</div>
 			</div>
 		</div>
 	);
