@@ -61,6 +61,7 @@ function savePersistedState(state: PersistedState) {
 }
 
 function App() {
+	const saved = useState(() => loadPersistedState())[0];
 	const [profilesResponse, setProfilesResponse] = useState<ProfilesResponse | null>(null);
 	const [selectedProfile, setSelectedProfile] = useState("");
 	const [projects, setProjects] = useState<Project[]>([]);
@@ -92,8 +93,8 @@ function App() {
 	const [refreshKey, setRefreshKey] = useState(0);
 	const [deepIndex, setDeepIndex] = useState<Map<string, string> | null>(null);
 	const [deepIndexLoading, setDeepIndexLoading] = useState(false);
-	const saved = useState(() => loadPersistedState())[0];
 	const update = useAvailableUpdate(settings.checkForUpdates, APP_VERSION);
+
 	const deferredQuery = useDeferredValue(query);
 
 	useEffect(() => {
