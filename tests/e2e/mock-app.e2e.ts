@@ -122,6 +122,13 @@ test("filters the inventory by clicking a tag", async ({ page }) => {
 test("opens single-secret and batch value overlays", async ({ page }) => {
 	await page.getByRole("button", { name: "View Secret Value" }).click();
 
+	// table is the default view, and the first mode button
+	await expect(page.getByText("gcp_credentials.type", { exact: true })).toBeVisible();
+	await expect(page.getByRole("button", { name: "Table", exact: true })).toBeVisible();
+	const modeButtons = page.getByRole("button", { name: /^(Table|Formatted|TOML|Raw)$/ });
+	await expect(modeButtons.first()).toHaveText("Table");
+
+	await page.getByRole("button", { name: "Formatted", exact: true }).click();
 	await expect(page.getByText("JSON", { exact: true })).toBeVisible();
 	await expect(page.getByText('"db.fr-par.scw.cloud"', { exact: true })).toBeVisible();
 

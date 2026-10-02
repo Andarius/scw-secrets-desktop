@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Check, Copy, Eye, Loader2, Pencil, Save, Share2, X } from "lucide-react";
 import { copySecret } from "../clipboard";
 import { secretConsoleUrl } from "../console";
@@ -12,8 +12,8 @@ export type EditTab = "raw" | "table" | "preview";
 
 export function EditTabs({ tab, onChange, size = "sm" }: { tab: EditTab; onChange: (tab: EditTab) => void; size?: "sm" | "md" }) {
 	const tabs: [EditTab, string][] = [
-		["raw", "Raw"],
 		["table", "Structure"],
+		["raw", "Raw"],
 		["preview", "Preview"],
 	];
 	const pad = size === "sm" ? "px-2 py-0.5 text-[11px]" : "px-3 py-1.5 text-xs";
@@ -83,12 +83,14 @@ function EditableEntry({
 	profile,
 	projectId,
 	autoKeepLatest,
+	isOnlyEntry,
 	onSaved,
 }: {
 	entry: ValueEntry;
 	profile?: string;
 	projectId?: string;
 	autoKeepLatest?: boolean;
+	isOnlyEntry: boolean;
 	onSaved: () => void;
 }) {
 	const formatted = useMemo(() => tryFormatJson(entry.value) ?? entry.value, [entry.value]);
@@ -98,10 +100,24 @@ function EditableEntry({
 	const { save, saving, error } = useSaveSecretValue(target, onSaved);
 	const hasChanges = value !== formatted;
 	const revision = useNextRevision(target, hasChanges);
-	const initialRows = Math.min(Math.max(formatted.split("\n").length, 6), 25);
+	const formattedJson = useMemo(() => tryFormatJson(value), [value]);
+	const canFormatJson = formattedJson !== null && formattedJson !== value;
+	const containerRef = useRef<HTMLDivElement>(null);
+
+	// Ctrl/Cmd+S saves this entry when it is the only one, or when focus is inside it.
+	useEffect(() => {
+		function handleKey(e: KeyboardEvent) {
+			if (!(e.ctrlKey || e.metaKey) || e.key !== "s") return;
+			if (!isOnlyEntry && !containerRef.current?.contains(document.activeElement)) return;
+			e.preventDefault();
+			if (hasChanges && !saving) void save(value);
+		}
+		window.addEventListener("keydown", handleKey);
+		return () => window.removeEventListener("keydown", handleKey);
+	}, [isOnlyEntry, hasChanges, saving, value]);
 
 	return (
-		<div className="rounded-lg bg-white/5 border border-white/5 p-4">
+		<div ref={containerRef} className="rounded-lg bg-white/5 border border-white/5 p-4">
 			<div className="flex items-center justify-between mb-2">
 				<EntryLabel entry={entry} />
 				<div className="flex items-center gap-1">
@@ -110,7 +126,16 @@ function EditableEntry({
 					</div>
 					<button
 						type="button"
+						onClick={() => { if (formattedJson) setValue(formattedJson); }}
+						disabled={!canFormatJson || saving}
+						className="px-2 py-0.5 text-[11px] bg-white/5 border border-white/10 rounded-md hover:bg-white/10 transition-colors flex-shrink-0 disabled:opacity-30 disabled:cursor-not-allowed text-gray-300"
+					>
+						Format JSON
+					</button>
+					<button
+						type="button"
 						onClick={() => void save(value)}
+						title="Save (Ctrl+S)"
 						disabled={!hasChanges || saving}
 						className="flex items-center gap-1 px-2 py-0.5 text-[11px] bg-cyan-500/20 border border-cyan-500/30 rounded-md hover:bg-cyan-500/30 transition-colors flex-shrink-0 disabled:opacity-30 disabled:cursor-not-allowed text-cyan-300"
 					>
@@ -133,7 +158,7 @@ function EditableEntry({
 					<ValueStructureEditor value={value} onChange={setValue} />
 				</div>
 			) : (
-				<HighlightedTextarea value={value} onChange={setValue} rows={initialRows} />
+				<HighlightedTextarea value={value} onChange={setValue} />
 			)}
 			{error ? (
 				<div className="mt-2 px-3 py-1.5 rounded-lg border border-red-500/30 bg-red-500/10 text-red-300 text-xs">
@@ -260,6 +285,7 @@ export function ValueView({ title, values, profile, projectId, autoKeepLatest, o
 								profile={profile}
 								projectId={projectId}
 								autoKeepLatest={autoKeepLatest}
+								isOnlyEntry={values.length === 1}
 								onSaved={onSaved}
 							/>
 						) : (

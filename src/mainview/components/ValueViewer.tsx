@@ -1,6 +1,7 @@
 import { Component, useMemo, useState, type ReactNode } from "react";
 import { ChevronDown, ChevronRight } from "lucide-react";
 
+import { useStableMinHeight } from "../hooks/useStableMinHeight";
 import {
 	detectEmbedded,
 	detectFormat,
@@ -255,11 +256,11 @@ export function prefersTableMode(): boolean {
 function loadPreferredMode(): ViewMode {
 	try {
 		const stored = localStorage.getItem(MODE_KEY);
-		if (stored === "table" || stored === "json" || stored === "toml" || stored === "raw") return stored;
+		if (stored === "formatted" || stored === "table" || stored === "json" || stored === "toml" || stored === "raw") return stored;
 	} catch {
 		// ignore
 	}
-	return "formatted";
+	return "table";
 }
 
 export class ValueRenderBoundary extends Component<{ value: string; children: ReactNode }, { failed: boolean }> {
@@ -286,6 +287,7 @@ function ValueViewerContent({ value }: { value: string }) {
 	const format = useMemo(() => detectFormat(value), [value]);
 	const [mode, setModeState] = useState<ViewMode>(loadPreferredMode);
 	const [expanded, setExpanded] = useState<Set<string>>(new Set());
+	const { ref: contentRef, minHeight } = useStableMinHeight<HTMLDivElement>(value);
 
 	function setMode(next: ViewMode) {
 		setModeState(next);
@@ -315,8 +317,8 @@ function ValueViewerContent({ value }: { value: string }) {
 
 	// the conversion tab is whichever format the value is NOT
 	const modes: [ViewMode, string][] = [
-		["formatted", "Formatted"],
 		["table", "Table"],
+		["formatted", "Formatted"],
 		...(format === "json"
 			? ([["toml", "TOML"]] as [ViewMode, string][])
 			: ([["json", "JSON"]] as [ViewMode, string][])),
@@ -346,23 +348,25 @@ function ValueViewerContent({ value }: { value: string }) {
 					))}
 				</div>
 			</div>
-			{effectiveMode === "table" ? (
-				<TableView rows={flattenValue(value, format)} />
-			) : (
-				<pre className="text-sm font-mono whitespace-pre-wrap break-all leading-relaxed">
-					{effectiveMode === "raw" ? (
-						<span className="text-cyan-200">{value}</span>
-					) : effectiveMode === "toml" ? (
-						<HighlightedLines value={jsonToToml(value).replace(/\n$/, "")} format="toml" />
-					) : effectiveMode === "json" ? (
-						renderJsonNode(format === "toml" ? tomlToJson(value) : envToJson(value), "", "$", ctx)
-					) : format === "json" ? (
-						renderJsonNode(parseJsonContainer(value), "", "$", ctx)
-					) : (
-						<HighlightedLines value={value.replace(/\n$/, "")} format={format} />
-					)}
-				</pre>
-			)}
+			<div ref={contentRef} style={{ minHeight }}>
+				{effectiveMode === "table" ? (
+					<TableView rows={flattenValue(value, format)} />
+				) : (
+					<pre className="text-sm font-mono whitespace-pre-wrap break-all leading-relaxed">
+						{effectiveMode === "raw" ? (
+							<span className="text-cyan-200">{value}</span>
+						) : effectiveMode === "toml" ? (
+							<HighlightedLines value={jsonToToml(value).replace(/\n$/, "")} format="toml" />
+						) : effectiveMode === "json" ? (
+							renderJsonNode(format === "toml" ? tomlToJson(value) : envToJson(value), "", "$", ctx)
+						) : format === "json" ? (
+							renderJsonNode(parseJsonContainer(value), "", "$", ctx)
+						) : (
+							<HighlightedLines value={value.replace(/\n$/, "")} format={format} />
+						)}
+					</pre>
+				)}
+			</div>
 		</div>
 	);
 }

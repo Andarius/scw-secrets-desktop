@@ -216,7 +216,6 @@ function MockApp() {
 								selectedProject={selectedProject}
 								selectedProfileSummary={selectedProfileSummary}
 								onViewValues={(title, values) => setExpandedValues({ title, values })}
-								onEditValue={() => {}}
 								onViewHistory={() => {}}
 								onRefresh={() => {}}
 								onCollapse={() => setShowDetailPane(false)}

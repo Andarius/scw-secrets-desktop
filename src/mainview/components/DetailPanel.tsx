@@ -13,7 +13,6 @@ type DetailPanelProps = {
 	selectedProject: Project | null;
 	selectedProfileSummary: ProfileSummary | null;
 	onViewValues: (title: string, values: ValueEntry[]) => void;
-	onEditValue: (entry: ValueEntry) => void;
 	onViewHistory: (secretId: string, secretName: string) => void;
 	onRefresh: () => void;
 	onCollapse?: () => void;
@@ -96,7 +95,6 @@ function SingleSecretDetail({
 	selectedProfileSummary,
 	onCollapse,
 	onViewValues,
-	onEditValue,
 	onViewHistory,
 	onRefresh,
 }: {
@@ -104,7 +102,6 @@ function SingleSecretDetail({
 	selectedProject: Project | null;
 	selectedProfileSummary: ProfileSummary | null;
 	onViewValues: (title: string, values: ValueEntry[]) => void;
-	onEditValue: (entry: ValueEntry) => void;
 	onViewHistory: (secretId: string, secretName: string) => void;
 	onRefresh: () => void;
 	onCollapse?: () => void;
@@ -112,8 +109,6 @@ function SingleSecretDetail({
 	const [loadingValue, setLoadingValue] = useState(false);
 	const [valueError, setValueError] = useState<string | null>(null);
 
-	const [loadingEdit, setLoadingEdit] = useState(false);
-	const [editError, setEditError] = useState<string | null>(null);
 	const [keepingLatest, setKeepingLatest] = useState(false);
 	const [keepLatestError, setKeepLatestError] = useState<string | null>(null);
 	const [confirmKeepLatest, setConfirmKeepLatest] = useState(false);
@@ -136,7 +131,6 @@ function SingleSecretDetail({
 	if (secretId !== prevSecretId) {
 		setPrevSecretId(secretId);
 		setValueError(null);
-		setEditError(null);
 		setKeepLatestError(null);
 		setConfirmKeepLatest(false);
 		setDuplicateError(null);
@@ -163,24 +157,6 @@ function SingleSecretDetail({
 			setValueError(reason instanceof Error ? reason.message : String(reason));
 		} finally {
 			setLoadingValue(false);
-		}
-	}
-
-	async function handleEditValue() {
-		setLoadingEdit(true);
-		setEditError(null);
-		try {
-			const response = await api.getSecretValue({
-				secretId: secret.id,
-				revision: "latest_enabled",
-				profile: selectedProfileSummary?.name,
-				projectId: selectedProject?.id,
-			});
-			onEditValue({ secretId: secret.id, name: secret.name, path: secret.path, value: response.value });
-		} catch (reason) {
-			setEditError(reason instanceof Error ? reason.message : String(reason));
-		} finally {
-			setLoadingEdit(false);
 		}
 	}
 
@@ -532,26 +508,6 @@ function SingleSecretDetail({
 					{valueError ? (
 						<div className="px-4 py-2 rounded-lg border border-red-500/30 bg-red-500/10 text-red-300 text-xs">
 							{valueError}
-						</div>
-					) : null}
-
-					<button
-						type="button"
-						onClick={() => void handleEditValue()}
-						disabled={loadingEdit}
-						className="w-full flex items-center gap-3 px-4 py-3 bg-white/5 border border-white/10 rounded-lg hover:bg-white/10 transition-colors text-sm disabled:opacity-50"
-					>
-						{loadingEdit ? (
-							<Loader2 className="w-4 h-4 text-amber-400 animate-spin" />
-						) : (
-							<Pencil className="w-4 h-4 text-amber-400" />
-						)}
-						<span>Edit Secret Value</span>
-					</button>
-
-					{editError ? (
-						<div className="px-4 py-2 rounded-lg border border-red-500/30 bg-red-500/10 text-red-300 text-xs">
-							{editError}
 						</div>
 					) : null}
 
@@ -1007,7 +963,6 @@ export function DetailPanel({
 	selectedProject,
 	selectedProfileSummary,
 	onViewValues,
-	onEditValue,
 	onViewHistory,
 	onRefresh,
 	onCollapse,
@@ -1045,7 +1000,6 @@ export function DetailPanel({
 					selectedProject={selectedProject}
 					selectedProfileSummary={selectedProfileSummary}
 					onViewValues={onViewValues}
-					onEditValue={onEditValue}
 					onViewHistory={onViewHistory}
 					onRefresh={onRefresh}
 					onCollapse={onCollapse}

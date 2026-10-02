@@ -10,7 +10,6 @@ import { PaneRail } from "./components/PaneRail";
 import { Inventory } from "./components/Inventory";
 import { DetailPanel, type ValueEntry } from "./components/DetailPanel";
 import { ValueView } from "./components/ValueModal";
-import { EditModal } from "./components/EditModal";
 import { HistoryModal } from "./components/HistoryModal";
 import { CreateSecretModal } from "./components/CreateSecretModal";
 import { SpotlightSearch } from "./components/SpotlightSearch";
@@ -68,7 +67,6 @@ function App() {
 	const [secrets, setSecrets] = useState<Secret[]>([]);
 	const [selectedSecretIds, setSelectedSecretIds] = useState<Set<string>>(new Set());
 	const [expandedValues, setExpandedValues] = useState<{ title: string; values: ValueEntry[] } | null>(null);
-	const [editingEntry, setEditingEntry] = useState<ValueEntry | null>(null);
 	const [creatingSecret, setCreatingSecret] = useState(false);
 	const [historyTarget, setHistoryTarget] = useState<{ secretId: string; secretName: string } | null>(null);
 	const [spotlightOpen, setSpotlightOpen] = useState(false);
@@ -490,7 +488,6 @@ function App() {
 								selectedProject={selectedProject}
 								selectedProfileSummary={selectedProfileSummary}
 								onViewValues={(title, values) => setExpandedValues({ title, values })}
-								onEditValue={(entry) => setEditingEntry(entry)}
 								onViewHistory={(secretId, secretName) => setHistoryTarget({ secretId, secretName })}
 								onRefresh={() => setRefreshKey((k) => k + 1)}
 								onCollapse={() => setShowDetailPane(false)}
@@ -510,22 +507,6 @@ function App() {
 						onClose={() => setExpandedValues(null)}
 						onSaved={() => {
 							setExpandedValues(null);
-							setRefreshKey((k) => k + 1);
-						}}
-					/>
-				) : null}
-
-				{editingEntry ? (
-					<EditModal
-						secretId={editingEntry.secretId}
-						name={editingEntry.name}
-						initialValue={editingEntry.value}
-						profile={selectedProfileSummary?.name}
-						projectId={selectedProject?.id}
-						autoKeepLatest={settings.autoKeepLatest}
-						onClose={() => setEditingEntry(null)}
-						onSaved={() => {
-							setEditingEntry(null);
 							setRefreshKey((k) => k + 1);
 						}}
 					/>
