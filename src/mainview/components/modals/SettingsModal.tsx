@@ -156,7 +156,7 @@ export function SettingsModal({ settings, onChange, onClose, onOpenLogs, deepInd
 					</div>
 					{updateStatus === "available" && latest ? (
 						<div className="-mt-3 space-y-2 text-xs">
-							<p className="text-center text-cyan-100">Version {latest.version} is available. Run this command to update:</p>
+							<p className="text-center text-cyan-100">Version {latest.version} is available.</p>
 							<div className="flex items-center gap-2">
 								<UpdateActions release={latest} />
 							</div>

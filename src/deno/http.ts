@@ -1,5 +1,12 @@
-import { UUID_PATTERN, REVISION_PATTERN, RELEASE_PAGE_PATTERN } from "../shared/validation.ts";
+import { UUID_PATTERN, REVISION_PATTERN, RELEASE_PAGE_PATTERN, VERSION_PATTERN } from "../shared/validation.ts";
 import type { ApiMethod, ApiRequests } from "../shared/rpc.ts";
+
+/**
+ * An error whose message was written for the user and is safe to show. Every other error is
+ * reported as a generic "request failed", so upstream details (e.g. Scaleway responses) never
+ * reach the page.
+ */
+export class PublicError extends Error {}
 
 export type Handlers = {
 	[K in ApiMethod]: (params: ApiRequests[K]["params"]) => Promise<ApiRequests[K]["response"]> | ApiRequests[K]["response"];
@@ -22,6 +29,7 @@ const fields: Record<ApiMethod, string[]> = {
 	duplicateSecret: ["secretId", "name", "path?", "type?", "tags?", "profile?", "projectId?"],
 	deleteSecret: ["secretId", "profile?", "projectId?"],
 	getHttpLogs: [], clearHttpLogs: [], openExternal: ["url"], getLatestRelease: [],
+	getUpdateSupport: [], installUpdate: ["version"],
 };
 
 function validParams(method: ApiMethod, params: unknown): boolean {
@@ -47,6 +55,7 @@ function validParams(method: ApiMethod, params: unknown): boolean {
 		if (typeof value !== "string") return false;
 		if (key === "secretId" || key === "projectId") return UUID_PATTERN.test(value);
 		if (key === "status") return ["all", "ready", "disabled"].includes(value);
+		if (key === "version") return VERSION_PATTERN.test(value);
 		return !["name", "profile", "url", "type"].includes(key) || value.length > 0;
 	});
 }
@@ -116,8 +125,8 @@ export function createHttpHandler(
 		if (!validParams(method as ApiMethod, params)) return json({ error: "invalid parameters" }, 400);
 		try {
 			return json(await (handlers[method as ApiMethod] as (params: unknown) => unknown)(params));
-		} catch {
-			return json({ error: "request failed" }, 500);
+		} catch (error) {
+			return json({ error: error instanceof PublicError ? error.message : "request failed" }, 500);
 		}
 	}
 	return async (req: Request): Promise<Response> => {

@@ -5,6 +5,7 @@ import { HOST, PORT, WINDOW_FILE } from "./config.ts";
 import { ASSETS } from "./embed.ts";
 import { attachWindowLifecycle, type Geometry } from "./window.ts";
 import { getLatestRelease } from "./updates.ts";
+import { canInstallUpdate, installUpdate } from "./install-update.ts";
 import { createHttpHandler, externalCommand, type Handlers } from "./http.ts";
 import {
 	accessSecretVersion,
@@ -90,6 +91,11 @@ const handlers: Handlers = {
 		return { ok: true };
 	},
 	getLatestRelease: () => getLatestRelease(),
+	getUpdateSupport: () => ({ canInstall: canInstallUpdate() }),
+	installUpdate: async ({ version }) => {
+		await installUpdate(version);
+		return { ok: true };
+	},
 };
 
 const CONTENT_TYPES: Record<string, string> = {
