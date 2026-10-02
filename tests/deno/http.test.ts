@@ -72,6 +72,18 @@ test.each(["https://example.com", "https://console.scaleway.com/&calc", "javascr
 	expect(() => externalCommand(url, "windows")).toThrow();
 });
 
+test("opens only this app's GitHub release pages besides console links", () => {
+	const release = "https://github.com/Andarius/scw-secrets-desktop/releases/tag/v0.9.0";
+	expect(externalCommand(release, "darwin")).toEqual(["open", [release]]);
+	for (const url of [
+		"https://github.com/Andarius/scw-secrets-desktop/releases/download/v0.9.0/app.zip",
+		"https://github.com/someone-else/repo/releases/tag/v0.9.0",
+		`${release}?x=1`,
+	]) {
+		expect(() => externalCommand(url, "darwin")).toThrow();
+	}
+});
+
 test("opens a console link without a Windows shell", () => {
 	const url = `https://console.scaleway.com/secret-manager/secrets/fr-par/${secretId}/overview`;
 	expect(externalCommand(url, "windows")).toEqual(["rundll32.exe", ["url.dll,FileProtocolHandler", url]]);

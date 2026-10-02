@@ -58,3 +58,10 @@ export type SecretFilters = {
 	path?: string;
 	status?: "all" | "ready" | "disabled";
 };
+
+export type LatestRelease = {
+	/** Semver without the leading "v", e.g. "0.9.0". */
+	version: string;
+	/** GitHub release page. */
+	url: string;
+};

@@ -4,6 +4,7 @@
 import { HOST, PORT, WINDOW_FILE } from "./config.ts";
 import { ASSETS } from "./embed.ts";
 import { attachWindowLifecycle, type Geometry } from "./window.ts";
+import { getLatestRelease } from "./updates.ts";
 import { createHttpHandler, externalCommand, type Handlers } from "./http.ts";
 import {
 	accessSecretVersion,
@@ -88,6 +89,7 @@ const handlers: Handlers = {
 		openExternal(url);
 		return { ok: true };
 	},
+	getLatestRelease: () => getLatestRelease(),
 };
 
 const CONTENT_TYPES: Record<string, string> = {

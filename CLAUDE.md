@@ -14,7 +14,7 @@ This is a desktop UI for managing Scaleway secrets.
 - `src/mainview/lib/` — frontend logic: API client (rpc.ts), settings, value parsing, secret list/version helpers
 - `src/mainview/mock/` — mock mode (`just mock`): MockApp sample data and the inert mock API
 - `src/mainview/components/` — UI components, grouped by role:
-  - `layout/` — Header, PaneRail, StatsCards
+  - `layout/` — Header, PaneRail, StatsCards, UpdateBanner
   - `panels/` — the three main columns: Navigator, Inventory, DetailPanel
   - `modals/` — dialogs, including ValueModal (view/edit a secret value)
   - `secret-value/` — value rendering and editing (ValueViewer, ValueStructureEditor)
