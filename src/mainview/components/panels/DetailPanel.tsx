@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Check, Copy, CopyPlus, Eye, Pencil, Clock, Key as KeyIcon, Settings, Loader2, ExternalLink, Trash2, Layers2, X, Plus, Share2, Tag, PanelRightClose } from "lucide-react";
+import { Check, Copy, CopyPlus, Eye, Pencil, Clock, Key as KeyIcon, Globe, Loader2, ExternalLink, Trash2, Layers2, X, Plus, Share2, Tag, PanelRightClose } from "lucide-react";
 
 import { api } from "../../lib/rpc";
 import type { ProfileSummary, Project, Secret } from "../../../shared/models";
@@ -17,6 +17,10 @@ type DetailPanelProps = {
 	onRefresh: () => void;
 	onCollapse?: () => void;
 };
+
+// The main action of the panel (open the value viewer), set apart from the secondary actions.
+const PRIMARY_ACTION_CLASS =
+	"w-full flex items-center gap-3 px-4 py-3.5 bg-cyan-500/15 border border-cyan-500/40 rounded-lg hover:bg-cyan-500/25 hover:border-cyan-400/60 transition-colors text-sm font-medium text-cyan-200 disabled:opacity-50";
 
 function formatDate(value: string): string {
 	const date = new Date(value);
@@ -250,7 +254,7 @@ function SingleSecretDetail({
 		}
 	}
 
-	function handleManageSecret() {
+	function handleOpenInConsole() {
 		void api.openExternal({ url: secretConsoleUrl(secret.id) });
 	}
 
@@ -491,25 +495,27 @@ function SingleSecretDetail({
 				</div>
 
 				<div className="pt-4 border-t border-white/10 space-y-2">
-					<button
-						type="button"
-						onClick={() => void handleViewValue()}
-						disabled={loadingValue}
-						className="w-full flex items-center gap-3 px-4 py-3 bg-white/5 border border-white/10 rounded-lg hover:bg-white/10 transition-colors text-sm disabled:opacity-50"
-					>
-						{loadingValue ? (
-							<Loader2 className="w-4 h-4 text-cyan-400 animate-spin" />
-						) : (
-							<Eye className="w-4 h-4 text-cyan-400" />
-						)}
-						<span>View Secret Value</span>
-					</button>
+					<div className="pb-3 mb-1 border-b border-white/10 space-y-2">
+						<button
+							type="button"
+							onClick={() => void handleViewValue()}
+							disabled={loadingValue}
+							className={PRIMARY_ACTION_CLASS}
+						>
+							{loadingValue ? (
+								<Loader2 className="w-4 h-4 animate-spin" />
+							) : (
+								<Eye className="w-4 h-4" />
+							)}
+							<span>View & Edit Value</span>
+						</button>
 
-					{valueError ? (
-						<div className="px-4 py-2 rounded-lg border border-red-500/30 bg-red-500/10 text-red-300 text-xs">
-							{valueError}
-						</div>
-					) : null}
+						{valueError ? (
+							<div className="px-4 py-2 rounded-lg border border-red-500/30 bg-red-500/10 text-red-300 text-xs">
+								{valueError}
+							</div>
+						) : null}
+					</div>
 
 					<button
 						type="button"
@@ -647,11 +653,11 @@ function SingleSecretDetail({
 
 					<button
 						type="button"
-						onClick={handleManageSecret}
+						onClick={handleOpenInConsole}
 						className="w-full flex items-center gap-3 px-4 py-3 bg-white/5 border border-white/10 rounded-lg hover:bg-white/10 transition-colors text-sm"
 					>
-						<Settings className="w-4 h-4 text-gray-400" />
-						<span>Manage Secret</span>
+						<Globe className="w-4 h-4 text-gray-400" />
+						<span>Open in Console</span>
 						<ExternalLink className="w-3 h-3 text-gray-500 ml-auto" />
 					</button>
 
@@ -841,25 +847,27 @@ function MultiSecretDetail({
 				</div>
 
 				<div className="pt-4 border-t border-white/10 space-y-2">
-					<button
-						type="button"
-						onClick={() => void handleViewAllValues()}
-						disabled={loadingValues}
-						className="w-full flex items-center gap-3 px-4 py-3 bg-white/5 border border-white/10 rounded-lg hover:bg-white/10 transition-colors text-sm disabled:opacity-50"
-					>
-						{loadingValues ? (
-							<Loader2 className="w-4 h-4 text-cyan-400 animate-spin" />
-						) : (
-							<Eye className="w-4 h-4 text-cyan-400" />
-						)}
-						<span>View All Values</span>
-					</button>
+					<div className="pb-3 mb-1 border-b border-white/10 space-y-2">
+						<button
+							type="button"
+							onClick={() => void handleViewAllValues()}
+							disabled={loadingValues}
+							className={PRIMARY_ACTION_CLASS}
+						>
+							{loadingValues ? (
+								<Loader2 className="w-4 h-4 animate-spin" />
+							) : (
+								<Eye className="w-4 h-4" />
+							)}
+							<span>View & Edit Values</span>
+						</button>
 
-					{valuesError ? (
-						<div className="px-4 py-2 rounded-lg border border-red-500/30 bg-red-500/10 text-red-300 text-xs">
-							{valuesError}
-						</div>
-					) : null}
+						{valuesError ? (
+							<div className="px-4 py-2 rounded-lg border border-red-500/30 bg-red-500/10 text-red-300 text-xs">
+								{valuesError}
+							</div>
+						) : null}
+					</div>
 
 					{prunableSecrets.length > 0 ? (
 						<>
