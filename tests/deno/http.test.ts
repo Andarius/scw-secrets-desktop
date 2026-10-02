@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { createHttpHandler, externalCommand, type Handlers } from "../../src/deno/http";
+import { createHttpHandler, externalCommand, PublicError, type Handlers } from "../../src/deno/http";
 
 const token = "test-capability";
 const secretId = "12345678-1234-1234-1234-123456789abc";
@@ -70,6 +70,16 @@ test("authenticated native requests do not need browser-only headers", async () 
 
 test.each(["https://example.com", "https://console.scaleway.com/&calc", "javascript:alert(1)", "https://console.scaleway.com@evil.example/"])("rejects external launcher input %s", (url) => {
 	expect(() => externalCommand(url, "windows")).toThrow();
+});
+
+test("only PublicError messages reach the page; other failures stay generic", async () => {
+	const handlers = {
+		getProfiles: () => { throw new PublicError("download failed (404)"); },
+		getProjects: () => { throw new Error("upstream detail: token=abc"); },
+	} as unknown as Handlers;
+	const handle = createHttpHandler(handlers, async () => new Response(""), token);
+	expect(await (await handle(request("getProfiles", "{}"))).json()).toEqual({ error: "download failed (404)" });
+	expect(await (await handle(request("getProjects", "{}"))).json()).toEqual({ error: "request failed" });
 });
 
 test("opens only this app's GitHub release pages besides console links", () => {

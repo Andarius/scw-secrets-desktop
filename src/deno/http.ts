@@ -1,6 +1,13 @@
 import { UUID_PATTERN, REVISION_PATTERN, RELEASE_PAGE_PATTERN, VERSION_PATTERN } from "../shared/validation.ts";
 import type { ApiMethod, ApiRequests } from "../shared/rpc.ts";
 
+/**
+ * An error whose message was written for the user and is safe to show. Every other error is
+ * reported as a generic "request failed", so upstream details (e.g. Scaleway responses) never
+ * reach the page.
+ */
+export class PublicError extends Error {}
+
 export type Handlers = {
 	[K in ApiMethod]: (params: ApiRequests[K]["params"]) => Promise<ApiRequests[K]["response"]> | ApiRequests[K]["response"];
 };
@@ -117,8 +124,8 @@ export function createHttpHandler(
 		if (!validParams(method as ApiMethod, params)) return json({ error: "invalid parameters" }, 400);
 		try {
 			return json(await (handlers[method as ApiMethod] as (params: unknown) => unknown)(params));
-		} catch {
-			return json({ error: "request failed" }, 500);
+		} catch (error) {
+			return json({ error: error instanceof PublicError ? error.message : "request failed" }, 500);
 		}
 	}
 	return async (req: Request): Promise<Response> => {
