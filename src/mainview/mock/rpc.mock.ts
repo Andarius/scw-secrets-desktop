@@ -54,4 +54,6 @@ export const mockApi: ApiClient = {
 	clearHttpLogs: async () => ({ ok: true }),
 	openExternal: async () => ({ ok: true }),
 	getLatestRelease: async () => null,
+	getUpdateSupport: async () => ({ canInstall: false }),
+	installUpdate: async () => ({ ok: true }),
 };

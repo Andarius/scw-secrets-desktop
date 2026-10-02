@@ -82,6 +82,14 @@ export type ApiRequests = {
 		params: Record<string, never>;
 		response: LatestRelease | null;
 	};
+	getUpdateSupport: {
+		params: Record<string, never>;
+		response: { canInstall: boolean };
+	};
+	installUpdate: {
+		params: { version: string };
+		response: { ok: boolean };
+	};
 };
 
 export type ApiMethod = keyof ApiRequests;

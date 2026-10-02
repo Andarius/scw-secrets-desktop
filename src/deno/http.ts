@@ -1,4 +1,4 @@
-import { UUID_PATTERN, REVISION_PATTERN, RELEASE_PAGE_PATTERN } from "../shared/validation.ts";
+import { UUID_PATTERN, REVISION_PATTERN, RELEASE_PAGE_PATTERN, VERSION_PATTERN } from "../shared/validation.ts";
 import type { ApiMethod, ApiRequests } from "../shared/rpc.ts";
 
 export type Handlers = {
@@ -22,6 +22,7 @@ const fields: Record<ApiMethod, string[]> = {
 	duplicateSecret: ["secretId", "name", "path?", "type?", "tags?", "profile?", "projectId?"],
 	deleteSecret: ["secretId", "profile?", "projectId?"],
 	getHttpLogs: [], clearHttpLogs: [], openExternal: ["url"], getLatestRelease: [],
+	getUpdateSupport: [], installUpdate: ["version"],
 };
 
 function validParams(method: ApiMethod, params: unknown): boolean {
@@ -47,6 +48,7 @@ function validParams(method: ApiMethod, params: unknown): boolean {
 		if (typeof value !== "string") return false;
 		if (key === "secretId" || key === "projectId") return UUID_PATTERN.test(value);
 		if (key === "status") return ["all", "ready", "disabled"].includes(value);
+		if (key === "version") return VERSION_PATTERN.test(value);
 		return !["name", "profile", "url", "type"].includes(key) || value.length > 0;
 	});
 }
