@@ -1,4 +1,4 @@
-import type { SecretVersion } from "../shared/models";
+import type { SecretVersion } from "../../shared/models";
 
 export type SecretVersionAction =
 	| { type: "disable"; revision: number }
@@ -33,4 +33,9 @@ export function planKeepLatestVersionOnly(
 	}
 
 	return actions;
+}
+
+// Scaleway never reuses revision numbers, so the next write lands one above the highest seen.
+export function nextRevision(versions: SecretVersion[]): number {
+	return Math.max(0, ...versions.map((version) => version.revision)) + 1;
 }

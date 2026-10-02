@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
-import { Check, Copy, CopyPlus, Eye, Pencil, Clock, Key as KeyIcon, Settings, Loader2, ExternalLink, Trash2, Layers2, X, Plus, Share2, Tag, PanelRightClose } from "lucide-react";
+import { Check, Copy, CopyPlus, Eye, Pencil, Clock, Key as KeyIcon, Globe, Loader2, ExternalLink, Trash2, Layers2, X, Plus, Share2, Tag, PanelRightClose } from "lucide-react";
 
-import { api } from "../rpc";
-import type { ProfileSummary, Project, Secret } from "../../shared/models";
-import { secretConsoleUrl } from "../console";
-import { planKeepLatestVersionOnly } from "../secret-versions";
+import { api } from "../../lib/rpc";
+import type { ProfileSummary, Project, Secret } from "../../../shared/models";
+import { secretConsoleUrl } from "../../lib/console";
+import { planKeepLatestVersionOnly } from "../../lib/secret-versions";
 
 export type ValueEntry = { secretId: string; name: string; path?: string; value: string };
 
@@ -13,11 +13,14 @@ type DetailPanelProps = {
 	selectedProject: Project | null;
 	selectedProfileSummary: ProfileSummary | null;
 	onViewValues: (title: string, values: ValueEntry[]) => void;
-	onEditValue: (entry: ValueEntry) => void;
 	onViewHistory: (secretId: string, secretName: string) => void;
 	onRefresh: () => void;
 	onCollapse?: () => void;
 };
+
+// The main action of the panel (open the value viewer), set apart from the secondary actions.
+const PRIMARY_ACTION_CLASS =
+	"w-full flex items-center gap-3 px-4 py-3.5 bg-cyan-500/15 border border-cyan-500/40 rounded-lg hover:bg-cyan-500/25 hover:border-cyan-400/60 transition-colors text-sm font-medium text-cyan-200 disabled:opacity-50";
 
 function formatDate(value: string): string {
 	const date = new Date(value);
@@ -96,7 +99,6 @@ function SingleSecretDetail({
 	selectedProfileSummary,
 	onCollapse,
 	onViewValues,
-	onEditValue,
 	onViewHistory,
 	onRefresh,
 }: {
@@ -104,7 +106,6 @@ function SingleSecretDetail({
 	selectedProject: Project | null;
 	selectedProfileSummary: ProfileSummary | null;
 	onViewValues: (title: string, values: ValueEntry[]) => void;
-	onEditValue: (entry: ValueEntry) => void;
 	onViewHistory: (secretId: string, secretName: string) => void;
 	onRefresh: () => void;
 	onCollapse?: () => void;
@@ -112,8 +113,6 @@ function SingleSecretDetail({
 	const [loadingValue, setLoadingValue] = useState(false);
 	const [valueError, setValueError] = useState<string | null>(null);
 
-	const [loadingEdit, setLoadingEdit] = useState(false);
-	const [editError, setEditError] = useState<string | null>(null);
 	const [keepingLatest, setKeepingLatest] = useState(false);
 	const [keepLatestError, setKeepLatestError] = useState<string | null>(null);
 	const [confirmKeepLatest, setConfirmKeepLatest] = useState(false);
@@ -136,7 +135,6 @@ function SingleSecretDetail({
 	if (secretId !== prevSecretId) {
 		setPrevSecretId(secretId);
 		setValueError(null);
-		setEditError(null);
 		setKeepLatestError(null);
 		setConfirmKeepLatest(false);
 		setDuplicateError(null);
@@ -163,24 +161,6 @@ function SingleSecretDetail({
 			setValueError(reason instanceof Error ? reason.message : String(reason));
 		} finally {
 			setLoadingValue(false);
-		}
-	}
-
-	async function handleEditValue() {
-		setLoadingEdit(true);
-		setEditError(null);
-		try {
-			const response = await api.getSecretValue({
-				secretId: secret.id,
-				revision: "latest_enabled",
-				profile: selectedProfileSummary?.name,
-				projectId: selectedProject?.id,
-			});
-			onEditValue({ secretId: secret.id, name: secret.name, path: secret.path, value: response.value });
-		} catch (reason) {
-			setEditError(reason instanceof Error ? reason.message : String(reason));
-		} finally {
-			setLoadingEdit(false);
 		}
 	}
 
@@ -274,7 +254,7 @@ function SingleSecretDetail({
 		}
 	}
 
-	function handleManageSecret() {
+	function handleOpenInConsole() {
 		void api.openExternal({ url: secretConsoleUrl(secret.id) });
 	}
 
@@ -330,7 +310,7 @@ function SingleSecretDetail({
 				</div>
 
 				<div className="grid grid-cols-2 gap-4">
-					<div>
+					<div className="col-span-2">
 						<div className="text-xs text-gray-400 uppercase tracking-wider mb-1.5">
 							Secret ID
 						</div>
@@ -339,15 +319,6 @@ function SingleSecretDetail({
 								{secret.id}
 							</div>
 							<CopyButton text={secret.id} />
-						</div>
-					</div>
-
-					<div>
-						<div className="text-xs text-gray-400 uppercase tracking-wider mb-1.5">
-							Versions
-						</div>
-						<div className="text-sm text-gray-300">
-							{secret.version_count}
 						</div>
 					</div>
 
@@ -391,6 +362,15 @@ function SingleSecretDetail({
 						</div>
 						<div className="text-sm text-gray-300">
 							{formatDate(secret.updated_at)}
+						</div>
+					</div>
+
+					<div>
+						<div className="text-xs text-gray-400 uppercase tracking-wider mb-1.5">
+							Versions
+						</div>
+						<div className="text-sm text-gray-300">
+							{secret.version_count}
 						</div>
 					</div>
 				</div>
@@ -515,45 +495,27 @@ function SingleSecretDetail({
 				</div>
 
 				<div className="pt-4 border-t border-white/10 space-y-2">
-					<button
-						type="button"
-						onClick={() => void handleViewValue()}
-						disabled={loadingValue}
-						className="w-full flex items-center gap-3 px-4 py-3 bg-white/5 border border-white/10 rounded-lg hover:bg-white/10 transition-colors text-sm disabled:opacity-50"
-					>
-						{loadingValue ? (
-							<Loader2 className="w-4 h-4 text-cyan-400 animate-spin" />
-						) : (
-							<Eye className="w-4 h-4 text-cyan-400" />
-						)}
-						<span>View Secret Value</span>
-					</button>
+					<div className="pb-3 mb-1 border-b border-white/10 space-y-2">
+						<button
+							type="button"
+							onClick={() => void handleViewValue()}
+							disabled={loadingValue}
+							className={PRIMARY_ACTION_CLASS}
+						>
+							{loadingValue ? (
+								<Loader2 className="w-4 h-4 animate-spin" />
+							) : (
+								<Eye className="w-4 h-4" />
+							)}
+							<span>View & Edit Value</span>
+						</button>
 
-					{valueError ? (
-						<div className="px-4 py-2 rounded-lg border border-red-500/30 bg-red-500/10 text-red-300 text-xs">
-							{valueError}
-						</div>
-					) : null}
-
-					<button
-						type="button"
-						onClick={() => void handleEditValue()}
-						disabled={loadingEdit}
-						className="w-full flex items-center gap-3 px-4 py-3 bg-white/5 border border-white/10 rounded-lg hover:bg-white/10 transition-colors text-sm disabled:opacity-50"
-					>
-						{loadingEdit ? (
-							<Loader2 className="w-4 h-4 text-amber-400 animate-spin" />
-						) : (
-							<Pencil className="w-4 h-4 text-amber-400" />
-						)}
-						<span>Edit Secret Value</span>
-					</button>
-
-					{editError ? (
-						<div className="px-4 py-2 rounded-lg border border-red-500/30 bg-red-500/10 text-red-300 text-xs">
-							{editError}
-						</div>
-					) : null}
+						{valueError ? (
+							<div className="px-4 py-2 rounded-lg border border-red-500/30 bg-red-500/10 text-red-300 text-xs">
+								{valueError}
+							</div>
+						) : null}
+					</div>
 
 					<button
 						type="button"
@@ -691,11 +653,11 @@ function SingleSecretDetail({
 
 					<button
 						type="button"
-						onClick={handleManageSecret}
+						onClick={handleOpenInConsole}
 						className="w-full flex items-center gap-3 px-4 py-3 bg-white/5 border border-white/10 rounded-lg hover:bg-white/10 transition-colors text-sm"
 					>
-						<Settings className="w-4 h-4 text-gray-400" />
-						<span>Manage Secret</span>
+						<Globe className="w-4 h-4 text-gray-400" />
+						<span>Open in Console</span>
 						<ExternalLink className="w-3 h-3 text-gray-500 ml-auto" />
 					</button>
 
@@ -885,25 +847,27 @@ function MultiSecretDetail({
 				</div>
 
 				<div className="pt-4 border-t border-white/10 space-y-2">
-					<button
-						type="button"
-						onClick={() => void handleViewAllValues()}
-						disabled={loadingValues}
-						className="w-full flex items-center gap-3 px-4 py-3 bg-white/5 border border-white/10 rounded-lg hover:bg-white/10 transition-colors text-sm disabled:opacity-50"
-					>
-						{loadingValues ? (
-							<Loader2 className="w-4 h-4 text-cyan-400 animate-spin" />
-						) : (
-							<Eye className="w-4 h-4 text-cyan-400" />
-						)}
-						<span>View All Values</span>
-					</button>
+					<div className="pb-3 mb-1 border-b border-white/10 space-y-2">
+						<button
+							type="button"
+							onClick={() => void handleViewAllValues()}
+							disabled={loadingValues}
+							className={PRIMARY_ACTION_CLASS}
+						>
+							{loadingValues ? (
+								<Loader2 className="w-4 h-4 animate-spin" />
+							) : (
+								<Eye className="w-4 h-4" />
+							)}
+							<span>View & Edit Values</span>
+						</button>
 
-					{valuesError ? (
-						<div className="px-4 py-2 rounded-lg border border-red-500/30 bg-red-500/10 text-red-300 text-xs">
-							{valuesError}
-						</div>
-					) : null}
+						{valuesError ? (
+							<div className="px-4 py-2 rounded-lg border border-red-500/30 bg-red-500/10 text-red-300 text-xs">
+								{valuesError}
+							</div>
+						) : null}
+					</div>
 
 					{prunableSecrets.length > 0 ? (
 						<>
@@ -1007,7 +971,6 @@ export function DetailPanel({
 	selectedProject,
 	selectedProfileSummary,
 	onViewValues,
-	onEditValue,
 	onViewHistory,
 	onRefresh,
 	onCollapse,
@@ -1045,7 +1008,6 @@ export function DetailPanel({
 					selectedProject={selectedProject}
 					selectedProfileSummary={selectedProfileSummary}
 					onViewValues={onViewValues}
-					onEditValue={onEditValue}
 					onViewHistory={onViewHistory}
 					onRefresh={onRefresh}
 					onCollapse={onCollapse}

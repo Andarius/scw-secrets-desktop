@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 
 import type { Secret } from "../../src/shared/models";
-import { matchSecrets } from "../../src/mainview/components/SpotlightSearch";
+import { matchSecrets } from "../../src/mainview/components/search/SpotlightSearch";
 
 function makeSecret(overrides: Partial<Secret> = {}): Secret {
 	return {

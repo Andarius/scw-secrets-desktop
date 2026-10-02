@@ -22,11 +22,11 @@ test("RPC consumes the launch token, strips the fragment and reuses it on reload
 			requests++;
 			return Response.json({ profiles: [] });
 		};
-		const first = await import("./src/mainview/rpc.ts?first");
+		const first = await import("./src/mainview/lib/rpc.ts?first");
 		await first.api.getProfiles({});
 		assert.equal(window.location.hash, "");
 		assert.equal(storage.get("scw-session-token"), "test-token");
-		const reloaded = await import("./src/mainview/rpc.ts?reload");
+		const reloaded = await import("./src/mainview/lib/rpc.ts?reload");
 		await reloaded.api.getProfiles({});
 		assert.equal(requests, 2);
 	`;

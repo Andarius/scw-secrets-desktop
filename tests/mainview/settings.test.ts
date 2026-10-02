@@ -12,7 +12,7 @@ Object.defineProperty(globalThis, "localStorage", { configurable: true, value: {
 } as Storage });
 
 // Import after localStorage is available
-const { loadSettings, saveSettings } = await import("../../src/mainview/settings");
+const { loadSettings, saveSettings } = await import("../../src/mainview/lib/settings");
 
 afterEach(() => {
 	localStorage.clear();

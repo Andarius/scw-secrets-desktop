@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Loader2, Plus, X } from "lucide-react";
 
-import { api } from "../rpc";
+import { api } from "../../lib/rpc";
 
 type CreateSecretModalProps = {
 	profile?: string;

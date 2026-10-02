@@ -1,4 +1,4 @@
-import type { Secret } from "../shared/models";
+import type { Secret } from "../../shared/models";
 
 export type StatusFilter = "all" | "ready" | "attention";
 export type InventorySortKey = "name" | "updated_at" | "version_count";

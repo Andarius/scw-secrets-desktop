@@ -1,4 +1,4 @@
-import type { ApiClient } from "../shared/rpc";
+import type { ApiClient } from "../../shared/rpc";
 
 // Exercises the value viewer: JSON with embedded JSON/TOML strings, long dot-path
 // keys, array values, and a multi-line non-TOML string.

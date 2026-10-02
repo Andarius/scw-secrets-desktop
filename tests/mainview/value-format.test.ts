@@ -19,7 +19,7 @@ import {
 	tokenizeEnvLine,
 	tokenizeJsonishLine,
 	tokenizeTomlLine,
-} from "../../src/mainview/value-format";
+} from "../../src/mainview/lib/value-format";
 
 const TOML_SAMPLE = `# config
 [database]
@@ -317,7 +317,7 @@ describe("tomlToJson", () => {
 	});
 
 	test("malformed inline comments terminate in the patched parser", async () => {
-		const subprocess = Bun.spawn([process.execPath, "-e", 'import {tomlToJson} from "./src/mainview/value-format"; tomlToJson("x = { a = 1 # c"); tomlToJson("x = [1 # c");'], { stdout: "ignore", stderr: "pipe" });
+		const subprocess = Bun.spawn([process.execPath, "-e", 'import {tomlToJson} from "./src/mainview/lib/value-format"; tomlToJson("x = { a = 1 # c"); tomlToJson("x = [1 # c");'], { stdout: "ignore", stderr: "pipe" });
 		const timeout = setTimeout(() => subprocess.kill(), 2000);
 		try {
 			expect(await subprocess.exited).toBe(0);

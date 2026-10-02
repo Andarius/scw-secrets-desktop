@@ -1,22 +1,21 @@
 import { startTransition, useDeferredValue, useEffect, useState } from "react";
 
-import { api } from "./rpc";
+import { api } from "./lib/rpc";
 import type { ProfilesResponse, Project, Secret } from "../shared/models";
-import { Header } from "./components/Header";
-import { StatsCards, STORAGE_PRICE_PER_VERSION_EUR } from "./components/StatsCards";
-import { CleanupModal } from "./components/CleanupModal";
-import { Navigator } from "./components/Navigator";
-import { PaneRail } from "./components/PaneRail";
-import { Inventory } from "./components/Inventory";
-import { DetailPanel, type ValueEntry } from "./components/DetailPanel";
-import { ValueView } from "./components/ValueModal";
-import { EditModal } from "./components/EditModal";
-import { HistoryModal } from "./components/HistoryModal";
-import { CreateSecretModal } from "./components/CreateSecretModal";
-import { SpotlightSearch } from "./components/SpotlightSearch";
-import { SettingsModal } from "./components/SettingsModal";
-import { LogsModal } from "./components/LogsModal";
-import { loadSettings, saveSettings, type AppSettings } from "./settings";
+import { Header } from "./components/layout/Header";
+import { StatsCards, STORAGE_PRICE_PER_VERSION_EUR } from "./components/layout/StatsCards";
+import { CleanupModal } from "./components/modals/CleanupModal";
+import { Navigator } from "./components/panels/Navigator";
+import { PaneRail } from "./components/layout/PaneRail";
+import { Inventory } from "./components/panels/Inventory";
+import { DetailPanel, type ValueEntry } from "./components/panels/DetailPanel";
+import { ValueView } from "./components/modals/ValueModal";
+import { HistoryModal } from "./components/modals/HistoryModal";
+import { CreateSecretModal } from "./components/modals/CreateSecretModal";
+import { SpotlightSearch } from "./components/search/SpotlightSearch";
+import { SettingsModal } from "./components/modals/SettingsModal";
+import { LogsModal } from "./components/modals/LogsModal";
+import { loadSettings, saveSettings, type AppSettings } from "./lib/settings";
 import {
 	filterSecrets,
 	getPathEntries,
@@ -25,7 +24,7 @@ import {
 	type InventorySortDirection,
 	type InventorySortKey,
 	type StatusFilter,
-} from "./secret-list";
+} from "./lib/secret-list";
 
 const STORAGE_KEY = "scw-secrets-state";
 
@@ -68,7 +67,6 @@ function App() {
 	const [secrets, setSecrets] = useState<Secret[]>([]);
 	const [selectedSecretIds, setSelectedSecretIds] = useState<Set<string>>(new Set());
 	const [expandedValues, setExpandedValues] = useState<{ title: string; values: ValueEntry[] } | null>(null);
-	const [editingEntry, setEditingEntry] = useState<ValueEntry | null>(null);
 	const [creatingSecret, setCreatingSecret] = useState(false);
 	const [historyTarget, setHistoryTarget] = useState<{ secretId: string; secretName: string } | null>(null);
 	const [spotlightOpen, setSpotlightOpen] = useState(false);
@@ -490,7 +488,6 @@ function App() {
 								selectedProject={selectedProject}
 								selectedProfileSummary={selectedProfileSummary}
 								onViewValues={(title, values) => setExpandedValues({ title, values })}
-								onEditValue={(entry) => setEditingEntry(entry)}
 								onViewHistory={(secretId, secretName) => setHistoryTarget({ secretId, secretName })}
 								onRefresh={() => setRefreshKey((k) => k + 1)}
 								onCollapse={() => setShowDetailPane(false)}
@@ -510,22 +507,6 @@ function App() {
 						onClose={() => setExpandedValues(null)}
 						onSaved={() => {
 							setExpandedValues(null);
-							setRefreshKey((k) => k + 1);
-						}}
-					/>
-				) : null}
-
-				{editingEntry ? (
-					<EditModal
-						secretId={editingEntry.secretId}
-						name={editingEntry.name}
-						initialValue={editingEntry.value}
-						profile={selectedProfileSummary?.name}
-						projectId={selectedProject?.id}
-						autoKeepLatest={settings.autoKeepLatest}
-						onClose={() => setEditingEntry(null)}
-						onSaved={() => {
-							setEditingEntry(null);
 							setRefreshKey((k) => k + 1);
 						}}
 					/>

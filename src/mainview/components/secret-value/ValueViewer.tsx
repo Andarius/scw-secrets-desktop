@@ -1,6 +1,8 @@
 import { Component, useMemo, useState, type ReactNode } from "react";
 import { ChevronDown, ChevronRight } from "lucide-react";
 
+import { useStableMinHeight } from "../../hooks/useStableMinHeight";
+import { KeyFilterInput } from "../inputs/KeyFilterInput";
 import {
 	detectEmbedded,
 	detectFormat,
@@ -16,7 +18,7 @@ import {
 	type FlatRow,
 	type Token,
 	type ValueFormat,
-} from "../value-format";
+} from "../../lib/value-format";
 
 export const TOKEN_CLASSES: Record<Token["type"], string> = {
 	comment: "text-gray-600 italic",
@@ -33,7 +35,7 @@ function TokenSpans({ tokens }: { tokens: Token[] }) {
 	return (
 		<>
 			{tokens.map((token, i) => (
-				<span key={i} className={TOKEN_CLASSES[token.type]}>
+				<span key={i} className={token.type === "key" ? `${TOKEN_CLASSES.key} whitespace-nowrap` : TOKEN_CLASSES[token.type]}>
 					{token.text}
 				</span>
 			))}
@@ -201,7 +203,7 @@ function renderJsonNode(
 			{entries.map(([key, item], i) => (
 				<span key={key}>
 					{inner}
-					<span className={TOKEN_CLASSES.key}>{JSON.stringify(key)}</span>
+					<span className={`${TOKEN_CLASSES.key} whitespace-nowrap`}>{JSON.stringify(key)}</span>
 					<span className={TOKEN_CLASSES.punct}>: </span>
 					{renderJsonNode(item, inner, `${path}.${key}`, ctx, i < entries.length - 1 ? comma : null)}
 					{"\n"}
@@ -228,22 +230,33 @@ function flattenValue(value: string, format: ValueFormat): FlatRow[] {
 	return [];
 }
 
+// Same threshold as the structure editor: a filter only pays off on longer values.
+const FILTER_MIN_ROWS = 5;
+
 function TableView({ rows }: { rows: FlatRow[] }) {
+	const [filter, setFilter] = useState("");
+	const query = filter.trim().toLowerCase();
+	const visibleRows = query
+		? rows.filter((row) => row.key.toLowerCase().includes(query) || row.value.toLowerCase().includes(query))
+		: rows;
+
 	return (
-		<table className="w-full table-fixed text-sm font-mono">
-			<colgroup>
-				<col className="w-[36%]" />
-				<col />
-			</colgroup>
-			<tbody>
-				{rows.map((row, i) => (
-					<tr key={`${row.key}-${i}`} className="border-b border-white/5 last:border-0">
-						<td className="py-1 pr-4 text-cyan-300 align-top break-words">{row.key}</td>
-						<td className={`py-1 break-all whitespace-pre-wrap ${KIND_CLASSES[row.kind]}`}>{row.value}</td>
-					</tr>
-				))}
-			</tbody>
-		</table>
+		<div>
+			{rows.length >= FILTER_MIN_ROWS ? <KeyFilterInput value={filter} onChange={setFilter} /> : null}
+			{query && visibleRows.length === 0 ? (
+				<p className="text-xs text-gray-500 px-1 py-1">No keys match “{filter.trim()}”.</p>
+			) : null}
+			<table className="w-full text-sm font-mono">
+				<tbody>
+					{visibleRows.map((row, i) => (
+						<tr key={`${row.key}-${i}`} className="border-b border-white/5 last:border-0">
+							<td className="w-px py-1 pr-4 text-cyan-300 align-top whitespace-nowrap">{row.key}</td>
+							<td className={`py-1 break-all whitespace-pre-wrap ${KIND_CLASSES[row.kind]}`}>{row.value}</td>
+						</tr>
+					))}
+				</tbody>
+			</table>
+		</div>
 	);
 }
 
@@ -259,11 +272,11 @@ export function prefersTableMode(): boolean {
 function loadPreferredMode(): ViewMode {
 	try {
 		const stored = localStorage.getItem(MODE_KEY);
-		if (stored === "table" || stored === "json" || stored === "toml" || stored === "raw") return stored;
+		if (stored === "formatted" || stored === "table" || stored === "json" || stored === "toml" || stored === "raw") return stored;
 	} catch {
 		// ignore
 	}
-	return "formatted";
+	return "table";
 }
 
 export class ValueRenderBoundary extends Component<{ value: string; children: ReactNode }, { failed: boolean }> {
@@ -290,6 +303,7 @@ function ValueViewerContent({ value }: { value: string }) {
 	const format = useMemo(() => detectFormat(value), [value]);
 	const [mode, setModeState] = useState<ViewMode>(loadPreferredMode);
 	const [expanded, setExpanded] = useState<Set<string>>(new Set());
+	const { ref: contentRef, minHeight } = useStableMinHeight<HTMLDivElement>(value);
 
 	function setMode(next: ViewMode) {
 		setModeState(next);
@@ -319,8 +333,8 @@ function ValueViewerContent({ value }: { value: string }) {
 
 	// the conversion tab is whichever format the value is NOT
 	const modes: [ViewMode, string][] = [
-		["formatted", "Formatted"],
 		["table", "Table"],
+		["formatted", "Formatted"],
 		...(format === "json"
 			? ([["toml", "TOML"]] as [ViewMode, string][])
 			: ([["json", "JSON"]] as [ViewMode, string][])),
@@ -350,23 +364,25 @@ function ValueViewerContent({ value }: { value: string }) {
 					))}
 				</div>
 			</div>
-			{effectiveMode === "table" ? (
-				<TableView rows={flattenValue(value, format)} />
-			) : (
-				<pre className="text-sm font-mono whitespace-pre-wrap break-all leading-relaxed">
-					{effectiveMode === "raw" ? (
-						<span className="text-cyan-200">{value}</span>
-					) : effectiveMode === "toml" ? (
-						<HighlightedLines value={jsonToToml(value).replace(/\n$/, "")} format="toml" />
-					) : effectiveMode === "json" ? (
-						renderJsonNode(format === "toml" ? tomlToJson(value) : envToJson(value), "", "$", ctx)
-					) : format === "json" ? (
-						renderJsonNode(parseJsonContainer(value), "", "$", ctx)
-					) : (
-						<HighlightedLines value={value.replace(/\n$/, "")} format={format} />
-					)}
-				</pre>
-			)}
+			<div ref={contentRef} style={{ minHeight }}>
+				{effectiveMode === "table" ? (
+					<TableView rows={flattenValue(value, format)} />
+				) : (
+					<pre className="text-sm font-mono whitespace-pre-wrap break-all leading-relaxed">
+						{effectiveMode === "raw" ? (
+							<span className="text-cyan-200">{value}</span>
+						) : effectiveMode === "toml" ? (
+							<HighlightedLines value={jsonToToml(value).replace(/\n$/, "")} format="toml" />
+						) : effectiveMode === "json" ? (
+							renderJsonNode(format === "toml" ? tomlToJson(value) : envToJson(value), "", "$", ctx)
+						) : format === "json" ? (
+							renderJsonNode(parseJsonContainer(value), "", "$", ctx)
+						) : (
+							<HighlightedLines value={value.replace(/\n$/, "")} format={format} />
+						)}
+					</pre>
+				)}
+			</div>
 		</div>
 	);
 }

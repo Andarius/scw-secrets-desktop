@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { Check, ChevronDown, ChevronRight, Plus, Search, Trash2, X } from "lucide-react";
+import { Check, ChevronDown, ChevronRight, Plus, Trash2, X } from "lucide-react";
+import { KeyFilterInput } from "../inputs/KeyFilterInput";
 import { ValueRenderBoundary } from "./ValueViewer";
 
 import {
@@ -9,7 +10,7 @@ import {
 	unquoteDisplay,
 	type StructureGroup,
 	type StructureLeaf,
-} from "../value-format";
+} from "../../lib/value-format";
 
 const KIND_LABELS: Record<StructureLeaf["kind"], string> = {
 	string: "str",
@@ -321,21 +322,7 @@ function ValueStructureEditorContent({ value, onChange }: { value: string; onCha
 	return (
 		<div className="space-y-1 font-mono text-sm">
 			{totalLeaves >= 5 || (groups?.length ?? 0) >= 3 ? (
-				<div className="flex items-center gap-2 mb-2 px-2 py-1 rounded-md border border-white/10 bg-white/[0.03] max-w-xs">
-					<Search className="w-3.5 h-3.5 text-gray-500 shrink-0" />
-					<input
-						value={filter}
-						onChange={(e) => setFilter(e.target.value)}
-						placeholder="Filter keys…"
-						spellCheck={false}
-						className="w-full bg-transparent text-xs text-gray-200 placeholder-gray-600 focus:outline-none"
-					/>
-					{filter ? (
-						<button type="button" onClick={() => setFilter("")} className="text-gray-500 hover:text-gray-300">
-							<X className="w-3 h-3" />
-						</button>
-					) : null}
-				</div>
+				<KeyFilterInput value={filter} onChange={setFilter} />
 			) : null}
 			{query && visibleGroups.length === 0 ? (
 				<p className="text-xs text-gray-500 px-1 py-1">No keys match “{filter.trim()}”.</p>
@@ -359,7 +346,7 @@ function ValueStructureEditorContent({ value, onChange }: { value: string; onCha
 							<div className="mb-2">
 								{group.leaves.map((leaf) => (
 									<div key={leaf.key} className="group/row flex items-start gap-3 pl-6 py-0.5">
-										<span className="text-cyan-300 min-w-[140px] max-w-[280px] break-words pt-0.5">{leaf.key}</span>
+										<span className="text-cyan-300 min-w-[140px] shrink-0 whitespace-nowrap pt-0.5">{leaf.key}</span>
 										<span className="text-[9px] uppercase text-gray-600 border border-white/10 rounded px-1 mt-1.5 shrink-0">
 											{KIND_LABELS[leaf.kind]}
 										</span>

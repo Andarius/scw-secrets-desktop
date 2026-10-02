@@ -56,7 +56,12 @@ const json = (data: unknown, status = 200) => new Response(JSON.stringify(data),
 	headers: { "content-type": "application/json", "cache-control": "no-store" },
 });
 
-export function createHttpHandler(handlers: Handlers, serveStatic: (path: string) => Promise<Response>, token: string) {
+export function createHttpHandler(
+	handlers: Handlers,
+	serveStatic: (path: string) => Promise<Response>,
+	token: string,
+	onUnauthorized?: () => void,
+) {
 	async function handle(req: Request): Promise<Response> {
 		const url = new URL(req.url);
 		const host = req.headers.get("host") ?? url.host;
@@ -66,7 +71,10 @@ export function createHttpHandler(handlers: Handlers, serveStatic: (path: string
 		if (!url.pathname.startsWith("/api/")) {
 			return req.method === "GET" ? serveStatic(url.pathname) : json({ error: "method not allowed" }, 405);
 		}
-		if (req.headers.get("authorization") !== `Bearer ${token}`) return json({ error: "unauthorized" }, 401);
+		if (req.headers.get("authorization") !== `Bearer ${token}`) {
+			onUnauthorized?.();
+			return json({ error: "unauthorized" }, 401);
+		}
 		const site = req.headers.get("sec-fetch-site");
 		const origin = req.headers.get("origin");
 		if ((site && site !== "same-origin" && site !== "none") ||

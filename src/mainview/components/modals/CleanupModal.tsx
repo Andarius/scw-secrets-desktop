@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { Layers2, Loader2, Scissors, X } from "lucide-react";
 
-import { api } from "../rpc";
-import type { Secret } from "../../shared/models";
-import { planKeepLatestVersionOnly } from "../secret-versions";
+import { api } from "../../lib/rpc";
+import type { Secret } from "../../../shared/models";
+import { planKeepLatestVersionOnly } from "../../lib/secret-versions";
 
 type CleanupModalProps = {
 	secrets: Secret[];

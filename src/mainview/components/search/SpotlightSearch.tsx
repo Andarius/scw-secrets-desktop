@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Copy, Eye, Loader2, Search, X } from "lucide-react";
 
-import type { Secret } from "../../shared/models";
+import type { Secret } from "../../../shared/models";
 
 type SpotlightSearchProps = {
 	secrets: Secret[];

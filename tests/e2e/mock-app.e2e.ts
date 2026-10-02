@@ -24,7 +24,7 @@ test("loads the mock inventory with the default selection", async ({ page }) => 
 	await expect(inventoryRows(page)).toHaveCount(12);
 	await expect(page.locator("tbody tr").filter({ hasText: "DATABASE_URL" })).toHaveCount(1);
 	await expect(page.locator("header").getByRole("button", { name: /^Project/ })).toContainText("webapp-api");
-	await expect(page.getByRole("button", { name: "View Secret Value" })).toBeVisible();
+	await expect(page.getByRole("button", { name: "View & Edit Value" })).toBeVisible();
 });
 
 test("switches project from the header dropdown", async ({ page }) => {
@@ -120,8 +120,15 @@ test("filters the inventory by clicking a tag", async ({ page }) => {
 });
 
 test("opens single-secret and batch value overlays", async ({ page }) => {
-	await page.getByRole("button", { name: "View Secret Value" }).click();
+	await page.getByRole("button", { name: "View & Edit Value" }).click();
 
+	// table is the default view, and the first mode button
+	await expect(page.getByText("gcp_credentials.type", { exact: true })).toBeVisible();
+	await expect(page.getByRole("button", { name: "Table", exact: true })).toBeVisible();
+	const modeButtons = page.getByRole("button", { name: /^(Table|Formatted|TOML|Raw)$/ });
+	await expect(modeButtons.first()).toHaveText("Table");
+
+	await page.getByRole("button", { name: "Formatted", exact: true }).click();
 	await expect(page.getByText("JSON", { exact: true })).toBeVisible();
 	await expect(page.getByText('"db.fr-par.scw.cloud"', { exact: true })).toBeVisible();
 
@@ -135,14 +142,14 @@ test("opens single-secret and batch value overlays", async ({ page }) => {
 
 	await page.getByRole("button", { name: "Select All" }).click();
 	await expect(page.getByText("12 SELECTED")).toBeVisible();
-	await page.getByRole("button", { name: "View All Values" }).click();
+	await page.getByRole("button", { name: "View & Edit Values" }).click();
 
 	await expect(page.getByText("12 Secrets", { exact: true })).toBeVisible();
 	await expect(page.getByRole("button", { name: "Copy All as KEY=VALUE" })).toBeVisible();
 });
 
 test("value viewer table mode sticks through edit, preview, and reload", async ({ page }) => {
-	await page.getByRole("button", { name: "View Secret Value" }).click();
+	await page.getByRole("button", { name: "View & Edit Value" }).click();
 	await page.getByRole("button", { name: "Table", exact: true }).click();
 	// dot-path rows only exist in table mode
 	await expect(page.getByText("gcp_credentials.type", { exact: true })).toBeVisible();
@@ -164,7 +171,24 @@ test("value viewer table mode sticks through edit, preview, and reload", async (
 
 	await page.keyboard.press("Escape");
 	await page.reload();
-	await page.getByRole("button", { name: "View Secret Value" }).click();
+	await page.getByRole("button", { name: "View & Edit Value" }).click();
 	await expect(page.getByText("gcp_credentials.type", { exact: true })).toBeVisible();
 });
 
+
+test("filters the value viewer table by key or value", async ({ page }) => {
+	await page.getByRole("button", { name: "View & Edit Value" }).click();
+	const filter = page.getByPlaceholder("Filter keys…");
+	await expect(page.getByRole("cell", { name: "host", exact: true })).toBeVisible();
+
+	await filter.fill("pass");
+	await expect(page.getByRole("cell", { name: "password", exact: true })).toBeVisible();
+	await expect(page.getByRole("cell", { name: "host", exact: true })).toHaveCount(0);
+
+	// values match too
+	await filter.fill("webapp");
+	await expect(page.getByRole("cell", { name: "user", exact: true })).toBeVisible();
+
+	await filter.fill("no-such-key");
+	await expect(page.getByText("No keys match “no-such-key”.")).toBeVisible();
+});

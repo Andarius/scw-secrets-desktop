@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { Eye, ScrollText, X } from "lucide-react";
 
-import type { AppSettings } from "../settings";
+import type { AppSettings } from "../../lib/settings";
 
 type SettingsModalProps = {
 	settings: AppSettings;

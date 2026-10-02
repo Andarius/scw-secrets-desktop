@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 
 import type { Secret } from "../../src/shared/models";
-import { getNextSelectionState, getSelectAllState } from "../../src/mainview/inventory-selection";
+import { getNextSelectionState, getSelectAllState } from "../../src/mainview/lib/inventory-selection";
 
 function makeSecret(id: string): Secret {
 	return {
