@@ -192,3 +192,61 @@ test("filters the value viewer table by key or value", async ({ page }) => {
 	await filter.fill("no-such-key");
 	await expect(page.getByText("No keys match “no-such-key”.")).toBeVisible();
 });
+
+for (const [name, leave] of [
+	["View toggle", (page: Page) => page.getByRole("button", { name: "View", exact: true }).click()],
+	["Escape", (page: Page) => page.keyboard.press("Escape")],
+] as const) {
+	test(`asks before ${name} discards an unsaved draft`, async ({ page }) => {
+		await page.getByRole("button", { name: "View & Edit Value" }).click();
+		await page.getByRole("button", { name: "Edit", exact: true }).first().click();
+		await page.getByRole("button", { name: "Raw", exact: true }).click();
+		await page.locator("textarea").fill("draft");
+
+		await leave(page);
+		await expect(page.getByText("Unsaved changes — press again to discard")).toBeVisible();
+		await expect(page.locator("textarea")).toHaveValue("draft");
+
+		await leave(page);
+		await expect(page.locator("textarea")).toHaveCount(0);
+	});
+}
+
+test("double-clicking a value switches to edit mode", async ({ page }) => {
+	await page.getByRole("button", { name: "View & Edit Value" }).click();
+	await page.getByRole("cell", { name: "host", exact: true }).dblclick();
+	await expect(page.getByRole("button", { name: "Save", exact: true })).toBeVisible();
+});
+
+test("typing in the value view filters keys", async ({ page }) => {
+	await page.getByRole("button", { name: "View & Edit Value" }).click();
+	await expect(page.getByRole("cell", { name: "host", exact: true })).toBeVisible();
+	await page.keyboard.type("pass");
+	await expect(page.getByPlaceholder("Filter keys…")).toHaveValue("pass");
+	await expect(page.getByRole("cell", { name: "host", exact: true })).toHaveCount(0);
+});
+
+test("Escape clears the key filter before closing the value view", async ({ page }) => {
+	await page.getByRole("button", { name: "View & Edit Value" }).click();
+	const filter = page.getByPlaceholder("Filter keys…");
+	await filter.fill("pass");
+
+	await page.keyboard.press("Escape");
+	await expect(filter).toHaveValue("");
+
+	await page.keyboard.press("Escape");
+	await expect(filter).toHaveCount(0);
+});
+
+test("the key filter survives switching to edit mode", async ({ page }) => {
+	await page.getByRole("button", { name: "View & Edit Value" }).click();
+	await page.getByPlaceholder("Filter keys…").fill("pass");
+	await page.getByRole("button", { name: "Edit", exact: true }).first().click();
+	await expect(page.getByRole("button", { name: "Save", exact: true })).toBeVisible();
+	await expect(page.getByPlaceholder("Filter keys…")).toHaveValue("pass");
+});
+
+test("reclaimable count ignores versions already scheduled for deletion", async ({ page }) => {
+	// 20 older revisions by version_count, minus DEPRECATED_API_TOKEN's 5 already scheduled for deletion
+	await expect(page.getByText("15 older revisions", { exact: false })).toBeVisible();
+});

@@ -5,6 +5,7 @@ import { secretConsoleUrl } from "../../lib/console";
 import { useNextRevision } from "../../hooks/useNextRevision";
 import { useSaveSecretValue } from "../../hooks/useSaveSecretValue";
 import { HighlightedTextarea } from "../inputs/HighlightedTextarea";
+import { KeyFilterContext } from "../inputs/KeyFilterInput";
 import { ValueStructureEditor } from "../secret-value/ValueStructureEditor";
 import { prefersTableMode, ValueViewer } from "../secret-value/ValueViewer";
 
@@ -85,6 +86,7 @@ function EditableEntry({
 	autoKeepLatest,
 	isOnlyEntry,
 	onSaved,
+	onDirtyChange,
 }: {
 	entry: ValueEntry;
 	profile?: string;
@@ -92,6 +94,7 @@ function EditableEntry({
 	autoKeepLatest?: boolean;
 	isOnlyEntry: boolean;
 	onSaved: () => void;
+	onDirtyChange: (secretId: string, dirty: boolean) => void;
 }) {
 	const formatted = useMemo(() => tryFormatJson(entry.value) ?? entry.value, [entry.value]);
 	const [value, setValue] = useState(formatted);
@@ -100,6 +103,7 @@ function EditableEntry({
 	const { save, saving, error } = useSaveSecretValue(target, onSaved);
 	const hasChanges = value !== formatted;
 	const revision = useNextRevision(target, hasChanges);
+	useEffect(() => onDirtyChange(entry.secretId, hasChanges), [entry.secretId, hasChanges]);
 	const formattedJson = useMemo(() => tryFormatJson(value), [value]);
 	const canFormatJson = formattedJson !== null && formattedJson !== value;
 	const containerRef = useRef<HTMLDivElement>(null);
@@ -185,20 +189,62 @@ function EntryLabel({ entry }: { entry: ValueEntry }) {
 	);
 }
 
-function ReadOnlyEntry({ entry }: { entry: ValueEntry }) {
+function ReadOnlyEntry({ entry, onEdit }: { entry: ValueEntry; onEdit: () => void }) {
 	return (
 		<div className="rounded-lg bg-white/5 border border-white/5 p-4">
 			<div className="flex items-center justify-between mb-2">
 				<EntryLabel entry={entry} />
 				<CopyButton text={entry.value} />
 			</div>
-			<ValueViewer value={entry.value} />
+			{/* the viewer's own controls (mode buttons, key filter) keep their double-click */}
+			<div
+				title="Double-click to edit"
+				onDoubleClick={(e) => { if (!(e.target as HTMLElement).closest("input, button")) onEdit(); }}
+			>
+				<ValueViewer value={entry.value} />
+			</div>
 		</div>
 	);
 }
 
+// Typing with no field focused and no text selected starts filtering keys.
+function focusKeyFilterOnType(e: KeyboardEvent, dialog: HTMLElement | null) {
+	if (e.key.length !== 1 || e.ctrlKey || e.metaKey || e.altKey) return;
+	if ((e.target as HTMLElement).closest?.("input, textarea, select, [contenteditable]")) return;
+	if (!window.getSelection()?.isCollapsed) return;
+	// focusing during keydown lets the typed character land in the filter
+	dialog?.querySelector<HTMLInputElement>("input[data-key-filter]")?.focus();
+}
+
 export function ValueView({ title, values, profile, projectId, autoKeepLatest, onClose, onSaved }: ValueViewProps) {
 	const [editing, setEditing] = useState(false);
+	const dialogRef = useRef<HTMLDivElement>(null);
+	// per secret, so a filter survives switching between view and edit mode
+	const [filters, setFilters] = useState<Record<string, string>>({});
+	const [dirtyIds, setDirtyIds] = useState<ReadonlySet<string>>(new Set());
+	const [confirmDiscard, setConfirmDiscard] = useState(false);
+	const askDiscard = confirmDiscard && dirtyIds.size > 0;
+
+	function handleDirtyChange(secretId: string, dirty: boolean) {
+		setDirtyIds((ids) => {
+			if (ids.has(secretId) === dirty) return ids;
+			const next = new Set(ids);
+			if (dirty) next.add(secretId);
+			else next.delete(secretId);
+			return next;
+		});
+	}
+
+	// Leaving edit mode drops unsaved drafts, so the first attempt only asks for confirmation.
+	function discardingDrafts(action: () => void) {
+		if (dirtyIds.size > 0 && !confirmDiscard) {
+			setConfirmDiscard(true);
+			return;
+		}
+		setConfirmDiscard(false);
+		setDirtyIds(new Set());
+		action();
+	}
 	const [copyFailed, setCopyFailed] = useState(false);
 	const [shareCopied, setShareCopied] = useState(false);
 
@@ -210,18 +256,19 @@ export function ValueView({ title, values, profile, projectId, autoKeepLatest, o
 
 	useEffect(() => {
 		function handleKey(e: KeyboardEvent) {
-			if (e.key === "Escape") onClose();
+			if (e.key === "Escape") discardingDrafts(onClose);
+			else focusKeyFilterOnType(e, dialogRef.current);
 		}
 		window.addEventListener("keydown", handleKey);
 		return () => window.removeEventListener("keydown", handleKey);
-	}, [onClose]);
+	}, [onClose, dirtyIds, confirmDiscard]);
 
 	return (
 		<div
 			className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm"
-			onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+			onClick={(e) => { if (e.target === e.currentTarget) discardingDrafts(onClose); }}
 		>
-			<div className="bg-[#141414] border border-white/10 rounded-xl shadow-2xl w-[90%] max-h-[85vh] flex flex-col overflow-hidden">
+			<div ref={dialogRef} className="bg-[#141414] border border-white/10 rounded-xl shadow-2xl w-[90%] max-h-[85vh] flex flex-col overflow-hidden">
 				<div className="flex items-center justify-between px-5 py-4 border-b border-white/10">
 					<div className="flex items-baseline gap-3 min-w-0">
 						<h3 className="text-sm font-medium text-gray-300 shrink-0">{title}</h3>
@@ -230,6 +277,9 @@ export function ValueView({ title, values, profile, projectId, autoKeepLatest, o
 						) : null}
 					</div>
 					<div className="flex items-center gap-2">
+						{askDiscard ? (
+							<span className="text-xs text-amber-300/80">Unsaved changes — press again to discard</span>
+						) : null}
 						{values.length > 1 ? (
 							<button
 								type="button"
@@ -256,7 +306,7 @@ export function ValueView({ title, values, profile, projectId, autoKeepLatest, o
 						) : null}
 						<button
 							type="button"
-							onClick={() => setEditing(!editing)}
+							onClick={() => (editing ? discardingDrafts(() => setEditing(false)) : setEditing(true))}
 							className={`flex items-center gap-1.5 px-3 py-1.5 text-xs border rounded-lg transition-colors ${
 								editing
 									? "bg-cyan-500/20 border-cyan-500/30 text-cyan-300"
@@ -268,7 +318,7 @@ export function ValueView({ title, values, profile, projectId, autoKeepLatest, o
 						</button>
 						<button
 							type="button"
-							onClick={onClose}
+							onClick={() => discardingDrafts(onClose)}
 							className="p-1.5 hover:bg-white/10 rounded transition-colors"
 						>
 							<X className="w-4 h-4 text-gray-400" />
@@ -277,21 +327,26 @@ export function ValueView({ title, values, profile, projectId, autoKeepLatest, o
 				</div>
 
 				<div className="flex-1 overflow-y-auto p-5 space-y-3">
-					{values.map((entry) =>
-						editing ? (
-							<EditableEntry
-								key={entry.secretId}
-								entry={entry}
-								profile={profile}
-								projectId={projectId}
-								autoKeepLatest={autoKeepLatest}
-								isOnlyEntry={values.length === 1}
-								onSaved={onSaved}
-							/>
-						) : (
-							<ReadOnlyEntry key={entry.secretId} entry={entry} />
-						),
-					)}
+					{values.map((entry) => (
+						<KeyFilterContext.Provider
+							key={entry.secretId}
+							value={[filters[entry.secretId] ?? "", (filter) => setFilters((f) => ({ ...f, [entry.secretId]: filter }))]}
+						>
+							{editing ? (
+								<EditableEntry
+									entry={entry}
+									profile={profile}
+									projectId={projectId}
+									autoKeepLatest={autoKeepLatest}
+									isOnlyEntry={values.length === 1}
+									onSaved={onSaved}
+									onDirtyChange={handleDirtyChange}
+								/>
+							) : (
+								<ReadOnlyEntry entry={entry} onEdit={() => setEditing(true)} />
+							)}
+						</KeyFilterContext.Provider>
+					))}
 				</div>
 			</div>
 		</div>
