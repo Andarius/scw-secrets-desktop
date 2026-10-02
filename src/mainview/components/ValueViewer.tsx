@@ -33,7 +33,7 @@ function TokenSpans({ tokens }: { tokens: Token[] }) {
 	return (
 		<>
 			{tokens.map((token, i) => (
-				<span key={i} className={TOKEN_CLASSES[token.type]}>
+				<span key={i} className={token.type === "key" ? `${TOKEN_CLASSES.key} whitespace-nowrap` : TOKEN_CLASSES[token.type]}>
 					{token.text}
 				</span>
 			))}
@@ -201,7 +201,7 @@ function renderJsonNode(
 			{entries.map(([key, item], i) => (
 				<span key={key}>
 					{inner}
-					<span className={TOKEN_CLASSES.key}>{JSON.stringify(key)}</span>
+					<span className={`${TOKEN_CLASSES.key} whitespace-nowrap`}>{JSON.stringify(key)}</span>
 					<span className={TOKEN_CLASSES.punct}>: </span>
 					{renderJsonNode(item, inner, `${path}.${key}`, ctx, i < entries.length - 1 ? comma : null)}
 					{"\n"}
@@ -230,15 +230,11 @@ function flattenValue(value: string, format: ValueFormat): FlatRow[] {
 
 function TableView({ rows }: { rows: FlatRow[] }) {
 	return (
-		<table className="w-full table-fixed text-sm font-mono">
-			<colgroup>
-				<col className="w-[36%]" />
-				<col />
-			</colgroup>
+		<table className="w-full text-sm font-mono">
 			<tbody>
 				{rows.map((row, i) => (
 					<tr key={`${row.key}-${i}`} className="border-b border-white/5 last:border-0">
-						<td className="py-1 pr-4 text-cyan-300 align-top break-words">{row.key}</td>
+						<td className="w-px py-1 pr-4 text-cyan-300 align-top whitespace-nowrap">{row.key}</td>
 						<td className={`py-1 break-all whitespace-pre-wrap ${KIND_CLASSES[row.kind]}`}>{row.value}</td>
 					</tr>
 				))}

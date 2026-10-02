@@ -359,7 +359,7 @@ function ValueStructureEditorContent({ value, onChange }: { value: string; onCha
 							<div className="mb-2">
 								{group.leaves.map((leaf) => (
 									<div key={leaf.key} className="group/row flex items-start gap-3 pl-6 py-0.5">
-										<span className="text-cyan-300 min-w-[140px] max-w-[280px] break-words pt-0.5">{leaf.key}</span>
+										<span className="text-cyan-300 min-w-[140px] shrink-0 whitespace-nowrap pt-0.5">{leaf.key}</span>
 										<span className="text-[9px] uppercase text-gray-600 border border-white/10 rounded px-1 mt-1.5 shrink-0">
 											{KIND_LABELS[leaf.kind]}
 										</span>
