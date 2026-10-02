@@ -134,6 +134,9 @@ jobs:
         if: runner.os == 'macOS'
         # zipped .app instead of hdiutil DMG — hdiutil is flaky on GitHub runners
         run: |
+          # deno 2.9.7+ appends .app to --output (ScwSecrets.app.app); the updater expects ScwSecrets.app
+          app=$(find build/macos -maxdepth 1 -name '*.app' -type d | head -1)
+          [ "$app" = build/macos/ScwSecrets.app ] || mv "$app" build/macos/ScwSecrets.app
           ditto -c -k --keepParent build/macos/ScwSecrets.app "build/macos/ScwSecrets-${{ matrix.target }}.app.zip"
           rm -rf build/macos/ScwSecrets.app
 
