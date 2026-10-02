@@ -175,3 +175,20 @@ test("value viewer table mode sticks through edit, preview, and reload", async (
 	await expect(page.getByText("gcp_credentials.type", { exact: true })).toBeVisible();
 });
 
+
+test("filters the value viewer table by key or value", async ({ page }) => {
+	await page.getByRole("button", { name: "View Secret Value" }).click();
+	const filter = page.getByPlaceholder("Filter keys…");
+	await expect(page.getByRole("cell", { name: "host", exact: true })).toBeVisible();
+
+	await filter.fill("pass");
+	await expect(page.getByRole("cell", { name: "password", exact: true })).toBeVisible();
+	await expect(page.getByRole("cell", { name: "host", exact: true })).toHaveCount(0);
+
+	// values match too
+	await filter.fill("webapp");
+	await expect(page.getByRole("cell", { name: "user", exact: true })).toBeVisible();
+
+	await filter.fill("no-such-key");
+	await expect(page.getByText("No keys match “no-such-key”.")).toBeVisible();
+});

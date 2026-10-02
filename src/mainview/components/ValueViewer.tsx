@@ -2,6 +2,7 @@ import { Component, useMemo, useState, type ReactNode } from "react";
 import { ChevronDown, ChevronRight } from "lucide-react";
 
 import { useStableMinHeight } from "../hooks/useStableMinHeight";
+import { KeyFilterInput } from "./KeyFilterInput";
 import {
 	detectEmbedded,
 	detectFormat,
@@ -229,18 +230,33 @@ function flattenValue(value: string, format: ValueFormat): FlatRow[] {
 	return [];
 }
 
+// Same threshold as the structure editor: a filter only pays off on longer values.
+const FILTER_MIN_ROWS = 5;
+
 function TableView({ rows }: { rows: FlatRow[] }) {
+	const [filter, setFilter] = useState("");
+	const query = filter.trim().toLowerCase();
+	const visibleRows = query
+		? rows.filter((row) => row.key.toLowerCase().includes(query) || row.value.toLowerCase().includes(query))
+		: rows;
+
 	return (
-		<table className="w-full text-sm font-mono">
-			<tbody>
-				{rows.map((row, i) => (
-					<tr key={`${row.key}-${i}`} className="border-b border-white/5 last:border-0">
-						<td className="w-px py-1 pr-4 text-cyan-300 align-top whitespace-nowrap">{row.key}</td>
-						<td className={`py-1 break-all whitespace-pre-wrap ${KIND_CLASSES[row.kind]}`}>{row.value}</td>
-					</tr>
-				))}
-			</tbody>
-		</table>
+		<div>
+			{rows.length >= FILTER_MIN_ROWS ? <KeyFilterInput value={filter} onChange={setFilter} /> : null}
+			{query && visibleRows.length === 0 ? (
+				<p className="text-xs text-gray-500 px-1 py-1">No keys match “{filter.trim()}”.</p>
+			) : null}
+			<table className="w-full text-sm font-mono">
+				<tbody>
+					{visibleRows.map((row, i) => (
+						<tr key={`${row.key}-${i}`} className="border-b border-white/5 last:border-0">
+							<td className="w-px py-1 pr-4 text-cyan-300 align-top whitespace-nowrap">{row.key}</td>
+							<td className={`py-1 break-all whitespace-pre-wrap ${KIND_CLASSES[row.kind]}`}>{row.value}</td>
+						</tr>
+					))}
+				</tbody>
+			</table>
+		</div>
 	);
 }
 
