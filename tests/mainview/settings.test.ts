@@ -21,41 +21,41 @@ afterEach(() => {
 describe("loadSettings", () => {
 	test("returns defaults when nothing is stored", () => {
 		const settings = loadSettings();
-		expect(settings).toEqual({ autoKeepLatest: false });
+		expect(settings).toEqual({ autoKeepLatest: false, checkForUpdates: true });
 	});
 
 	test("returns stored values", () => {
-		localStorage.setItem("scw-secrets-settings", JSON.stringify({ autoKeepLatest: true }));
+		localStorage.setItem("scw-secrets-settings", JSON.stringify({ autoKeepLatest: true, checkForUpdates: false }));
 		const settings = loadSettings();
-		expect(settings).toEqual({ autoKeepLatest: true });
+		expect(settings).toEqual({ autoKeepLatest: true, checkForUpdates: false });
 	});
 
 	test("merges with defaults for partial data", () => {
 		localStorage.setItem("scw-secrets-settings", JSON.stringify({}));
 		const settings = loadSettings();
-		expect(settings).toEqual({ autoKeepLatest: false });
+		expect(settings).toEqual({ autoKeepLatest: false, checkForUpdates: true });
 	});
 
 	test("returns defaults for invalid JSON", () => {
 		localStorage.setItem("scw-secrets-settings", "not-json");
 		const settings = loadSettings();
-		expect(settings).toEqual({ autoKeepLatest: false });
+		expect(settings).toEqual({ autoKeepLatest: false, checkForUpdates: true });
 	});
 });
 
 describe("saveSettings", () => {
 	test("persists settings to localStorage", () => {
-		saveSettings({ autoKeepLatest: true });
+		saveSettings({ autoKeepLatest: true, checkForUpdates: true });
 		const raw = localStorage.getItem("scw-secrets-settings");
 		expect(raw).not.toBeNull();
-		expect(JSON.parse(raw!)).toEqual({ autoKeepLatest: true });
+		expect(JSON.parse(raw!)).toEqual({ autoKeepLatest: true, checkForUpdates: true });
 	});
 
 	test("roundtrips through load", () => {
-		saveSettings({ autoKeepLatest: true });
-		expect(loadSettings()).toEqual({ autoKeepLatest: true });
+		saveSettings({ autoKeepLatest: true, checkForUpdates: true });
+		expect(loadSettings()).toEqual({ autoKeepLatest: true, checkForUpdates: true });
 
-		saveSettings({ autoKeepLatest: false });
-		expect(loadSettings()).toEqual({ autoKeepLatest: false });
+		saveSettings({ autoKeepLatest: false, checkForUpdates: false });
+		expect(loadSettings()).toEqual({ autoKeepLatest: false, checkForUpdates: false });
 	});
 });

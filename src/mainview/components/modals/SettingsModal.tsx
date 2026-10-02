@@ -1,7 +1,9 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Eye, ScrollText, X } from "lucide-react";
 
+import type { LatestRelease } from "../../../shared/models";
 import type { AppSettings } from "../../lib/settings";
+import { isNewerVersion } from "../../lib/update-check";
 
 type SettingsModalProps = {
 	settings: AppSettings;
@@ -10,9 +12,27 @@ type SettingsModalProps = {
 	onOpenLogs: () => void;
 	deepIndexSize?: number;
 	onClearDeepIndex?: () => void;
+	onCheckForUpdate: () => Promise<LatestRelease | null>;
 };
 
-export function SettingsModal({ settings, onChange, onClose, onOpenLogs, deepIndexSize, onClearDeepIndex }: SettingsModalProps) {
+type UpdateStatus = "idle" | "checking" | "up-to-date" | "available" | "failed";
+
+const UPDATE_STATUS_LABELS: Record<Exclude<UpdateStatus, "idle">, string> = {
+	checking: "Checking…",
+	"up-to-date": "You're up to date",
+	available: "Update available, see the banner",
+	failed: "Couldn't reach GitHub",
+};
+
+export function SettingsModal({ settings, onChange, onClose, onOpenLogs, deepIndexSize, onClearDeepIndex, onCheckForUpdate }: SettingsModalProps) {
+	const [updateStatus, setUpdateStatus] = useState<UpdateStatus>("idle");
+
+	async function checkForUpdate() {
+		setUpdateStatus("checking");
+		const latest = await onCheckForUpdate().catch(() => null);
+		setUpdateStatus(!latest ? "failed" : isNewerVersion(latest.version, APP_VERSION) ? "available" : "up-to-date");
+	}
+
 	useEffect(() => {
 		function handleKey(e: KeyboardEvent) {
 			if (e.key === "Escape") onClose();
@@ -59,6 +79,26 @@ export function SettingsModal({ settings, onChange, onClose, onOpenLogs, deepInd
 						</label>
 					</div>
 
+					<div className="border-t border-white/10 pt-5">
+						<div className="text-xs text-gray-400 uppercase tracking-wider mb-3">Updates</div>
+						<label className="flex items-start gap-3 cursor-pointer group">
+							<input
+								type="checkbox"
+								checked={settings.checkForUpdates}
+								onChange={(e) => onChange({ ...settings, checkForUpdates: e.target.checked })}
+								className="mt-0.5 w-4 h-4 rounded border-white/20 bg-white/5 text-cyan-500 focus:ring-cyan-500/30 focus:ring-offset-0 cursor-pointer accent-cyan-500"
+							/>
+							<div>
+								<div className="text-sm text-white group-hover:text-cyan-200 transition-colors">
+									Check for updates
+								</div>
+								<div className="text-xs text-gray-500 mt-1">
+									At startup, ask GitHub for the latest release and show a banner when a newer version is available. Nothing is installed automatically.
+								</div>
+							</div>
+						</label>
+					</div>
+
 					{onClearDeepIndex ? (
 						<div className="border-t border-white/10 pt-5">
 							<div className="text-xs text-gray-400 uppercase tracking-wider mb-3">Deep search</div>
@@ -98,8 +138,18 @@ export function SettingsModal({ settings, onChange, onClose, onOpenLogs, deepInd
 							</div>
 						</button>
 					</div>
-					<div className="border-t border-white/10 pt-4 text-center">
-						<span className="text-xs text-gray-600">SCW Secrets Desktop v{APP_VERSION}</span>
+					<div className="border-t border-white/10 pt-4 flex items-center justify-center gap-2 text-xs">
+						<span className="text-gray-600">SCW Secrets Desktop v{APP_VERSION}</span>
+						<span className="text-gray-700">·</span>
+						{updateStatus === "idle" ? (
+							<button type="button" onClick={() => void checkForUpdate()} className="text-cyan-400 hover:text-cyan-300 transition-colors">
+								Check for updates
+							</button>
+						) : (
+							<span className={updateStatus === "available" ? "text-cyan-300" : updateStatus === "failed" ? "text-red-300" : "text-gray-400"}>
+								{UPDATE_STATUS_LABELS[updateStatus]}
+							</span>
+						)}
 					</div>
 				</div>
 			</div>

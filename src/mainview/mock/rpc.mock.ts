@@ -53,4 +53,5 @@ export const mockApi: ApiClient = {
 	getHttpLogs: async () => [],
 	clearHttpLogs: async () => ({ ok: true }),
 	openExternal: async () => ({ ok: true }),
+	getLatestRelease: async () => null,
 };

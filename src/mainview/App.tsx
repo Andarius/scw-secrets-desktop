@@ -15,6 +15,8 @@ import { CreateSecretModal } from "./components/modals/CreateSecretModal";
 import { SpotlightSearch } from "./components/search/SpotlightSearch";
 import { SettingsModal } from "./components/modals/SettingsModal";
 import { LogsModal } from "./components/modals/LogsModal";
+import { UpdateBanner } from "./components/layout/UpdateBanner";
+import { useAvailableUpdate } from "./hooks/useAvailableUpdate";
 import { loadSettings, saveSettings, type AppSettings } from "./lib/settings";
 import {
 	filterSecrets,
@@ -59,7 +61,6 @@ function savePersistedState(state: PersistedState) {
 }
 
 function App() {
-	const saved = useState(() => loadPersistedState())[0];
 	const [profilesResponse, setProfilesResponse] = useState<ProfilesResponse | null>(null);
 	const [selectedProfile, setSelectedProfile] = useState("");
 	const [projects, setProjects] = useState<Project[]>([]);
@@ -91,7 +92,8 @@ function App() {
 	const [refreshKey, setRefreshKey] = useState(0);
 	const [deepIndex, setDeepIndex] = useState<Map<string, string> | null>(null);
 	const [deepIndexLoading, setDeepIndexLoading] = useState(false);
-
+	const saved = useState(() => loadPersistedState())[0];
+	const update = useAvailableUpdate(settings.checkForUpdates, APP_VERSION);
 	const deferredQuery = useDeferredValue(query);
 
 	useEffect(() => {
@@ -403,6 +405,10 @@ function App() {
 				onOpenSettings={() => setSettingsOpen(true)}
 			/>
 
+			{update.release ? (
+				<UpdateBanner release={update.release} currentVersion={APP_VERSION} onDismiss={update.dismiss} />
+			) : null}
+
 				<div className="flex-1 flex flex-col px-6 py-6 min-h-0">
 					<StatsCards
 						filteredSecretsCount={filteredSecrets.length}
@@ -593,6 +599,7 @@ function App() {
 				{settingsOpen ? (
 					<SettingsModal
 						settings={settings}
+						onCheckForUpdate={update.checkNow}
 						onChange={(next) => {
 							setSettings(next);
 							saveSettings(next);

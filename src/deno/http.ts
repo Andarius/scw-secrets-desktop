@@ -21,7 +21,7 @@ const fields: Record<ApiMethod, string[]> = {
 	updateSecret: ["secretId", "name?", "tags?", "profile?", "projectId?"],
 	duplicateSecret: ["secretId", "name", "path?", "type?", "tags?", "profile?", "projectId?"],
 	deleteSecret: ["secretId", "profile?", "projectId?"],
-	getHttpLogs: [], clearHttpLogs: [], openExternal: ["url"],
+	getHttpLogs: [], clearHttpLogs: [], openExternal: ["url"], getLatestRelease: [],
 };
 
 function validParams(method: ApiMethod, params: unknown): boolean {

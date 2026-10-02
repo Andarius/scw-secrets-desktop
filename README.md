@@ -131,7 +131,7 @@ src/
 │   ├── hooks/                # React hooks, one per file (useSaveSecretValue, useNextRevision…)
 │   ├── mock/                 # Mock mode: MockApp (sample data) and the inert mock API
 │   └── components/
-│       ├── layout/           # Header, PaneRail, StatsCards
+│       ├── layout/           # Header, PaneRail, StatsCards, UpdateBanner
 │       ├── panels/           # Navigator (path tree), Inventory (secrets table), DetailPanel
 │       ├── modals/           # ValueModal (view/edit a value), CreateSecret, History, Cleanup, Settings, Logs
 │       ├── secret-value/     # ValueViewer, ValueStructureEditor

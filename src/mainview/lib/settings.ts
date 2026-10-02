@@ -2,10 +2,13 @@ const SETTINGS_KEY = "scw-secrets-settings";
 
 export type AppSettings = {
 	autoKeepLatest: boolean;
+	/** Ask GitHub for a newer release at startup. */
+	checkForUpdates: boolean;
 };
 
 const defaults: AppSettings = {
 	autoKeepLatest: false,
+	checkForUpdates: true,
 };
 
 export function loadSettings(): AppSettings {

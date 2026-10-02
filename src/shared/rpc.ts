@@ -1,4 +1,4 @@
-import type { HttpLog, ProfilesResponse, Project, Secret, SecretFilters, SecretVersion } from "./models.ts";
+import type { HttpLog, LatestRelease, ProfilesResponse, Project, Secret, SecretFilters, SecretVersion } from "./models.ts";
 
 // Backend API contract: each method is POST /api/<name> with a JSON params body.
 export type ApiRequests = {
@@ -77,6 +77,10 @@ export type ApiRequests = {
 	openExternal: {
 		params: { url: string };
 		response: { ok: boolean };
+	};
+	getLatestRelease: {
+		params: Record<string, never>;
+		response: LatestRelease | null;
 	};
 };
 
