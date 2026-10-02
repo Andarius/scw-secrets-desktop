@@ -1,4 +1,4 @@
-import { UUID_PATTERN, REVISION_PATTERN } from "../shared/validation.ts";
+import { UUID_PATTERN, REVISION_PATTERN, RELEASE_PAGE_PATTERN } from "../shared/validation.ts";
 import type { ApiMethod, ApiRequests } from "../shared/rpc.ts";
 
 export type Handlers = {
@@ -130,8 +130,9 @@ export function createHttpHandler(
 }
 
 export function externalCommand(url: string, os: string): [string, string[]] {
-	if (!/^https:\/\/console\.scaleway\.com\/secret-manager\/secrets\/[a-z]{2}-[a-z]+\/[0-9a-f-]{36}\/overview$/.test(url)) {
-		throw new Error("only Scaleway secret console URLs can be opened");
+	const isConsoleUrl = /^https:\/\/console\.scaleway\.com\/secret-manager\/secrets\/[a-z]{2}-[a-z]+\/[0-9a-f-]{36}\/overview$/.test(url);
+	if (!isConsoleUrl && !RELEASE_PAGE_PATTERN.test(url)) {
+		throw new Error("only Scaleway secret console and app release URLs can be opened");
 	}
 	if (os === "darwin") return ["open", [url]];
 	if (os === "windows") return ["rundll32.exe", ["url.dll,FileProtocolHandler", url]];

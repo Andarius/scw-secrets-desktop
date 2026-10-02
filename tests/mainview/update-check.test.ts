@@ -42,6 +42,7 @@ describe("parseLatestRelease", () => {
 		expect(parseLatestRelease({ ...valid, tag_name: "v1.0.0-beta.1" })).toBeNull();
 		expect(parseLatestRelease({ ...valid, tag_name: "<script>" })).toBeNull();
 		expect(parseLatestRelease({ ...valid, html_url: "https://evil.example/releases/" })).toBeNull();
+		expect(parseLatestRelease({ ...valid, html_url: "https://github.com/Andarius/scw-secrets-desktop/releases/download/v0.9.0/x" })).toBeNull();
 		expect(parseLatestRelease(null)).toBeNull();
 		expect(parseLatestRelease({ message: "API rate limit exceeded" })).toBeNull();
 	});

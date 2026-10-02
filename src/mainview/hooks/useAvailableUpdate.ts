@@ -34,9 +34,12 @@ export function useAvailableUpdate(enabled: boolean, currentVersion: string) {
 
 	async function checkNow(): Promise<LatestRelease | null> {
 		const result = await api.getLatestRelease({});
-		// a failed check (null) must not hide a banner the startup check already found
-		if (result) setLatest(result);
-		setForced(true);
+		// a failed check (null) changes nothing: it neither hides a banner the startup check
+		// found, nor brings back one the user dismissed
+		if (result) {
+			setLatest(result);
+			setForced(true);
+		}
 		return result;
 	}
 
