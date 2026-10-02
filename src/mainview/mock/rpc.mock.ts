@@ -41,7 +41,11 @@ export const mockApi: ApiClient = {
 			: MOCK_VALUE,
 	}),
 	prefetchSecretValues: async () => ({ values: {}, failed: [] }),
-	getActiveVersionCounts: async () => ({ counts: {}, failed: [] }),
+	// DEPRECATED_API_TOKEN (f2a3…) has 6 versions, 5 already scheduled for deletion
+	getActiveVersionCounts: async ({ secretIds }) => ({
+		counts: Object.fromEntries(secretIds.filter((id) => id.startsWith("f2a3")).map((id) => [id, 1])),
+		failed: [],
+	}),
 	createSecret: async () => ({ secretId: "mock-secret-id" }),
 	updateSecretValue: async () => ({ ok: true }),
 	enableSecretVersion: async () => ({ ok: true }),

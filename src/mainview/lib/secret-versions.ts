@@ -1,4 +1,5 @@
-import type { SecretVersion } from "../../shared/models";
+import type { Secret, SecretVersion } from "../../shared/models";
+import { api } from "./rpc";
 
 export type SecretVersionAction =
 	| { type: "disable"; revision: number }
@@ -38,4 +39,22 @@ export function planKeepLatestVersionOnly(
 // Scaleway never reuses revision numbers, so the next write lands one above the highest seen.
 export function nextRevision(versions: SecretVersion[]): number {
 	return Math.max(0, ...versions.map((version) => version.revision)) + 1;
+}
+
+const applyVersionAction = {
+	disable: api.disableSecretVersion,
+	destroy: api.destroySecretVersion,
+};
+
+export async function keepLatestVersionOnly(secretId: string, profile?: string, projectId?: string): Promise<void> {
+	const versions = await api.getSecretVersions({ secretId, profile, projectId });
+	// sequential: a revision is disabled before it is destroyed
+	for (const { type, revision } of planKeepLatestVersionOnly(versions)) {
+		await applyVersionAction[type]({ secretId, revision, profile, projectId });
+	}
+}
+
+// Falls back to version_count (which includes deleted versions) while active counts are unknown.
+export function activeVersionCount(secret: Secret, activeCounts: ReadonlyMap<string, number> | null): number {
+	return activeCounts?.get(secret.id) ?? secret.version_count;
 }

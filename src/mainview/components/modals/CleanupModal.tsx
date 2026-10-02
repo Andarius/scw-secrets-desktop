@@ -1,34 +1,20 @@
 import { useEffect, useMemo, useState } from "react";
 import { Layers2, Loader2, Scissors, X } from "lucide-react";
 
-import { api } from "../../lib/rpc";
 import type { Secret } from "../../../shared/models";
-import { planKeepLatestVersionOnly } from "../../lib/secret-versions";
+import { activeVersionCount, keepLatestVersionOnly } from "../../lib/secret-versions";
 
 type CleanupModalProps = {
 	secrets: Secret[];
 	storagePricePerVersionEur: number;
+	activeCounts: ReadonlyMap<string, number> | null;
+	loading: boolean;
 	profile?: string;
 	projectId?: string;
 	onClose: () => void;
 	onSelectSecret: (secretId: string, secretName: string) => void;
 	onRefresh?: () => void;
 };
-
-async function keepLatestVersionOnly(
-	secretId: string,
-	profile?: string,
-	projectId?: string,
-): Promise<void> {
-	const versions = await api.getSecretVersions({ secretId, profile, projectId });
-	for (const action of planKeepLatestVersionOnly(versions)) {
-		if (action.type === "disable") {
-			await api.disableSecretVersion({ secretId, revision: action.revision, profile, projectId });
-			continue;
-		}
-		await api.destroySecretVersion({ secretId, revision: action.revision, profile, projectId });
-	}
-}
 
 const euroFormatter = new Intl.NumberFormat("en-US", {
 	style: "currency",
@@ -40,14 +26,14 @@ const euroFormatter = new Intl.NumberFormat("en-US", {
 export function CleanupModal({
 	secrets,
 	storagePricePerVersionEur,
+	activeCounts,
+	loading,
 	profile,
 	projectId,
 	onClose,
 	onSelectSecret,
 	onRefresh,
 }: CleanupModalProps) {
-	const [activeCounts, setActiveCounts] = useState<Map<string, number> | null>(null);
-	const [loading, setLoading] = useState(true);
 	const [confirmReclaim, setConfirmReclaim] = useState(false);
 	const [reclaiming, setReclaiming] = useState(false);
 	const [reclaimProgress, setReclaimProgress] = useState(0);
@@ -62,47 +48,11 @@ export function CleanupModal({
 		return () => window.removeEventListener("keydown", handleKey);
 	}, [onClose]);
 
-	const candidateIds = useMemo(
-		() => secrets.filter((s) => s.version_count > 1).map((s) => s.id),
-		[secrets],
-	);
-
-	useEffect(() => {
-		let cancelled = false;
-		setLoading(true);
-		void (async () => {
-			try {
-				if (candidateIds.length === 0) {
-					if (!cancelled) setActiveCounts(new Map());
-					return;
-				}
-				const response = await api.getActiveVersionCounts({
-					secretIds: candidateIds,
-					profile,
-					projectId,
-				});
-				if (!cancelled) {
-					setActiveCounts(new Map(Object.entries(response.counts).map(([k, v]) => [k, Number(v)])));
-				}
-			} catch (err) {
-				if (!cancelled) {
-					console.error("Failed to fetch active version counts", err);
-					setActiveCounts(new Map());
-				}
-			} finally {
-				if (!cancelled) setLoading(false);
-			}
-		})();
-		return () => {
-			cancelled = true;
-		};
-	}, [candidateIds, profile, projectId]);
-
 	const prunable = useMemo(() => {
 		return secrets
 			.filter((secret) => secret.version_count > 1)
 			.map((secret) => {
-				const active = activeCounts?.get(secret.id) ?? secret.version_count;
+				const active = activeVersionCount(secret, activeCounts);
 				return {
 					secret,
 					activeCount: active,
@@ -222,7 +172,7 @@ export function CleanupModal({
 					<div className="flex items-center gap-2">
 						<span className="text-gray-400">Est. savings</span>
 						<span className="text-rose-300 font-medium">
-							-{euroFormatter.format(totalSavings)}/mo
+							{totalSavings > 0 ? "-" : ""}{euroFormatter.format(totalSavings)}/mo
 						</span>
 					</div>
 					{loading ? (

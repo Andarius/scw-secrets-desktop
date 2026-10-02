@@ -9,6 +9,8 @@ import { PaneRail } from "../components/layout/PaneRail";
 import { Inventory } from "../components/panels/Inventory";
 import { DetailPanel, type ValueEntry } from "../components/panels/DetailPanel";
 import { ValueView } from "../components/modals/ValueModal";
+import { useActiveVersionCounts } from "../hooks/useActiveVersionCounts";
+import { activeVersionCount } from "../lib/secret-versions";
 import {
 	filterSecrets,
 	getPathEntries,
@@ -106,12 +108,13 @@ function MockApp() {
 	});
 	const visibleVersionCount = visibleSecrets.reduce((sum, secret) => sum + secret.version_count, 0);
 	const totalVersionCount = MOCK_SECRETS.reduce((sum, secret) => sum + secret.version_count, 0);
+	const { activeCounts } = useActiveVersionCounts(MOCK_SECRETS);
 	const visiblePrunableVersionCount = visibleSecrets.reduce(
-		(sum, secret) => sum + Math.max(secret.version_count - 1, 0),
+		(sum, secret) => sum + Math.max(activeVersionCount(secret, activeCounts) - 1, 0),
 		0,
 	);
 	const totalPrunableVersionCount = MOCK_SECRETS.reduce(
-		(sum, secret) => sum + Math.max(secret.version_count - 1, 0),
+		(sum, secret) => sum + Math.max(activeVersionCount(secret, activeCounts) - 1, 0),
 		0,
 	);
 
