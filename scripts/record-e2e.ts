@@ -132,9 +132,10 @@ for (let i = 0; i < clips.length; i++) {
 		"-vf", [
 			`fade=t=in:st=0:d=0.3`,
 			`fade=t=out:st=${fadeOut.toFixed(2)}:d=0.3`,
-			`drawbox=x=0:y=0:w=iw:h=28:color=0x0a0a0a@0.8:t=fill`,
-			`drawtext=text='${escapedCounter}':fontcolor=0x666666:fontsize=13:x=8:y=7:fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf`,
-			`drawtext=text='${escapedTitle}':fontcolor=0x67e8f9:fontsize=13:x=50:y=7:fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf`,
+			// banner in its own strip above the page, so it never hides the app header
+			`pad=iw:ih+36:0:36:color=0x0a0a0a`,
+			`drawtext=text='${escapedCounter}':fontcolor=0x888888:fontsize=18:x=12:y=9:fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf`,
+			`drawtext=text='${escapedTitle}':fontcolor=0x67e8f9:fontsize=18:x=90:y=9:fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf`,
 		].join(","),
 		"-c:v", "libx264", "-pix_fmt", "yuv420p", "-r", "25",
 		overlaidPath,

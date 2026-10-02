@@ -43,6 +43,16 @@ async function highlightLocator(locator: Locator, color: string, elemId?: string
 	}
 }
 
+// Removes the box once the action is done, so it never outlives the element (e.g. a closed dialog).
+async function withHighlight<T>(locator: Locator, color: string, elemId: string, action: () => Promise<T>): Promise<T> {
+	await highlightLocator(locator, color, elemId);
+	try {
+		return await action();
+	} finally {
+		await locator.page().evaluate((id) => document.getElementById(id)?.remove(), elemId).catch(() => {});
+	}
+}
+
 export function patchHighlights(page: Page) {
 	const LocatorProto = page.locator("body").constructor.prototype;
 
@@ -51,32 +61,27 @@ export function patchHighlights(page: Page) {
 
 	const origClick = LocatorProto.click;
 	LocatorProto.click = async function (this: Locator, ...args: unknown[]) {
-		await highlightLocator(this, "red", "pw-click-highlight");
-		return origClick.apply(this, args);
+		return withHighlight(this, "red", "pw-click-highlight", () => origClick.apply(this, args));
 	};
 
 	const origFill = LocatorProto.fill;
 	LocatorProto.fill = async function (this: Locator, ...args: unknown[]) {
-		await highlightLocator(this, "blue", "pw-fill-highlight");
-		return origFill.apply(this, args);
+		return withHighlight(this, "blue", "pw-fill-highlight", () => origFill.apply(this, args));
 	};
 
 	const origCheck = LocatorProto.check;
 	LocatorProto.check = async function (this: Locator, ...args: unknown[]) {
-		await highlightLocator(this, "orange", "pw-check-highlight");
-		return origCheck.apply(this, args);
+		return withHighlight(this, "orange", "pw-check-highlight", () => origCheck.apply(this, args));
 	};
 
 	const origUncheck = LocatorProto.uncheck;
 	LocatorProto.uncheck = async function (this: Locator, ...args: unknown[]) {
-		await highlightLocator(this, "orange", "pw-check-highlight");
-		return origUncheck.apply(this, args);
+		return withHighlight(this, "orange", "pw-check-highlight", () => origUncheck.apply(this, args));
 	};
 
 	const origSelectOption = LocatorProto.selectOption;
 	LocatorProto.selectOption = async function (this: Locator, ...args: unknown[]) {
-		await highlightLocator(this, "blue", "pw-select-highlight");
-		return origSelectOption.apply(this, args);
+		return withHighlight(this, "blue", "pw-select-highlight", () => origSelectOption.apply(this, args));
 	};
 }
 
@@ -107,8 +112,9 @@ export function highlightExpect(target: unknown): ReturnType<Expect> {
 			if (!rule) return original;
 
 			return async (...args: unknown[]) => {
-				await highlightLocator(locator, rule.color, rule.elemId);
-				return (original as (...a: unknown[]) => unknown).apply(obj, args);
+				return withHighlight(locator, rule.color, rule.elemId, () =>
+					(original as (...a: unknown[]) => Promise<unknown>).apply(obj, args),
+				);
 			};
 		},
 	});
