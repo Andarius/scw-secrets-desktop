@@ -4,6 +4,7 @@ import { Eye, ScrollText, X } from "lucide-react";
 import type { LatestRelease } from "../../../shared/models";
 import type { AppSettings } from "../../lib/settings";
 import { isNewerVersion } from "../../lib/update-check";
+import { UpdateActions } from "../layout/UpdateActions";
 
 type SettingsModalProps = {
 	settings: AppSettings;
@@ -20,17 +21,19 @@ type UpdateStatus = "idle" | "checking" | "up-to-date" | "available" | "failed";
 const UPDATE_STATUS_LABELS: Record<Exclude<UpdateStatus, "idle">, string> = {
 	checking: "Checking…",
 	"up-to-date": "You're up to date",
-	available: "Update available, see the banner",
+	available: "Update available",
 	failed: "Couldn't reach GitHub",
 };
 
 export function SettingsModal({ settings, onChange, onClose, onOpenLogs, deepIndexSize, onClearDeepIndex, onCheckForUpdate }: SettingsModalProps) {
 	const [updateStatus, setUpdateStatus] = useState<UpdateStatus>("idle");
+	const [latest, setLatest] = useState<LatestRelease | null>(null);
 
 	async function checkForUpdate() {
 		setUpdateStatus("checking");
-		const latest = await onCheckForUpdate().catch(() => null);
-		setUpdateStatus(!latest ? "failed" : isNewerVersion(latest.version, APP_VERSION) ? "available" : "up-to-date");
+		const result = await onCheckForUpdate().catch(() => null);
+		setLatest(result);
+		setUpdateStatus(!result ? "failed" : isNewerVersion(result.version, APP_VERSION) ? "available" : "up-to-date");
 	}
 
 	useEffect(() => {
@@ -151,6 +154,14 @@ export function SettingsModal({ settings, onChange, onClose, onOpenLogs, deepInd
 							</span>
 						)}
 					</div>
+					{updateStatus === "available" && latest ? (
+						<div className="-mt-3 space-y-2 text-xs">
+							<p className="text-center text-cyan-100">Version {latest.version} is available. Run this command to update:</p>
+							<div className="flex items-center gap-2">
+								<UpdateActions release={latest} />
+							</div>
+						</div>
+					) : null}
 				</div>
 			</div>
 		</div>
