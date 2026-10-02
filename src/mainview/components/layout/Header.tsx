@@ -1,7 +1,7 @@
 import { Loader2, Lock, Plus, RefreshCw, Settings } from "lucide-react";
 
-import type { ProfileSummary, Project } from "../../shared/models";
-import { HeaderSelect } from "./HeaderSelect";
+import type { ProfileSummary, Project } from "../../../shared/models";
+import { HeaderSelect } from "../inputs/HeaderSelect";
 
 type HeaderProps = {
 	profiles: ProfileSummary[];

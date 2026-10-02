@@ -1,16 +1,16 @@
 import { useEffect, useRef, useState } from "react";
 import { ChevronDown, ChevronUp, Search, Tag, X } from "lucide-react";
 
-import type { Secret } from "../../shared/models";
+import type { Secret } from "../../../shared/models";
 import {
 	getNextSelectionState,
 	getSelectAllState,
-} from "../inventory-selection";
+} from "../../inventory-selection";
 import type {
 	InventorySortDirection,
 	InventorySortKey,
 	StatusFilter,
-} from "../secret-list";
+} from "../../secret-list";
 
 export type { InventorySortDirection, InventorySortKey };
 

@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
 import { Check, Copy, CopyPlus, Eye, Pencil, Clock, Key as KeyIcon, Settings, Loader2, ExternalLink, Trash2, Layers2, X, Plus, Share2, Tag, PanelRightClose } from "lucide-react";
 
-import { api } from "../rpc";
-import type { ProfileSummary, Project, Secret } from "../../shared/models";
-import { secretConsoleUrl } from "../console";
-import { planKeepLatestVersionOnly } from "../secret-versions";
+import { api } from "../../rpc";
+import type { ProfileSummary, Project, Secret } from "../../../shared/models";
+import { secretConsoleUrl } from "../../console";
+import { planKeepLatestVersionOnly } from "../../secret-versions";
 
 export type ValueEntry = { secretId: string; name: string; path?: string; value: string };
 

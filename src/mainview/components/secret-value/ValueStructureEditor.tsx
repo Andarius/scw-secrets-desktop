@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Check, ChevronDown, ChevronRight, Plus, Trash2, X } from "lucide-react";
-import { KeyFilterInput } from "./KeyFilterInput";
+import { KeyFilterInput } from "../inputs/KeyFilterInput";
 import { ValueRenderBoundary } from "./ValueViewer";
 
 import {
@@ -10,7 +10,7 @@ import {
 	unquoteDisplay,
 	type StructureGroup,
 	type StructureLeaf,
-} from "../value-format";
+} from "../../value-format";
 
 const KIND_LABELS: Record<StructureLeaf["kind"], string> = {
 	string: "str",

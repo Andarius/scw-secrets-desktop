@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { renderToStaticMarkup } from "react-dom/server";
-import { ValueViewer } from "../../src/mainview/components/ValueViewer";
+import { ValueViewer } from "../../src/mainview/components/secret-value/ValueViewer";
 import { buildStructure, flattenEditable, flattenJson, jsonToToml, parseJsonContainer } from "../../src/mainview/value-format";
 
 describe("untrusted value rendering", () => {

@@ -1,8 +1,8 @@
 import { Component, useMemo, useState, type ReactNode } from "react";
 import { ChevronDown, ChevronRight } from "lucide-react";
 
-import { useStableMinHeight } from "../hooks/useStableMinHeight";
-import { KeyFilterInput } from "./KeyFilterInput";
+import { useStableMinHeight } from "../../hooks/useStableMinHeight";
+import { KeyFilterInput } from "../inputs/KeyFilterInput";
 import {
 	detectEmbedded,
 	detectFormat,
@@ -18,7 +18,7 @@ import {
 	type FlatRow,
 	type Token,
 	type ValueFormat,
-} from "../value-format";
+} from "../../value-format";
 
 export const TOKEN_CLASSES: Record<Token["type"], string> = {
 	comment: "text-gray-600 italic",

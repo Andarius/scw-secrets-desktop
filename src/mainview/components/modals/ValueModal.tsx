@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Check, Copy, Eye, Loader2, Pencil, Save, Share2, X } from "lucide-react";
-import { copySecret } from "../clipboard";
-import { secretConsoleUrl } from "../console";
-import { useNextRevision } from "../hooks/useNextRevision";
-import { useSaveSecretValue } from "../hooks/useSaveSecretValue";
-import { HighlightedTextarea } from "./HighlightedTextarea";
-import { ValueStructureEditor } from "./ValueStructureEditor";
-import { prefersTableMode, ValueViewer } from "./ValueViewer";
+import { copySecret } from "../../clipboard";
+import { secretConsoleUrl } from "../../console";
+import { useNextRevision } from "../../hooks/useNextRevision";
+import { useSaveSecretValue } from "../../hooks/useSaveSecretValue";
+import { HighlightedTextarea } from "../inputs/HighlightedTextarea";
+import { ValueStructureEditor } from "../secret-value/ValueStructureEditor";
+import { prefersTableMode, ValueViewer } from "../secret-value/ValueViewer";
 
 export type EditTab = "raw" | "table" | "preview";
 

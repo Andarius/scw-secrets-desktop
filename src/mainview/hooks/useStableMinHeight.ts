@@ -4,8 +4,8 @@ import { useLayoutEffect, useRef, useState } from "react";
 // shorter and taller views (tabs) never makes the surrounding layout shrink and jump.
 // Starts over whenever resetKey changes (e.g. a different value is shown).
 export function useStableMinHeight<T extends HTMLElement>(resetKey: string) {
-	const ref = useRef<T>(null);
 	const [peak, setPeak] = useState({ key: resetKey, height: 0 });
+	const ref = useRef<T>(null);
 	const minHeight = peak.key === resetKey ? peak.height : 0;
 
 	/**

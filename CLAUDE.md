@@ -10,7 +10,13 @@ This is a desktop UI for managing Scaleway secrets.
 ## Structure
 
 - `src/mainview/` — React frontend entry (App.tsx, main.tsx, index.css, index.html)
-- `src/mainview/components/` — UI components (Header, StatsCards, Navigator, Inventory, DetailPanel)
+- `src/mainview/components/` — UI components, grouped by role:
+  - `layout/` — Header, PaneRail, StatsCards
+  - `panels/` — the three main columns: Navigator, Inventory, DetailPanel
+  - `modals/` — dialogs, including ValueModal (view/edit a secret value)
+  - `secret-value/` — value rendering and editing (ValueViewer, ValueStructureEditor)
+  - `inputs/` — reusable inputs (HeaderSelect, HighlightedTextarea, KeyFilterInput)
+  - `search/` — SpotlightSearch
 - `src/mainview/hooks/` — React hooks, one per file (`useXxx.ts`)
 - `src/deno/` — Deno backend (main.ts entrypoint, Scaleway API calls, generated embed.ts)
 - `src/shared/` — Shared types (models.ts) and API contract (rpc.ts, POST /api/<method>)

@@ -1,7 +1,7 @@
 import { useLayoutEffect, useMemo, useRef } from "react";
 
-import { detectFormat, tokenizeJsonishLine, tokenizeLines } from "../value-format";
-import { TOKEN_CLASSES } from "./ValueViewer";
+import { detectFormat, tokenizeJsonishLine, tokenizeLines } from "../../value-format";
+import { TOKEN_CLASSES } from "../secret-value/ValueViewer";
 
 type HighlightedTextareaProps = {
 	value: string;

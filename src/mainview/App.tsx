@@ -2,19 +2,19 @@ import { startTransition, useDeferredValue, useEffect, useState } from "react";
 
 import { api } from "./rpc";
 import type { ProfilesResponse, Project, Secret } from "../shared/models";
-import { Header } from "./components/Header";
-import { StatsCards, STORAGE_PRICE_PER_VERSION_EUR } from "./components/StatsCards";
-import { CleanupModal } from "./components/CleanupModal";
-import { Navigator } from "./components/Navigator";
-import { PaneRail } from "./components/PaneRail";
-import { Inventory } from "./components/Inventory";
-import { DetailPanel, type ValueEntry } from "./components/DetailPanel";
-import { ValueView } from "./components/ValueModal";
-import { HistoryModal } from "./components/HistoryModal";
-import { CreateSecretModal } from "./components/CreateSecretModal";
-import { SpotlightSearch } from "./components/SpotlightSearch";
-import { SettingsModal } from "./components/SettingsModal";
-import { LogsModal } from "./components/LogsModal";
+import { Header } from "./components/layout/Header";
+import { StatsCards, STORAGE_PRICE_PER_VERSION_EUR } from "./components/layout/StatsCards";
+import { CleanupModal } from "./components/modals/CleanupModal";
+import { Navigator } from "./components/panels/Navigator";
+import { PaneRail } from "./components/layout/PaneRail";
+import { Inventory } from "./components/panels/Inventory";
+import { DetailPanel, type ValueEntry } from "./components/panels/DetailPanel";
+import { ValueView } from "./components/modals/ValueModal";
+import { HistoryModal } from "./components/modals/HistoryModal";
+import { CreateSecretModal } from "./components/modals/CreateSecretModal";
+import { SpotlightSearch } from "./components/search/SpotlightSearch";
+import { SettingsModal } from "./components/modals/SettingsModal";
+import { LogsModal } from "./components/modals/LogsModal";
 import { loadSettings, saveSettings, type AppSettings } from "./settings";
 import {
 	filterSecrets,
