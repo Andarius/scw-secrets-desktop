@@ -330,7 +330,7 @@ function SingleSecretDetail({
 				</div>
 
 				<div className="grid grid-cols-2 gap-4">
-					<div>
+					<div className="col-span-2">
 						<div className="text-xs text-gray-400 uppercase tracking-wider mb-1.5">
 							Secret ID
 						</div>
@@ -339,15 +339,6 @@ function SingleSecretDetail({
 								{secret.id}
 							</div>
 							<CopyButton text={secret.id} />
-						</div>
-					</div>
-
-					<div>
-						<div className="text-xs text-gray-400 uppercase tracking-wider mb-1.5">
-							Versions
-						</div>
-						<div className="text-sm text-gray-300">
-							{secret.version_count}
 						</div>
 					</div>
 
@@ -391,6 +382,15 @@ function SingleSecretDetail({
 						</div>
 						<div className="text-sm text-gray-300">
 							{formatDate(secret.updated_at)}
+						</div>
+					</div>
+
+					<div>
+						<div className="text-xs text-gray-400 uppercase tracking-wider mb-1.5">
+							Versions
+						</div>
+						<div className="text-sm text-gray-300">
+							{secret.version_count}
 						</div>
 					</div>
 				</div>
