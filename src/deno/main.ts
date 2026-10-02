@@ -118,7 +118,9 @@ async function serveStatic(pathname: string): Promise<Response> {
 }
 
 const sessionToken = crypto.randomUUID();
-const serveHandler = createHttpHandler(handlers, serveStatic, sessionToken);
+// Desktop only: re-sends the window to the tokenized URL (see below).
+let navigateWithToken: (() => void) | undefined;
+const serveHandler = createHttpHandler(handlers, serveStatic, sessionToken, () => navigateWithToken?.());
 
 // `Deno.BrowserWindow` only exists under the `deno desktop` runtime — the env var
 // alternative fails in bundles, where compile-time env doesn't reach the binary.
@@ -161,7 +163,17 @@ if (BW) {
 		x: saved.x,
 		y: saved.y,
 	});
-	win.navigate(`http://127.0.0.1:${server.addr.port}/index.html#token=${sessionToken}`);
+	const tokenUrl = `http://127.0.0.1:${server.addr.port}/index.html#token=${sessionToken}`;
+	win.navigate(tokenUrl);
+	// The runtime's own initial navigation to "/" can land after ours and drop the
+	// token; a tokenless API call means the window lost it, so send it back.
+	let lastNavigate = 0;
+	navigateWithToken = () => {
+		const now = Date.now();
+		if (now - lastNavigate < 2000) return;
+		lastNavigate = now;
+		win.navigate(tokenUrl);
+	};
 	attachWindowLifecycle(win, {
 		title: TITLE,
 		defaultSize: DEFAULT_SIZE,
