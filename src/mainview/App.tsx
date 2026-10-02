@@ -1,6 +1,6 @@
 import { startTransition, useDeferredValue, useEffect, useState } from "react";
 
-import { api } from "./rpc";
+import { api } from "./lib/rpc";
 import type { ProfilesResponse, Project, Secret } from "../shared/models";
 import { Header } from "./components/layout/Header";
 import { StatsCards, STORAGE_PRICE_PER_VERSION_EUR } from "./components/layout/StatsCards";
@@ -15,7 +15,7 @@ import { CreateSecretModal } from "./components/modals/CreateSecretModal";
 import { SpotlightSearch } from "./components/search/SpotlightSearch";
 import { SettingsModal } from "./components/modals/SettingsModal";
 import { LogsModal } from "./components/modals/LogsModal";
-import { loadSettings, saveSettings, type AppSettings } from "./settings";
+import { loadSettings, saveSettings, type AppSettings } from "./lib/settings";
 import {
 	filterSecrets,
 	getPathEntries,
@@ -24,7 +24,7 @@ import {
 	type InventorySortDirection,
 	type InventorySortKey,
 	type StatusFilter,
-} from "./secret-list";
+} from "./lib/secret-list";
 
 const STORAGE_KEY = "scw-secrets-state";
 

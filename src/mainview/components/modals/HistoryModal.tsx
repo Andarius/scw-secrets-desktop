@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Loader2, Power, PowerOff, Bomb, X, RefreshCw } from "lucide-react";
 
-import { api } from "../../rpc";
+import { api } from "../../lib/rpc";
 import type { SecretVersion } from "../../../shared/models";
 
 type HistoryModalProps = {

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 
-import { api } from "../rpc";
-import { nextRevision } from "../secret-versions";
+import { api } from "../lib/rpc";
+import { nextRevision } from "../lib/secret-versions";
 
 type RevisionTarget = {
 	secretId: string;

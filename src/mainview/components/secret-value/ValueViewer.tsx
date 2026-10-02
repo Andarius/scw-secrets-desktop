@@ -18,7 +18,7 @@ import {
 	type FlatRow,
 	type Token,
 	type ValueFormat,
-} from "../../value-format";
+} from "../../lib/value-format";
 
 export const TOKEN_CLASSES: Record<Token["type"], string> = {
 	comment: "text-gray-600 italic",

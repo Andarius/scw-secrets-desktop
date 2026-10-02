@@ -1,6 +1,6 @@
 import { expect, spyOn, test } from "bun:test";
 
-import { copySecret } from "../../src/mainview/clipboard";
+import { copySecret } from "../../src/mainview/lib/clipboard";
 
 test("secret clipboard expiry preserves replacements, newer copies and denied reads", async () => {
 	const original = Object.getOwnPropertyDescriptor(navigator, "clipboard");

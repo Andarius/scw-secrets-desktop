@@ -1,4 +1,4 @@
-import type { Secret } from "../shared/models";
+import type { Secret } from "../../shared/models";
 
 export type SelectionState = {
 	selectedSecretIds: Set<string>;

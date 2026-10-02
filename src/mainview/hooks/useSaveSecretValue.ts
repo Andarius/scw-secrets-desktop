@@ -1,7 +1,7 @@
 import { useState } from "react";
 
-import { api } from "../rpc";
-import { planKeepLatestVersionOnly } from "../secret-versions";
+import { api } from "../lib/rpc";
+import { planKeepLatestVersionOnly } from "../lib/secret-versions";
 
 type SaveTarget = {
 	secretId: string;

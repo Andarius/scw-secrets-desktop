@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { renderToStaticMarkup } from "react-dom/server";
 import { ValueViewer } from "../../src/mainview/components/secret-value/ValueViewer";
-import { buildStructure, flattenEditable, flattenJson, jsonToToml, parseJsonContainer } from "../../src/mainview/value-format";
+import { buildStructure, flattenEditable, flattenJson, jsonToToml, parseJsonContainer } from "../../src/mainview/lib/value-format";
 
 describe("untrusted value rendering", () => {
 	test("deep JSON remains available as raw text without recursive conversion", () => {

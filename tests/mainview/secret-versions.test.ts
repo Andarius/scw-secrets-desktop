@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 
 import type { SecretVersion } from "../../src/shared/models";
-import { isVersionDeleted, nextRevision, planKeepLatestVersionOnly } from "../../src/mainview/secret-versions";
+import { isVersionDeleted, nextRevision, planKeepLatestVersionOnly } from "../../src/mainview/lib/secret-versions";
 
 function makeVersion(overrides: Partial<SecretVersion>): SecretVersion {
 	return {

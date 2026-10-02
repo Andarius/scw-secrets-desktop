@@ -117,22 +117,26 @@ src/
 │   ├── config.ts             # Env-overridable settings (port, data dir)
 │   └── embed.ts              # Generated asset embeds (deno task embed)
 ├── mainview/
+│   ├── main.tsx              # React entry point (loads App, or MockApp with VITE_MOCK=1)
 │   ├── App.tsx               # React application shell
-│   ├── rpc.ts                # Typed fetch client for the /api backend
-│   ├── main.tsx              # React entry point
-│   ├── secret-list.ts        # Filtering, sorting, and selection reconciliation
-│   ├── secret-versions.ts    # Version pruning plan logic
-│   ├── inventory-selection.ts # Row click and select-all state helpers
+│   ├── assets/               # Global styles (index.css)
+│   ├── lib/
+│   │   ├── rpc.ts            # Typed fetch client for the /api backend
+│   │   ├── secret-list.ts    # Filtering, sorting, and selection reconciliation
+│   │   ├── secret-versions.ts # Version pruning plan and next revision logic
+│   │   ├── inventory-selection.ts # Row click and select-all state helpers
+│   │   ├── value-format.ts   # Secret value parsing, conversion, and structure editing
+│   │   ├── settings.ts       # Persisted app settings
+│   │   └── clipboard.ts, console.ts
+│   ├── hooks/                # React hooks, one per file (useSaveSecretValue, useNextRevision…)
+│   ├── mock/                 # Mock mode: MockApp (sample data) and the inert mock API
 │   └── components/
-│       ├── Header.tsx        # Profile/project dropdowns, metadata bar
-│       ├── StatsCards.tsx     # Gradient stat cards
-│       ├── Navigator.tsx     # Path tree with count badges
-│       ├── Inventory.tsx     # Secrets table with multi-select
-│       ├── DetailPanel.tsx   # Secret detail and action buttons
-│       ├── ValueModal.tsx    # Full-screen value overlay
-│       ├── EditModal.tsx     # Edit secret value modal
-│       ├── CreateSecretModal.tsx # Create new secret modal
-│       └── HistoryModal.tsx  # Version history modal with actions
+│       ├── layout/           # Header, PaneRail, StatsCards
+│       ├── panels/           # Navigator (path tree), Inventory (secrets table), DetailPanel
+│       ├── modals/           # ValueModal (view/edit a value), CreateSecret, History, Cleanup, Settings, Logs
+│       ├── secret-value/     # ValueViewer, ValueStructureEditor
+│       ├── inputs/           # HeaderSelect, HighlightedTextarea, KeyFilterInput
+│       └── search/           # SpotlightSearch
 └── shared/
     ├── models.ts             # Shared types
     └── rpc.ts                # API contract (POST /api/<method>)

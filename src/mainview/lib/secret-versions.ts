@@ -1,4 +1,4 @@
-import type { SecretVersion } from "../shared/models";
+import type { SecretVersion } from "../../shared/models";
 
 export type SecretVersionAction =
 	| { type: "disable"; revision: number }

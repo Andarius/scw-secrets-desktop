@@ -1,5 +1,5 @@
-import type { ApiClient, ApiMethod, ApiRequests } from "../shared/rpc";
-import { mockApi } from "./rpc.mock";
+import type { ApiClient, ApiMethod, ApiRequests } from "../../shared/rpc";
+import { mockApi } from "../mock/rpc.mock";
 
 function sessionToken(): string | null {
 	if (typeof window === "undefined") return null;

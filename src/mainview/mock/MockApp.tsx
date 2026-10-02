@@ -1,14 +1,14 @@
 import { useState, useDeferredValue, useEffect } from "react";
 
-import type { ProfilesResponse, Project, Secret } from "../shared/models";
-import { SpotlightSearch } from "./components/search/SpotlightSearch";
-import { Header } from "./components/layout/Header";
-import { StatsCards } from "./components/layout/StatsCards";
-import { Navigator } from "./components/panels/Navigator";
-import { PaneRail } from "./components/layout/PaneRail";
-import { Inventory } from "./components/panels/Inventory";
-import { DetailPanel, type ValueEntry } from "./components/panels/DetailPanel";
-import { ValueView } from "./components/modals/ValueModal";
+import type { ProfilesResponse, Project, Secret } from "../../shared/models";
+import { SpotlightSearch } from "../components/search/SpotlightSearch";
+import { Header } from "../components/layout/Header";
+import { StatsCards } from "../components/layout/StatsCards";
+import { Navigator } from "../components/panels/Navigator";
+import { PaneRail } from "../components/layout/PaneRail";
+import { Inventory } from "../components/panels/Inventory";
+import { DetailPanel, type ValueEntry } from "../components/panels/DetailPanel";
+import { ValueView } from "../components/modals/ValueModal";
 import {
 	filterSecrets,
 	getPathEntries,
@@ -17,7 +17,7 @@ import {
 	type InventorySortDirection,
 	type InventorySortKey,
 	type StatusFilter,
-} from "./secret-list";
+} from "../lib/secret-list";
 
 const MOCK_PROFILES: ProfilesResponse = {
 	active: "production",

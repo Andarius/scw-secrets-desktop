@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Loader2, RefreshCw, Trash2, X } from "lucide-react";
 
-import { api } from "../../rpc";
+import { api } from "../../lib/rpc";
 import type { HttpLog } from "../../../shared/models";
 
 type LogsModalProps = {

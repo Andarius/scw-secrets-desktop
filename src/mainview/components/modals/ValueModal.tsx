@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Check, Copy, Eye, Loader2, Pencil, Save, Share2, X } from "lucide-react";
-import { copySecret } from "../../clipboard";
-import { secretConsoleUrl } from "../../console";
+import { copySecret } from "../../lib/clipboard";
+import { secretConsoleUrl } from "../../lib/console";
 import { useNextRevision } from "../../hooks/useNextRevision";
 import { useSaveSecretValue } from "../../hooks/useSaveSecretValue";
 import { HighlightedTextarea } from "../inputs/HighlightedTextarea";

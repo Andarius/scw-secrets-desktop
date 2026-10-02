@@ -6,7 +6,7 @@ import {
 	getPathEntries,
 	reconcileSelectedSecretIds,
 	sortSecrets,
-} from "../../src/mainview/secret-list";
+} from "../../src/mainview/lib/secret-list";
 
 function makeSecret(overrides: Partial<Secret>): Secret {
 	return {

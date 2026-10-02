@@ -10,7 +10,7 @@ import {
 	unquoteDisplay,
 	type StructureGroup,
 	type StructureLeaf,
-} from "../../value-format";
+} from "../../lib/value-format";
 
 const KIND_LABELS: Record<StructureLeaf["kind"], string> = {
 	string: "str",
