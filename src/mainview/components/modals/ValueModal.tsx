@@ -6,6 +6,7 @@ import { useNextRevision } from "../../hooks/useNextRevision";
 import { useSaveSecretValue } from "../../hooks/useSaveSecretValue";
 import { HighlightedTextarea } from "../inputs/HighlightedTextarea";
 import { KeyFilterContext } from "../inputs/KeyFilterInput";
+import type { ValueEntry } from "../panels/DetailPanel";
 import { ValueStructureEditor } from "../secret-value/ValueStructureEditor";
 import { prefersTableMode, ValueViewer } from "../secret-value/ValueViewer";
 
@@ -33,8 +34,6 @@ export function EditTabs({ tab, onChange, size = "sm" }: { tab: EditTab; onChang
 		</div>
 	);
 }
-
-type ValueEntry = { secretId: string; name: string; path?: string; value: string };
 
 // What a save will do — Scaleway versions are immutable, so there is no in-place edit.
 export function SaveHint({ revision, autoKeepLatest }: { revision: number | null; autoKeepLatest?: boolean }) {
@@ -99,7 +98,7 @@ function EditableEntry({
 	const formatted = useMemo(() => tryFormatJson(entry.value) ?? entry.value, [entry.value]);
 	const [value, setValue] = useState(formatted);
 	const [tab, setTab] = useState<EditTab>(() => (prefersTableMode() ? "table" : "raw"));
-	const target = { secretId: entry.secretId, profile, projectId, autoKeepLatest };
+	const target = { secretId: entry.secretId, profile, projectId, autoKeepLatest, secretType: entry.type };
 	const { save, saving, error } = useSaveSecretValue(target, onSaved);
 	const hasChanges = value !== formatted;
 	const revision = useNextRevision(target, hasChanges);
@@ -159,7 +158,7 @@ function EditableEntry({
 				</div>
 			) : tab === "table" ? (
 				<div className="rounded-lg bg-black/30 border border-white/10 p-3">
-					<ValueStructureEditor value={value} onChange={setValue} />
+					<ValueStructureEditor value={value} onChange={setValue} flat={entry.type === "key_value"} />
 				</div>
 			) : (
 				<HighlightedTextarea value={value} onChange={setValue} />

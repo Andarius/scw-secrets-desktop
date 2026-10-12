@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 
 import {
+	normalizeKeyValue,
 	applyStructOp,
 	buildStructure,
 	detectEmbedded,
@@ -563,5 +564,33 @@ describe("tokenizeEnvLine", () => {
 
 	test("keeps comments", () => {
 		expect(tokenizeEnvLine("# note")).toEqual([{ type: "comment", text: "# note" }]);
+	});
+});
+
+describe("normalizeKeyValue", () => {
+	test("quotes top-level numbers and booleans", () => {
+		expect(JSON.parse(normalizeKeyValue('{"A":"x","N":123,"B":true,"F":false}'))).toEqual({ A: "x", N: "123", B: "true", F: "false" });
+	});
+
+	test("keeps the exact number text (no float round-trip)", () => {
+		expect(JSON.parse(normalizeKeyValue('{"ID": 12345678901234567890, "R": 1.10, "E": -1e3}'))).toEqual({
+			ID: "12345678901234567890",
+			R: "1.10",
+			E: "-1e3",
+		});
+	});
+
+	test("keeps formatting and leaves strings, null and nested values alone", () => {
+		const value = '{\n  "A": "x: 1, \\"y\\": 2",\n  "N": 42,\n  "Z": null,\n  "O": { "k": 1 },\n  "L": [1, true]\n}';
+		expect(normalizeKeyValue(value)).toBe(
+			'{\n  "A": "x: 1, \\"y\\": 2",\n  "N": "42",\n  "Z": null,\n  "O": { "k": 1 },\n  "L": [1, true]\n}',
+		);
+	});
+
+	test("leaves all-string, non-object and invalid values untouched", () => {
+		const value = '{\n  "A": "x"\n}';
+		expect(normalizeKeyValue(value)).toBe(value);
+		expect(normalizeKeyValue("42")).toBe("42");
+		expect(normalizeKeyValue('{"A": 1,')).toBe('{"A": 1,');
 	});
 });

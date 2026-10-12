@@ -836,6 +836,42 @@ export function setValueAtRow(value: string, row: EditableRow, raw: string): str
 	return value;
 }
 
+// Scaleway key_value secrets only accept string values: quote top-level numbers and
+// booleans before saving. Edits the text in place so each number keeps its exact digits
+// (no float round-trip) and the formatting survives. Anything else is left to the API.
+export function normalizeKeyValue(value: string): string {
+	if (!isPlainObject(parseJsonContainer(value))) return value;
+	let out = "";
+	let depth = 0;
+	let atValue = false; // just past a top-level ':'
+	let i = 0;
+	while (i < value.length) {
+		const ch = value[i];
+		if (ch === '"') {
+			let end = i + 1;
+			while (value[end] !== '"') end += value[end] === "\\" ? 2 : 1;
+			out += value.slice(i, end + 1);
+			i = end + 1;
+			atValue = false;
+			continue;
+		}
+		if (atValue && /[-\dtf]/.test(ch)) {
+			// the text already parsed as JSON, so a scalar token is here
+			const token = /^(?:-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?|true|false)/.exec(value.slice(i))![0];
+			out += `"${token}"`;
+			i += token.length;
+			atValue = false;
+			continue;
+		}
+		if (ch === "{" || ch === "[") depth++;
+		else if (ch === "}" || ch === "]") depth--;
+		if (!/\s/.test(ch)) atValue = ch === ":" && depth === 1;
+		out += ch;
+		i++;
+	}
+	return out;
+}
+
 function isPlainObject(value: unknown): value is Record<string, unknown> {
 	return typeof value === "object" && value !== null && !Array.isArray(value);
 }

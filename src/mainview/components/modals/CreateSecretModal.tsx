@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Loader2, Plus, X } from "lucide-react";
 
 import { api } from "../../lib/rpc";
+import { normalizeKeyValue } from "../../lib/value-format";
 
 type CreateSecretModalProps = {
 	profile?: string;
@@ -105,7 +106,7 @@ export function CreateSecretModal({
 				name: name.trim(),
 				path: normalizedPath,
 				type,
-				value,
+				value: type === "key_value" ? normalizeKeyValue(value) : value,
 				tags,
 				profile,
 				projectId,

@@ -467,7 +467,7 @@ function App() {
 									});
 									setExpandedValues({
 										title: secret.name,
-										values: [{ secretId: secret.id, name: secret.name, path: secret.path, value: response.value }],
+										values: [{ secretId: secret.id, name: secret.name, path: secret.path, type: secret.type, value: response.value }],
 									});
 								} catch {
 									// silently ignore — user can retry via DetailPanel
@@ -556,7 +556,7 @@ function App() {
 								});
 								setExpandedValues({
 									title: secret.name,
-									values: [{ secretId: secret.id, name: secret.name, path: secret.path, value: response.value }],
+									values: [{ secretId: secret.id, name: secret.name, path: secret.path, type: secret.type, value: response.value }],
 								});
 							} catch {
 								// silently ignore — user can retry from the inventory
