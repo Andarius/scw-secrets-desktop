@@ -3,7 +3,7 @@
 # USAGE: curl -fsSL https://raw.githubusercontent.com/Andarius/scw-secrets-desktop/master/bin/quickstart.sh | bash
 # EXAMPLES:
 #   curl -fsSL .../quickstart.sh | SCW_SECRETS_VERSION=v0.6.0 bash    # pin a release
-#   curl -fsSL .../quickstart.sh | SCW_SECRETS_APP=appimage bash      # force the AppImage (no sudo)
+#   curl -fsSL .../quickstart.sh | SCW_SECRETS_APP=snap bash          # the snap instead of the AppImage (needs sudo)
 #   curl -fsSL .../quickstart.sh | SCW_SECRETS_APP=source bash        # clone + build from source
 #   curl -fsSL .../quickstart.sh | SCW_SECRETS_DIR=~/code/scw bash    # custom checkout dir (source only)
 
@@ -37,11 +37,39 @@ detect_flavor() {
     fi
     case "$(uname -s)/$(uname -m)" in
         Linux/x86_64)
-            if command -v snap >/dev/null; then echo snap; else echo appimage; fi ;;
+            echo appimage ;;
         Darwin/arm64) echo macos-arm64 ;;
         Darwin/x86_64) echo macos-x64 ;;
         *) echo source ;;
     esac
+}
+
+# Menu entry + icon, named after the window's app id (ScwSecrets) so the taskbar links the window to them.
+integrate_appimage() { # binary
+    local bin="$1" app_id="ScwSecrets" tmp
+    local data="${XDG_DATA_HOME:-$HOME/.local/share}"
+    local icon="$data/icons/hicolor/256x256/apps/io.github.andarius.scw-secrets.png"
+    mkdir -p "$data/applications" "${icon%/*}"
+    tmp="$(mktemp -d)"
+    if (cd "$tmp" && "$bin" --appimage-extract AppIcon.png >/dev/null 2>&1); then
+        cp "$tmp/squashfs-root/AppIcon.png" "$icon"
+    else
+        echo "could not extract the app icon; the menu entry will use a generic one" >&2
+    fi
+    rm -rf "$tmp"
+    cat >"$data/applications/$app_id.desktop" <<EOF
+[Desktop Entry]
+Type=Application
+Name=Scw Secrets
+Comment=Desktop UI for managing Scaleway secrets
+Exec=$bin
+Icon=$icon
+StartupWMClass=$app_id
+Terminal=false
+Categories=Utility;
+EOF
+    if command -v update-desktop-database >/dev/null; then update-desktop-database -q "$data/applications" || true; fi
+    echo "menu entry → $data/applications/$app_id.desktop"
 }
 
 install_release() { # flavor
@@ -62,6 +90,7 @@ install_release() { # flavor
             mkdir -p "$HOME/.local/bin"
             fetch_asset "$tag" "ScwSecrets.AppImage" "$HOME/.local/bin/scw-secrets"
             chmod +x "$HOME/.local/bin/scw-secrets"
+            integrate_appimage "$HOME/.local/bin/scw-secrets"
             RUN_HINT="$HOME/.local/bin/scw-secrets"
             ;;
         macos-arm64|macos-x64)

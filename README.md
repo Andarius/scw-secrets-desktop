@@ -41,8 +41,8 @@ This project is provided as-is, with no guarantee or warranty of any kind. Use i
 curl -fsSL https://raw.githubusercontent.com/Andarius/scw-secrets-desktop/master/bin/quickstart.sh | bash
 ```
 
-Installs the latest packaged app for the platform: snap or AppImage on Linux x64
-(`SCW_SECRETS_APP=appimage` forces the AppImage, no sudo), zipped `.app` on macOS
+Installs the latest packaged app for the platform: the AppImage on Linux x64 (no sudo, a menu entry, and in-app
+updates; `SCW_SECRETS_APP=snap` installs the snap instead), zipped `.app` on macOS
 (quarantine cleared automatically). `SCW_SECRETS_VERSION=v0.6.0` pins a release,
 `SCW_SECRETS_APP=source` clones and builds from the checkout instead
 (`SCW_SECRETS_DIR` overrides the default `~/scw-secrets-desktop`).
@@ -96,8 +96,8 @@ deno task check      # Type-check the deno backend
 
 ## Linux Release
 
-Download the Linux release from the GitHub releases page: the `.AppImage`, `.snap`, or the
-`scw-secrets` directory bundle. The AppImage is self-contained:
+Download the Linux release from the GitHub releases page: the `.AppImage` or the `.snap`.
+The AppImage is self-contained (run this way it gets no menu entry; the quickstart adds one):
 
 ```bash
 chmod +x ScwSecrets.AppImage
