@@ -250,3 +250,33 @@ test("reclaimable count ignores versions already scheduled for deletion", async 
 	// 20 older revisions by version_count, minus DEPRECATED_API_TOKEN's 5 already scheduled for deletion
 	await expect(page.getByText("15 older revisions", { exact: false })).toBeVisible();
 });
+
+for (const [type, secret, isKeyValue] of [
+	["key_value", "AWS_ACCESS_KEY_ID", true],
+	["opaque", "DATABASE_URL", false],
+] as const) {
+	async function editSecret(page: Page) {
+		await page.locator("tbody tr").filter({ hasText: secret }).click();
+		await page.getByRole("button", { name: "View & Edit Value" }).click();
+		await page.getByRole("button", { name: "Edit", exact: true }).first().click();
+		await expect(page.getByRole("button", { name: "Save", exact: true })).toBeVisible();
+	}
+
+	test(`${type} secrets ${isKeyValue ? "hide" : "offer"} "add section" in the structure editor`, async ({ page }) => {
+		await editSecret(page);
+		await expect(page.getByText("add section")).toHaveCount(isKeyValue ? 0 : 1);
+	});
+
+	test(`${type} secrets ${isKeyValue ? "refuse" : "accept"} a null value on save`, async ({ page }) => {
+		await editSecret(page);
+		await page.getByRole("button", { name: "Raw", exact: true }).click();
+		await page.locator("textarea").fill('{"A": "x", "Z": null}');
+		await page.getByRole("button", { name: "Save", exact: true }).click();
+		if (isKeyValue) {
+			await expect(page.getByText("Key/Value secrets only accept string values: Z")).toBeVisible();
+			await expect(page.locator("textarea")).toHaveValue('{"A": "x", "Z": null}');
+		} else {
+			await expect(page.locator("textarea")).toHaveCount(0);
+		}
+	});
+}
