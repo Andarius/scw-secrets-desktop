@@ -52,9 +52,12 @@ fn local_navigation(url: &tauri::Url) -> bool {
             && url.port() == Some(5181)
 }
 
+#[expect(clippy::exit, reason = "Tauri exits if its generated context panics.")]
+fn context<R: tauri::Runtime>() -> tauri::Context<R> {
+    tauri::generate_context!()
+}
+
 fn main() {
-    #[expect(clippy::exit, reason = "Tauri exits if its generated context panics.")]
-    let context = tauri::generate_context!();
     tauri::Builder::default()
         .plugin(tauri_plugin_window_state::Builder::default().build())
         .plugin(tauri_plugin_clipboard_manager::init())
@@ -83,7 +86,7 @@ fn main() {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![rpc])
-        .run(context)
+        .run(context())
         .expect("failed to run Scw Secrets");
 }
 
@@ -93,12 +96,10 @@ mod tests {
 
     #[test]
     fn ipc_enforces_capabilities_and_input_validation() {
-        #[expect(clippy::exit, reason = "Tauri exits if its generated context panics.")]
-        let context = tauri::generate_context!();
         let app = tauri::test::mock_builder()
             .manage(scw::Backend::new().unwrap())
             .invoke_handler(tauri::generate_handler![rpc])
-            .build(context)
+            .build(context())
             .unwrap();
         for (label, origin, method, params, expected) in [
             (
