@@ -53,4 +53,4 @@ you must understand it and explain it in your own words, in the PR body and in r
 
 Releases are cut by maintainers: `just bump <patch|minor|major|x.y.z>` bumps `package.json` and `deno.json`, commits
 and tags `v<version>`. Pushing the tag runs the `Release` workflow, which checks the tag matches `package.json` and
-builds a draft GitHub release.
+builds a draft GitHub release whose notes are that version's `CHANGELOG.md` entry; add it in the release PR.

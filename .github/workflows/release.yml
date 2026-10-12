@@ -71,6 +71,17 @@ jobs:
             exit 1
           fi
 
+      - name: Extract release notes from CHANGELOG.md
+        env:
+          RELEASE_TAG: ${{ steps.tag.outputs.value }}
+        run: |
+          set -euo pipefail
+          awk -v v="${RELEASE_TAG#v}" '$0 ~ "^## " v " " {f=1; next} f && /^## / {exit} f' CHANGELOG.md > RELEASE_NOTES.md
+          if ! grep -q '[^[:space:]]' RELEASE_NOTES.md; then
+            echo "CHANGELOG.md has no entry for ${RELEASE_TAG} — refusing to release" >&2
+            exit 1
+          fi
+
       - name: Create draft release
         env:
           GH_TOKEN: ${{ github.token }}
@@ -80,7 +91,7 @@ jobs:
           if gh release view "${RELEASE_TAG}" --repo "${GH_REPO}" >/dev/null 2>&1; then
             echo "Release ${RELEASE_TAG} already exists"
           else
-            gh release create "${RELEASE_TAG}" --repo "${GH_REPO}" --draft --generate-notes --title "${RELEASE_TAG}"
+            gh release create "${RELEASE_TAG}" --repo "${GH_REPO}" --draft --notes-file RELEASE_NOTES.md --title "${RELEASE_TAG}"
           fi
 
   build:
