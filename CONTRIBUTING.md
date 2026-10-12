@@ -32,6 +32,9 @@ E2E tests run Playwright against mock mode; install the browser once with `bunx 
 PR, CI runs them only once a maintainer adds the `e2e` label; the run records every test into a single video and
 links it in a PR comment (`bun run test:e2e:record` produces the same `videos/e2e.mp4` locally, needs ffmpeg).
 
+Rust uses uv-style pedantic Clippy rules in `src-tauri/Cargo.toml` and Rust 2024 formatting in
+`src-tauri/rustfmt.toml`. CI treats lint warnings as errors; the crate language edition remains 2021.
+
 ## Guidelines
 
 - UI behavior changes come with a Playwright test in `tests/e2e/`; logic in `src/mainview/lib/` and `src-tauri/src/`

@@ -6,7 +6,7 @@ mod scw;
 mod updates;
 mod window;
 
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use tauri::Manager;
 
 #[tauri::command]
@@ -23,7 +23,7 @@ async fn rpc<R: tauri::Runtime>(
     rpc::validate_params(&method, &params)?;
     match method.as_str() {
         "openExternal" => {
-            updates::open_external(params["url"].as_str().ok_or("invalid parameters")?).await?;
+            updates::open_external(params["url"].as_str().ok_or("invalid parameters")?)?;
             Ok(json!({ "ok": true }))
         }
         "getLatestRelease" => Ok(updates::latest().await.unwrap_or(Value::Null)),
@@ -53,18 +53,37 @@ fn local_navigation(url: &tauri::Url) -> bool {
 }
 
 fn main() {
+    #[expect(clippy::exit, reason = "Tauri exits if its generated context panics.")]
+    let context = tauri::generate_context!();
     tauri::Builder::default()
         .plugin(tauri_plugin_window_state::Builder::default().build())
         .plugin(tauri_plugin_clipboard_manager::init())
         .setup(|app| {
             app.manage(scw::Backend::new().map_err(std::io::Error::other)?);
+            let saved_size = window::saved_size(app);
+            let initialized = std::sync::Once::new();
             tauri::WebviewWindowBuilder::from_config(app, &window::config(app))?
                 .on_navigation(local_navigation)
+                .on_page_load(move |window, payload| {
+                    if payload.event() == tauri::webview::PageLoadEvent::Finished {
+                        initialized.call_once(|| {
+                            if let Some(size) = saved_size {
+                                // GTK can report the primary monitor's scale before mapping the window.
+                                if !window.is_maximized().unwrap_or_default()
+                                    && !window.is_fullscreen().unwrap_or_default()
+                                {
+                                    let _ = window.set_size(size);
+                                }
+                            }
+                            window::persist(&window);
+                        });
+                    }
+                })
                 .build()?;
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![rpc])
-        .run(tauri::generate_context!())
+        .run(context)
         .expect("failed to run Scw Secrets");
 }
 
@@ -74,10 +93,12 @@ mod tests {
 
     #[test]
     fn ipc_enforces_capabilities_and_input_validation() {
+        #[expect(clippy::exit, reason = "Tauri exits if its generated context panics.")]
+        let context = tauri::generate_context!();
         let app = tauri::test::mock_builder()
             .manage(scw::Backend::new().unwrap())
             .invoke_handler(tauri::generate_handler![rpc])
-            .build(tauri::generate_context!())
+            .build(context)
             .unwrap();
         for (label, origin, method, params, expected) in [
             (
@@ -117,7 +138,7 @@ mod tests {
             ),
         ] {
             let window = app.get_webview_window(label).unwrap_or_else(|| {
-                tauri::WebviewWindowBuilder::new(&app, label, Default::default())
+                tauri::WebviewWindowBuilder::new(&app, label, tauri::WebviewUrl::default())
                     .build()
                     .unwrap()
             });
@@ -129,7 +150,7 @@ mod tests {
                     error: tauri::ipc::CallbackFn(1),
                     url: origin.parse().unwrap(),
                     body: tauri::ipc::InvokeBody::Json(json!({"method": method, "params": params})),
-                    headers: Default::default(),
+                    headers: tauri::http::HeaderMap::default(),
                     invoke_key: tauri::test::INVOKE_KEY.into(),
                 },
             )

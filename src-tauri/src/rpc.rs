@@ -17,7 +17,7 @@ fn revision(value: &str) -> bool {
             && value.bytes().all(|c| c.is_ascii_digit()))
 }
 
-pub fn validate_params(method: &str, params: &Value) -> Result<(), String> {
+pub(crate) fn validate_params(method: &str, params: &Value) -> Result<(), String> {
     let fields: &[&str] = match method {
         "getProfiles" | "getHttpLogs" | "clearHttpLogs" | "getLatestRelease"
         | "getUpdateSupport" => &[],
@@ -143,15 +143,19 @@ mod tests {
             );
         }
         assert!(validate_params("deleteSecret", &json!({"secretId": id})).is_ok());
-        assert!(validate_params(
-            "destroySecretVersion",
-            &json!({"secretId": id, "revision": 1.0})
-        )
-        .is_ok());
-        assert!(validate_params(
-            "updateSecretValue",
-            &json!({"secretId": id, "value": "x".repeat(2 * 1024 * 1024)})
-        )
-        .is_err());
+        assert!(
+            validate_params(
+                "destroySecretVersion",
+                &json!({"secretId": id, "revision": 1.0})
+            )
+            .is_ok()
+        );
+        assert!(
+            validate_params(
+                "updateSecretValue",
+                &json!({"secretId": id, "value": "x".repeat(2 * 1024 * 1024)})
+            )
+            .is_err()
+        );
     }
 }

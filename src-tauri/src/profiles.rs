@@ -1,5 +1,5 @@
 use serde::Deserialize;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use std::{collections::BTreeMap, path::PathBuf};
 
 #[derive(Clone, Default, Deserialize)]
@@ -29,7 +29,7 @@ pub(crate) struct Profiles {
 }
 
 impl Profiles {
-    pub fn new() -> Self {
+    pub(crate) fn new() -> Self {
         let home = std::env::var_os("HOME")
             .or_else(|| std::env::var_os("USERPROFILE"))
             .unwrap_or_else(|| ".".into());
@@ -46,7 +46,7 @@ impl Profiles {
         )
     }
 
-    pub fn at(path: PathBuf, environment: Option<Profile>) -> Self {
+    pub(crate) fn at(path: PathBuf, environment: Option<Profile>) -> Self {
         Self {
             path,
             environment,
@@ -61,7 +61,7 @@ impl Profiles {
         serde_yaml::from_str(&text).map_err(|_| "request failed".into())
     }
 
-    pub async fn load(&self, name: Option<&str>) -> Result<Profile, String> {
+    pub(crate) async fn load(&self, name: Option<&str>) -> Result<Profile, String> {
         if name.is_none() || name == Some("env") {
             if let Some(profile) = &self.environment {
                 return Ok(profile.clone());
@@ -78,7 +78,7 @@ impl Profiles {
         Ok(profile.clone())
     }
 
-    pub async fn summaries(&self) -> Result<Value, String> {
+    pub(crate) async fn summaries(&self) -> Result<Value, String> {
         let config = match tokio::fs::read_to_string(&self.path).await {
             Ok(text) => serde_yaml::from_str::<Config>(&text).map_err(|_| "request failed")?,
             Err(_) => Config::default(),
@@ -108,7 +108,7 @@ impl Profiles {
         Ok(json!({ "active": active, "profiles": profiles }))
     }
 
-    pub async fn switch(&self, name: &str) -> Result<Value, String> {
+    pub(crate) async fn switch(&self, name: &str) -> Result<Value, String> {
         let _guard = self.write_lock.lock().await;
         if name == "env" || !self.config().await?.profiles.contains_key(name) {
             return Err("request failed".into());
@@ -197,7 +197,7 @@ mod tests {
     #[cfg(unix)]
     #[tokio::test]
     async fn switching_preserves_symlinks_and_target_permissions() {
-        use std::os::unix::fs::{symlink, PermissionsExt};
+        use std::os::unix::fs::{PermissionsExt, symlink};
 
         let file = config_file(CONFIG);
         let target = file.path().join("config.yaml");

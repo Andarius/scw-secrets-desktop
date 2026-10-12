@@ -75,6 +75,7 @@ Native commands run in the Rust process. Production frontend assets are embedded
 rebuild the desktop app to update them.
 
 When upgrading from the previous desktop runtime, Scaleway profiles and saved window geometry are reused.
+Window geometry is saved shortly after resizing or moving, as well as on exit.
 UI preferences start fresh because Tauri uses a different WebView storage origin.
 
 ## Testing

@@ -1,4 +1,4 @@
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
 use std::{
     path::{Path, PathBuf},
@@ -8,7 +8,7 @@ use std::{
 use tokio::{
     io::AsyncWriteExt,
     process::Command,
-    sync::{watch, Mutex},
+    sync::{Mutex, watch},
 };
 
 const REPO: &str = "Andarius/scw-secrets-desktop";
@@ -85,7 +85,7 @@ fn client(timeout: Duration) -> Result<reqwest::Client, String> {
         .map_err(|e| e.to_string())
 }
 
-pub async fn latest() -> Option<Value> {
+pub(crate) async fn latest() -> Option<Value> {
     let response = client(Duration::from_secs(5))
         .ok()?
         .get(format!(
@@ -145,7 +145,7 @@ fn current_target() -> Option<Target> {
     )
 }
 
-pub fn can_install() -> bool {
+pub(crate) fn can_install() -> bool {
     current_target().is_some()
 }
 
@@ -177,7 +177,7 @@ fn verify_digest(bytes: &[u8], expected: &str) -> InstallResult {
     Ok(())
 }
 
-pub async fn install(version: &str) -> InstallResult {
+pub(crate) async fn install(version: &str) -> InstallResult {
     if !valid_version(version) {
         return Err("invalid release version".into());
     }
@@ -243,7 +243,7 @@ async fn run_install(version: &str) -> InstallResult {
     let payload = release.json::<Value>().await.map_err(|e| e.to_string())?;
     let (url, sha256) = pick_asset(&payload, version, target.asset)
         .ok_or_else(|| format!("release v{version} has no verifiable {}", target.asset))?;
-    let download = client(Duration::from_secs(300))?
+    let download = client(Duration::from_mins(5))?
         .get(url)
         .send()
         .await
@@ -293,7 +293,7 @@ async fn replace_appimage(path: &Path, bytes: &[u8]) -> InstallResult {
 
 async fn run(executable: &str, args: &[&Path]) -> InstallResult {
     let output = tokio::time::timeout(
-        Duration::from_secs(120),
+        Duration::from_mins(2),
         Command::new(executable)
             .args(args)
             .stdin(Stdio::null())
@@ -392,7 +392,7 @@ fn relaunch(executable: &Path, args: &[&Path]) -> InstallResult {
     Ok(())
 }
 
-pub async fn open_external(url: &str) -> InstallResult {
+pub(crate) fn open_external(url: &str) -> InstallResult {
     if !external_url(url) {
         return Err("only Scaleway secret console and app release URLs can be opened".into());
     }
@@ -428,7 +428,9 @@ mod tests {
     fn release_and_external_url_boundaries() {
         let url = format!("https://github.com/{REPO}/releases/tag/v1.2.3");
         assert!(external_url(&url));
-        assert!(external_url("https://console.scaleway.com/secret-manager/secrets/fr-par/00000000-0000-0000-0000-000000000000/overview"));
+        assert!(external_url(
+            "https://console.scaleway.com/secret-manager/secrets/fr-par/00000000-0000-0000-0000-000000000000/overview"
+        ));
         for invalid in [format!("{url}?redirect=evil"), format!("{url}\n"), url.replace("github.com", "github.com.evil"),
             "https://console.scaleway.com/secret-manager/secrets/fr-par/00000000-0000-0000-0000-000000000000/overview/evil".into(),
             "file:///etc/passwd".into(), "https://evil.example".into()] { assert!(!external_url(&invalid), "{invalid}"); }
@@ -511,7 +513,7 @@ mod tests {
     #[tokio::test]
     async fn invalid_inputs_and_targets_fail_without_network_or_changes() {
         assert!(install("1.2.3/evil").await.is_err());
-        assert!(open_external("https://evil.example").await.is_err());
+        assert!(open_external("https://evil.example").is_err());
         let dir = tempfile::tempdir().unwrap();
         let target = Target {
             path: dir.path().join("missing"),

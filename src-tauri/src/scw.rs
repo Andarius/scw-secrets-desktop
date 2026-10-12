@@ -1,13 +1,13 @@
-pub use crate::rpc::validate_params;
+pub(crate) use crate::rpc::validate_params;
 use crate::{
     profiles::{Profile, Profiles},
     rpc::uuid,
 };
-use base64::{engine::general_purpose::STANDARD, Engine};
-use futures_util::{stream, StreamExt};
+use base64::{Engine, engine::general_purpose::STANDARD};
+use futures_util::{StreamExt, stream};
 use reqwest::{Client, Method};
 use serde::Serialize;
-use serde_json::{json, Map, Value};
+use serde_json::{Map, Value, json};
 use std::{collections::VecDeque, sync::Mutex, time::Instant};
 
 #[derive(Clone, Serialize)]
@@ -29,7 +29,7 @@ struct Logs {
     entries: VecDeque<HttpLog>,
 }
 
-pub struct Backend {
+pub(crate) struct Backend {
     client: Client,
     profiles: Profiles,
     api_base: String,
@@ -84,7 +84,7 @@ fn validation_error(status: u16, body: &Value) -> Option<String> {
 }
 
 impl Backend {
-    pub fn new() -> Result<Self, String> {
+    pub(crate) fn new() -> Result<Self, String> {
         let client = Client::builder()
             .redirect(reqwest::redirect::Policy::none())
             .build()
@@ -108,7 +108,7 @@ impl Backend {
         let mut logs = self
             .logs
             .lock()
-            .unwrap_or_else(|poisoned| poisoned.into_inner());
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         logs.next_id += 1;
         let id = logs.next_id;
         logs.entries.push_front(HttpLog {
@@ -149,18 +149,15 @@ impl Backend {
             request = request.json(&body);
         }
         let start = Instant::now();
-        let response = match request.send().await {
-            Ok(response) => response,
-            Err(_) => {
-                self.record(
-                    &method,
-                    url.to_string(),
-                    0,
-                    start,
-                    Some("request failed".into()),
-                );
-                return Err("request failed".into());
-            }
+        let Ok(response) = request.send().await else {
+            self.record(
+                &method,
+                url.to_string(),
+                0,
+                start,
+                Some("request failed".into()),
+            );
+            return Err("request failed".into());
         };
         let status = response.status();
         let result = if status.is_success() && method == Method::DELETE {
@@ -284,7 +281,7 @@ impl Backend {
         Ok(())
     }
 
-    pub async fn call(&self, method: &str, params: Value) -> Result<Value, String> {
+    pub(crate) async fn call(&self, method: &str, params: Value) -> Result<Value, String> {
         validate_params(method, &params)?;
         match method {
             "getProfiles" => return self.profiles.summaries().await,
@@ -293,13 +290,13 @@ impl Backend {
                 let logs = self
                     .logs
                     .lock()
-                    .unwrap_or_else(|poisoned| poisoned.into_inner());
+                    .unwrap_or_else(std::sync::PoisonError::into_inner);
                 return serde_json::to_value(&logs.entries).map_err(|_| "request failed".into());
             }
             "clearHttpLogs" => {
                 self.logs
                     .lock()
-                    .unwrap_or_else(|poisoned| poisoned.into_inner())
+                    .unwrap_or_else(std::sync::PoisonError::into_inner)
                     .entries
                     .clear();
                 return Ok(json!({"ok": true}));
@@ -385,26 +382,30 @@ impl Backend {
                 let mut outcomes = stream::iter(ids.into_iter().map(|id| async move {
                     let result = if method == "getActiveVersionCounts" {
                         self.versions(&id, profile, project).await.map(|versions| {
-                            json!(versions
-                                .iter()
-                                .filter(|v| !matches!(
-                                    text(v, "status"),
-                                    "scheduled_for_deletion" | "destroyed"
-                                ))
-                                .count())
+                            json!(
+                                versions
+                                    .iter()
+                                    .filter(|v| !matches!(
+                                        text(v, "status"),
+                                        "scheduled_for_deletion" | "destroyed"
+                                    ))
+                                    .count()
+                            )
                         })
                     } else {
                         self.value(&id, "latest_enabled", profile, project)
                             .await
                             .map(|value| {
                                 let mut units = 0;
-                                json!(value
-                                    .chars()
-                                    .take_while(|c| {
-                                        units += c.len_utf16();
-                                        units <= 64 * 1024
-                                    })
-                                    .collect::<String>())
+                                json!(
+                                    value
+                                        .chars()
+                                        .take_while(|c| {
+                                            units += c.len_utf16();
+                                            units <= 64 * 1024
+                                        })
+                                        .collect::<String>()
+                                )
                             })
                     };
                     (id, result)
@@ -494,13 +495,13 @@ impl Backend {
                 let suffix = if method == "deleteSecret" {
                     String::new()
                 } else {
-                    let revision = params["revision"].as_f64().ok_or("invalid parameters")? as u64;
+                    let revision = params["revision"].as_f64().ok_or("invalid parameters")?;
                     let action = match method {
                         "enableSecretVersion" => "/enable",
                         "disableSecretVersion" => "/disable",
                         _ => "",
                     };
-                    format!("/versions/{revision}{action}")
+                    format!("/versions/{revision:.0}{action}")
                 };
                 let destructive = matches!(method, "destroySecretVersion" | "deleteSecret");
                 self.request(
@@ -623,9 +624,11 @@ mod tests {
         let requests = server.await.unwrap();
         assert!(requests[0].starts_with(&format!("GET /secret-manager/v1beta1/regions/fr-par/secrets?project_id={PROJECT}&page=1&page_size=100 ")));
         assert!(requests[1].contains("page=2&page_size=100"));
-        assert!(requests
-            .iter()
-            .all(|r| r.to_lowercase().contains("x-auth-token: private-token")));
+        assert!(
+            requests
+                .iter()
+                .all(|r| r.to_lowercase().contains("x-auth-token: private-token"))
+        );
     }
 
     #[tokio::test]
@@ -648,15 +651,15 @@ mod tests {
             )
             .await
             .unwrap();
-        for method in [
-            "enableSecretVersion",
-            "disableSecretVersion",
-            "destroySecretVersion",
+        for (method, revision) in [
+            ("enableSecretVersion", json!(2)),
+            ("disableSecretVersion", json!(2.0)),
+            ("destroySecretVersion", json!(2)),
         ] {
             backend
                 .call(
                     method,
-                    json!({"secretId": ID, "revision": 2, "projectId": PROJECT}),
+                    json!({"secretId": ID, "revision": revision, "projectId": PROJECT}),
                 )
                 .await
                 .unwrap();
@@ -679,11 +682,13 @@ mod tests {
         );
         assert_eq!(body(&requests[2]), json!({"tags": []}));
         for request in &requests[1..] {
-            assert!(request
-                .lines()
-                .next()
-                .unwrap()
-                .contains(&format!("project_id={PROJECT}")));
+            assert!(
+                request
+                    .lines()
+                    .next()
+                    .unwrap()
+                    .contains(&format!("project_id={PROJECT}"))
+            );
         }
         assert!(requests[3].starts_with(&format!(
             "POST /secret-manager/v1beta1/regions/fr-par/secrets/{ID}/versions/2/enable?"
@@ -854,11 +859,13 @@ mod tests {
         .unwrap();
         assert_eq!(message.chars().count(), 300);
         assert!(message.ends_with('…'));
-        assert!(validation_error(
-            403,
-            &json!({"type": "invalid_arguments", "details": [{"help_message": "no"}]})
-        )
-        .is_none());
+        assert!(
+            validation_error(
+                403,
+                &json!({"type": "invalid_arguments", "details": [{"help_message": "no"}]})
+            )
+            .is_none()
+        );
     }
 
     #[tokio::test]
@@ -883,8 +890,8 @@ mod tests {
     #[tokio::test]
     async fn prefetch_bounds_concurrency_truncates_values_and_reports_individual_failures() {
         use std::sync::{
-            atomic::{AtomicUsize, Ordering},
             Arc,
+            atomic::{AtomicUsize, Ordering},
         };
 
         let ids: Vec<String> = (0..16)
