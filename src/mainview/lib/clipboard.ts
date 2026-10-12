@@ -1,3 +1,12 @@
+import { isTauri } from "@tauri-apps/api/core";
+import { readText, writeText } from "@tauri-apps/plugin-clipboard-manager";
+
+export const writeClipboardText = (text: string): Promise<void> =>
+	isTauri() ? writeText(text) : navigator.clipboard.writeText(text);
+
+const readClipboardText = (): Promise<string> =>
+	isTauri() ? readText() : navigator.clipboard.readText();
+
 let clearTimer: ReturnType<typeof setTimeout> | undefined;
 let generation = 0;
 let latestSuccessfulGeneration = 0;
@@ -11,12 +20,12 @@ function scheduleExpiry(text: string, copiedGeneration: number): void {
 				scheduleExpiry(text, copiedGeneration);
 				return;
 			}
-			if (await navigator.clipboard.readText() === text && copiedGeneration === latestSuccessfulGeneration) {
+			if (await readClipboardText() === text && copiedGeneration === latestSuccessfulGeneration) {
 				if (pendingWrites > 0) {
 					scheduleExpiry(text, copiedGeneration);
 					return;
 				}
-				await navigator.clipboard.writeText("");
+				await writeClipboardText("");
 			}
 		} catch {
 			// Clipboard reads may require focus or permission; never clear blindly.
@@ -28,7 +37,7 @@ export async function copySecret(text: string): Promise<void> {
 	const copiedGeneration = ++generation;
 	pendingWrites++;
 	try {
-		await navigator.clipboard.writeText(text);
+		await writeClipboardText(text);
 	} finally {
 		pendingWrites--;
 	}

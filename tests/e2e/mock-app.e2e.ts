@@ -280,3 +280,32 @@ for (const [type, secret, isKeyValue] of [
 		}
 	});
 }
+
+test("copies share links and expires secret values through the native clipboard bridge", async ({ page }) => {
+	await page.addInitScript(() => {
+		const desktop = window as unknown as {
+			isTauri: boolean;
+			__clipboard: string;
+			__TAURI_INTERNALS__: { invoke: (command: string, args?: { text: string }) => Promise<string | void> };
+		};
+		desktop.isTauri = true;
+		desktop.__clipboard = "";
+		desktop.__TAURI_INTERNALS__ = {
+			invoke: async (command, args) => {
+				if (command === "plugin:clipboard-manager|write_text") desktop.__clipboard = args!.text;
+				else if (command === "plugin:clipboard-manager|read_text") return desktop.__clipboard;
+				else throw new Error(`Unexpected command: ${command}`);
+			},
+		};
+	});
+	await page.reload();
+	const clipboard = () => page.evaluate(() => (window as unknown as { __clipboard: string }).__clipboard);
+	await page.getByRole("button", { name: "Share Secret" }).click();
+	await expect.poll(clipboard).toMatch(/^https:\/\/console\.scaleway\.com\/secret-manager\/secrets\//);
+	await page.getByRole("button", { name: "View & Edit Value" }).click();
+	await page.clock.install();
+	await page.getByRole("button", { name: "Copy value (clears after 45 seconds when clipboard access is available)", exact: true }).click();
+	await expect.poll(clipboard).toContain("db.fr-par.scw.cloud");
+	await page.clock.fastForward(45_000);
+	await expect.poll(clipboard).toBe("");
+});

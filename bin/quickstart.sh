@@ -44,15 +44,17 @@ detect_flavor() {
     esac
 }
 
-# Menu entry + icon, named after the window's app id (ScwSecrets) so the taskbar links the window to them.
+# Keep the existing menu entry when upgrading.
 integrate_appimage() { # binary
-    local bin="$1" app_id="ScwSecrets" tmp
+    local bin="$1" app_id="ScwSecrets" tmp extracted_icon
     local data="${XDG_DATA_HOME:-$HOME/.local/share}"
     local icon="$data/icons/hicolor/256x256/apps/io.github.andarius.scw-secrets.png"
     mkdir -p "$data/applications" "${icon%/*}"
     tmp="$(mktemp -d)"
-    if (cd "$tmp" && "$bin" --appimage-extract AppIcon.png >/dev/null 2>&1); then
-        cp "$tmp/squashfs-root/AppIcon.png" "$icon"
+    if (cd "$tmp" && "$bin" --appimage-extract '*.png' >/dev/null 2>&1) \
+        && extracted_icon="$(find "$tmp/squashfs-root" -maxdepth 1 -name '*.png' -print -quit)" \
+        && [[ -n "$extracted_icon" ]]; then
+        cp "$extracted_icon" "$icon"
     else
         echo "could not extract the app icon; the menu entry will use a generic one" >&2
     fi
@@ -64,7 +66,7 @@ Name=Scw Secrets
 Comment=Desktop UI for managing Scaleway secrets
 Exec=$bin
 Icon=$icon
-StartupWMClass=$app_id
+StartupWMClass=scw-secrets
 Terminal=false
 Categories=Utility;
 EOF
@@ -114,11 +116,9 @@ build_source() {
     local dir="${SCW_SECRETS_DIR:-$HOME/scw-secrets-desktop}"
 
     command -v git >/dev/null || { echo "git is required for a source build" >&2; exit 1; }
-    if ! command -v deno >/dev/null; then
-        echo "Deno not found — installing to \${DENO_INSTALL:-\$HOME/.deno}..."
-        curl -fsSL https://deno.land/install.sh | sh </dev/null
-        export PATH="${DENO_INSTALL:-$HOME/.deno}/bin:$PATH"
-    fi
+    command -v cargo >/dev/null || { echo "Rust is required: https://rustup.rs" >&2; exit 1; }
+    command -v bun >/dev/null || { echo "Bun is required: https://bun.sh" >&2; exit 1; }
+    echo "Source builds need the Tauri system prerequisites: https://v2.tauri.app/start/prerequisites/"
 
     if [[ -d "$dir/.git" ]]; then
         echo "Updating existing checkout in $dir..."
@@ -127,12 +127,8 @@ build_source() {
         git clone "$repo" "$dir"
     fi
 
-    if command -v bun >/dev/null; then
-        (cd "$dir" && bun install && bun run build && deno task embed)
-        RUN_HINT="cd $dir && deno task dev"
-    else
-        echo "bun not found — skipping the frontend build; run 'bun install && bun run build && deno task embed' in $dir" >&2
-    fi
+    (cd "$dir" && bun install && bun run tauri build --no-bundle)
+    RUN_HINT="$dir/src-tauri/target/release/scw-secrets"
 }
 
 main() {

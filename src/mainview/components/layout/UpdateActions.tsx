@@ -1,3 +1,4 @@
+import { writeClipboardText } from "../../lib/clipboard";
 import { useState } from "react";
 import { Check, Copy, Download, ExternalLink, Loader2 } from "lucide-react";
 
@@ -13,7 +14,7 @@ export function UpdateActions({ release }: { release: LatestRelease }) {
 	const { canInstall, installing, error, install } = useInstallUpdate();
 
 	function copyCommand() {
-		void navigator.clipboard.writeText(UPDATE_COMMAND).then(() => {
+		void writeClipboardText(UPDATE_COMMAND).then(() => {
 			setCopied(true);
 			setTimeout(() => setCopied(false), 2000);
 		});

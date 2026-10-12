@@ -1,0 +1,28 @@
+[package]
+name = "scw-secrets"
+version = "0.10.0"
+description = "Desktop client for Scaleway Secret Manager"
+authors = ["Scw Secrets contributors"]
+edition = "2021"
+license = "MIT"
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+tauri-plugin-window-state = "2"
+tauri-plugin-clipboard-manager = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+serde_yaml = "0.9"
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
+tokio = { version = "1", features = ["fs", "io-util", "net", "macros", "rt-multi-thread", "process", "time", "sync"] }
+base64 = "0.22"
+chrono = { version = "0.4", default-features = false, features = ["clock"] }
+futures-util = "0.3"
+sha2 = "0.10"
+tempfile = "3"
+
+[dev-dependencies]
+tauri = { version = "2", features = ["test"] }
