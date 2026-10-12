@@ -4,7 +4,7 @@ import { highlightExpect, patchHighlights } from "./highlights";
 
 const recording = process.env.PW_VIDEO === "1";
 const expect: typeof baseExpect = recording
-	? ((target: unknown) => highlightExpect(target)) as typeof baseExpect
+	? Object.assign((target: unknown) => highlightExpect(target), { poll: baseExpect.poll }) as typeof baseExpect
 	: baseExpect;
 
 function inventoryRows(page: Page) {
