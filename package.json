@@ -1,6 +1,6 @@
 {
 	"name": "scw-secrets-desktop",
-	"version": "0.10.0",
+	"version": "0.11.0",
 	"description": "Tauri desktop client for Scaleway Secret Manager",
 	"private": true,
 	"scripts": {
