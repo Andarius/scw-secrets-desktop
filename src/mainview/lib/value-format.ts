@@ -836,23 +836,21 @@ export function setValueAtRow(value: string, row: EditableRow, raw: string): str
 	return value;
 }
 
-// Strings (escapes included), brackets, and the scalars to quote. Strings match whole, so
-// their content is never tokenized; whitespace, ',' ':' and null fall through untouched.
-const JSON_TOKEN_RE = /"(?:[^"\\]|\\.)*"|[{}[\]]|-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?|true|false/g;
+// Whole strings (escapes included) or a bare number/boolean. Strings match whole, so their
+// content is never tokenized; whitespace and punctuation fall through untouched.
+const JSON_SCALAR_RE = /"(?:[^"\\]|\\.)*"|-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?|true|false/g;
+const KEY_VALUE_SCALARS = new Set(["string", "number", "boolean"]);
 
-// Scaleway key_value secrets only accept string values: quote top-level numbers and
-// booleans before saving. Rewrites the tokens in place (one pass) so each number keeps
-// its exact digits and the formatting survives. Anything else is left to the API.
+// Scaleway key_value secrets only accept string values. Top-level numbers and booleans are
+// quoted in place (exact digits, formatting kept); null, objects and arrays have no faithful
+// string form, so they throw a readable error. Non-object/invalid JSON is left to the API.
 export function normalizeKeyValue(value: string): string {
-	if (!isPlainObject(parseJsonContainer(value))) return value;
-	// inside the root object (depth 1) keys are strings, so any bare scalar is a top-level value
-	let depth = 0;
-	return value.replace(JSON_TOKEN_RE, (token) => {
-		if (token === "{" || token === "[") depth++;
-		else if (token === "}" || token === "]") depth--;
-		else if (depth === 1 && token[0] !== '"') return `"${token}"`;
-		return token;
-	});
+	const root = parseJsonContainer(value);
+	if (!isPlainObject(root)) return value;
+	const invalid = Object.keys(root).filter((key) => !KEY_VALUE_SCALARS.has(typeof root[key]));
+	if (invalid.length > 0) throw new Error(`Key/Value secrets only accept string values: ${invalid.join(", ")}`);
+	// the root is flat now, so every bare scalar outside a string is a value to quote
+	return value.replace(JSON_SCALAR_RE, (token) => (token[0] === '"' ? token : `"${token}"`));
 }
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {

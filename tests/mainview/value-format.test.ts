@@ -580,24 +580,27 @@ describe("normalizeKeyValue", () => {
 		});
 	});
 
-	test("keeps formatting and leaves strings, null and nested values alone", () => {
-		const value = '{\n  "A": "x: 1, \\"y\\": 2",\n  "N": 42,\n  "Z": null,\n  "O": { "k": 1 },\n  "L": [1, true]\n}';
-		expect(normalizeKeyValue(value)).toBe(
-			'{\n  "A": "x: 1, \\"y\\": 2",\n  "N": "42",\n  "Z": null,\n  "O": { "k": 1 },\n  "L": [1, true]\n}',
-		);
+	test("keeps formatting and the content of strings", () => {
+		const value = '{\n  "A": "x: 1, \\"y\\": 2",\n  "N": 42,\n  "B": false\n}';
+		expect(normalizeKeyValue(value)).toBe('{\n  "A": "x: 1, \\"y\\": 2",\n  "N": "42",\n  "B": "false"\n}');
 	});
 
-	test("handles tricky strings, escapes and nesting", () => {
-		const value = String.raw`{"path":"C:\\","q":"a\"b","u":"\u0031","s":"true 1 {","n":[{"a":[1]}],"z":0,"e":-2.5E+3}`;
+	test("handles tricky strings and escapes", () => {
+		const value = String.raw`{"path":"C:\\","q":"a\"b","u":"\u0031","s":"true 1 {","z":0,"e":-2.5E+3}`;
 		expect(JSON.parse(normalizeKeyValue(value))).toEqual({
 			path: "C:\\",
 			q: 'a"b',
 			u: "1",
 			s: "true 1 {",
-			n: [{ a: [1] }],
 			z: "0",
 			e: "-2.5E+3",
 		});
+	});
+
+	test("rejects null, objects and arrays with the offending keys", () => {
+		expect(() => normalizeKeyValue('{"A":"x","Z":null,"O":{"k":"v"},"L":["a"],"N":1}')).toThrow(
+			"Key/Value secrets only accept string values: Z, O, L",
+		);
 	});
 
 	test("normalizes a large value in one pass", () => {
