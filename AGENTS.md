@@ -8,7 +8,7 @@ Setup, workflow, PR and release conventions: see `CONTRIBUTING.md`.
 
 ## Stack
 
-- Tauri 2, Rust stable, Bun 1.3 (frontend toolchain, unit tests), React, TypeScript,
+- Tauri 2, Rust (pinned in `rust-toolchain.toml`), Bun 1.3 (frontend toolchain, unit tests), React, TypeScript,
   Tailwind CSS 3, Vite, Playwright, just.
 - The `justfile` hides the frontend/native toolchains; `just --list` for everything.
 

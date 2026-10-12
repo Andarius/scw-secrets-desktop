@@ -98,7 +98,9 @@ impl Profiles {
         if let Some(profile) = &self.environment {
             profiles.push(summary("env", profile, true));
         }
-        for (name, profile) in &config.profiles {
+        let mut names: Vec<_> = config.profiles.iter().collect();
+        names.sort_by(|(a, _), (b, _)| crate::scw::by_name(a, b));
+        for (name, profile) in names {
             profiles.push(summary(
                 name,
                 profile,

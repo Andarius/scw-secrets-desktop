@@ -9,10 +9,8 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { execSync } from "node:child_process";
 
 const pkgPath = new URL("../package.json", import.meta.url);
-const tauriPath = new URL("../src-tauri/tauri.conf.json", import.meta.url);
 const cargoPath = new URL("../src-tauri/Cargo.toml", import.meta.url);
 const pkg = JSON.parse(readFileSync(pkgPath, "utf8"));
-const tauri = JSON.parse(readFileSync(tauriPath, "utf8"));
 const cargo = readFileSync(cargoPath, "utf8");
 const current = pkg.version as string;
 
@@ -60,12 +58,10 @@ if (!cargoVersion.test(cargo)) {
 
 pkg.version = next;
 writeFileSync(pkgPath, `${JSON.stringify(pkg, null, "\t")}\n`);
-tauri.version = next;
-writeFileSync(tauriPath, `${JSON.stringify(tauri, null, "\t")}\n`);
 writeFileSync(cargoPath, cargo.replace(cargoVersion, (_, before, after) => `${before}${next}${after}`));
 run("cargo update --manifest-path src-tauri/Cargo.toml --workspace --offline");
 
-run("git add package.json src-tauri/tauri.conf.json src-tauri/Cargo.toml src-tauri/Cargo.lock");
+run("git add package.json src-tauri/Cargo.toml src-tauri/Cargo.lock");
 run(`git commit -m "chore: bump version to ${next}"`);
 run(`git tag -a ${tag} -m ${tag}`);
 

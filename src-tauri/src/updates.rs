@@ -101,7 +101,12 @@ pub(crate) async fn latest() -> Option<Value> {
     parse_latest(&response.json::<Value>().await.ok()?)
 }
 
-fn detect_target(exec: &Path, appimage: Option<&Path>, os: &str, arch: &str) -> Option<Target> {
+fn detect_target(
+    exec: &Path,
+    appimage: Option<(&Path, &Path)>,
+    os: &str,
+    arch: &str,
+) -> Option<Target> {
     if os == "macos" {
         let macos = exec.parent()?;
         let contents = macos.parent()?;
@@ -123,7 +128,10 @@ fn detect_target(exec: &Path, appimage: Option<&Path>, os: &str, arch: &str) -> 
             },
         })
     } else if os == "linux" {
-        let path = appimage.filter(|path| path.is_absolute())?;
+        // $APPIMAGE is inherited by children of any AppImage; trust it only for our own mount.
+        let (path, _) = appimage.filter(|(path, appdir)| {
+            path.is_absolute() && appdir.is_absolute() && exec.starts_with(appdir)
+        })?;
         Some(Target {
             path: path.to_owned(),
             macos: false,
@@ -137,9 +145,10 @@ fn detect_target(exec: &Path, appimage: Option<&Path>, os: &str, arch: &str) -> 
 fn current_target() -> Option<Target> {
     let exec = std::env::current_exe().ok()?;
     let appimage = std::env::var_os("APPIMAGE").map(PathBuf::from);
+    let appdir = std::env::var_os("APPDIR").map(PathBuf::from);
     detect_target(
         &exec,
-        appimage.as_deref(),
+        appimage.as_deref().zip(appdir.as_deref()),
         std::env::consts::OS,
         std::env::consts::ARCH,
     )
@@ -462,18 +471,27 @@ mod tests {
         );
         assert!(detect_target(Path::new("/tmp/dev"), None, "macos", "aarch64").is_none());
         assert!(detect_target(Path::new("/tmp/dev"), None, "linux", "x86_64").is_none());
-        assert!(detect_target(mac, Some(Path::new("relative")), "linux", "x86_64").is_none());
-        assert_eq!(
-            detect_target(
-                mac,
-                Some(Path::new("/home/user/AppImage")),
-                "linux",
-                "x86_64"
-            )
-            .unwrap()
-            .asset,
-            "ScwSecrets.AppImage"
-        );
+        let mounted = Path::new("/tmp/.mount_ScwSecXYZ/usr/bin/scw-secrets");
+        let appimage = Path::new("/home/user/ScwSecrets.AppImage");
+        let appdir = Path::new("/tmp/.mount_ScwSecXYZ");
+        for (exec, env, expected) in [
+            (mounted, Some((appimage, appdir)), true),
+            (mounted, Some((Path::new("relative"), appdir)), false),
+            (mounted, Some((appimage, Path::new("relative"))), false),
+            // A .deb build launched from another AppImage inherits its variables.
+            (
+                Path::new("/usr/bin/scw-secrets"),
+                Some((appimage, appdir)),
+                false,
+            ),
+            (mounted, None, false),
+        ] {
+            assert_eq!(
+                detect_target(exec, env, "linux", "x86_64").map(|target| target.asset),
+                expected.then_some("ScwSecrets.AppImage"),
+                "{exec:?} {env:?}"
+            );
+        }
         assert!(detect_target(mac, None, "windows", "x86_64").is_none());
     }
 

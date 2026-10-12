@@ -70,6 +70,11 @@ jobs:
             echo "Tag ${RELEASE_TAG} does not match package.json version ${expected_tag}" >&2
             exit 1
           fi
+          cargo_tag="v$(sed -n 's/^version = "\(.*\)"$/\1/p' src-tauri/Cargo.toml | head -n1)"
+          if [ "${RELEASE_TAG}" != "${cargo_tag}" ]; then
+            echo "Tag ${RELEASE_TAG} does not match src-tauri/Cargo.toml version ${cargo_tag}" >&2
+            exit 1
+          fi
 
       - name: Extract release notes from CHANGELOG.md
         env:
@@ -129,9 +134,7 @@ jobs:
           bun-version: "1.3.3"
 
       - name: Setup Rust
-        run: |
-          rustup toolchain install stable --profile minimal
-          rustup default stable
+        run: rustup toolchain install --profile minimal
 
       - name: Install native dependencies
         if: runner.os == 'Linux'
@@ -183,9 +186,7 @@ jobs:
           bun-version: "1.3.3"
 
       - name: Setup Rust
-        run: |
-          rustup toolchain install stable --profile minimal
-          rustup default stable
+        run: rustup toolchain install --profile minimal
 
       - name: Install native dependencies
         if: runner.os == 'Linux'

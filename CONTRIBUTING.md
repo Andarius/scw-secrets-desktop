@@ -9,7 +9,7 @@ Open an issue to discuss before starting a large feature or a change to native c
 
 ## Setup
 
-Requires [Bun](https://bun.sh) 1.3+, [Rust](https://rustup.rs) stable and [just](https://github.com/casey/just).
+Requires [Bun](https://bun.sh) 1.3+, [Rust](https://rustup.rs) (rustup installs the version pinned in `rust-toolchain.toml`) and [just](https://github.com/casey/just).
 Install the [Tauri system prerequisites](https://v2.tauri.app/start/prerequisites/) for your platform first.
 
 ```bash

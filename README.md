@@ -53,7 +53,7 @@ updates; `SCW_SECRETS_APP=snap` installs the snap instead), zipped `.app` on mac
 bun install
 ```
 
-Requires [Rust](https://rustup.rs) stable, [Bun](https://bun.sh) 1.3+ and the
+Requires [Rust](https://rustup.rs) (version pinned in `rust-toolchain.toml`), [Bun](https://bun.sh) 1.3+ and the
 [Tauri system prerequisites](https://v2.tauri.app/start/prerequisites/) for your platform.
 
 ### macOS

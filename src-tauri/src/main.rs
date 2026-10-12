@@ -41,8 +41,10 @@ async fn rpc<R: tauri::Runtime>(
 }
 
 fn local_navigation(url: &tauri::Url) -> bool {
-    let local = matches!(url.scheme(), "tauri" | "http" | "https")
-        && matches!(url.host_str(), Some("tauri.localhost"))
+    // http(s)://tauri.localhost is the app origin only on Windows; elsewhere it is loopback.
+    let local = cfg!(windows)
+        && matches!(url.scheme(), "http" | "https")
+        && url.host_str() == Some("tauri.localhost")
         && url.port().is_none()
         || url.scheme() == "tauri" && url.host_str() == Some("localhost");
     local
@@ -52,12 +54,14 @@ fn local_navigation(url: &tauri::Url) -> bool {
             && url.port() == Some(5181)
 }
 
-#[expect(clippy::exit, reason = "Tauri exits if its generated context panics.")]
 fn context<R: tauri::Runtime>() -> tauri::Context<R> {
     tauri::generate_context!()
 }
 
 fn main() {
+    // Wayland app id; must match ScwSecrets.desktop written by quickstart.
+    #[cfg(target_os = "linux")]
+    glib::set_prgname(Some("ScwSecrets"));
     tauri::Builder::default()
         .plugin(tauri_plugin_window_state::Builder::default().build())
         .plugin(tauri_plugin_clipboard_manager::init())
@@ -170,7 +174,7 @@ mod tests {
     fn navigation_keeps_the_secret_window_local() {
         for (url, allowed) in [
             ("tauri://localhost/index.html", true),
-            ("http://tauri.localhost/index.html", true),
+            ("http://tauri.localhost/index.html", cfg!(windows)),
             ("https://evil.example", false),
             ("http://tauri.localhost.evil.example", false),
             ("http://tauri.localhost:9000", false),

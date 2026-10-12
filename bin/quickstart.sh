@@ -44,9 +44,9 @@ detect_flavor() {
     esac
 }
 
-# Match the desktop filename to the Wayland app ID.
+# Menu entry + icon, named after the window's app id (ScwSecrets) so the taskbar links the window to them.
 integrate_appimage() { # binary
-    local bin="$1" app_id="scw-secrets" tmp extracted_icon
+    local bin="$1" app_id="ScwSecrets" tmp extracted_icon
     local data="${XDG_DATA_HOME:-$HOME/.local/share}"
     local icon="$data/icons/hicolor/256x256/apps/io.github.andarius.scw-secrets.png"
     mkdir -p "$data/applications" "${icon%/*}"
@@ -66,14 +66,10 @@ Name=Scw Secrets
 Comment=Desktop UI for managing Scaleway secrets
 Exec=$bin
 Icon=$icon
-StartupWMClass=scw-secrets
+StartupWMClass=$app_id
 Terminal=false
 Categories=Utility;
 EOF
-    local legacy="$data/applications/ScwSecrets.desktop"
-    if [[ -f "$legacy" ]] && grep -Fxq "Exec=$bin" "$legacy"; then
-        rm -- "$legacy"
-    fi
     if command -v update-desktop-database >/dev/null; then update-desktop-database -q "$data/applications" || true; fi
     echo "menu entry → $data/applications/$app_id.desktop"
 }

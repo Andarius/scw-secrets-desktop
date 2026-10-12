@@ -36,6 +36,12 @@ pub(crate) struct Backend {
     logs: Mutex<Logs>,
 }
 
+pub(crate) fn by_name(a: &str, b: &str) -> std::cmp::Ordering {
+    a.to_lowercase()
+        .cmp(&b.to_lowercase())
+        .then_with(|| a.cmp(b))
+}
+
 fn text<'a>(value: &'a Value, key: &str) -> &'a str {
     value.get(key).and_then(Value::as_str).unwrap_or_default()
 }
@@ -333,7 +339,7 @@ impl Backend {
                         "projects",
                     )
                     .await?;
-                projects.sort_by(|a, b| text(a, "name").cmp(text(b, "name")));
+                projects.sort_by(|a, b| by_name(text(a, "name"), text(b, "name")));
                 Ok(json!(projects))
             }
             "getSecrets" => {
@@ -361,9 +367,8 @@ impl Backend {
                         }
                 });
                 secrets.sort_by(|a, b| {
-                    text(a, "path")
-                        .cmp(text(b, "path"))
-                        .then_with(|| text(a, "name").cmp(text(b, "name")))
+                    by_name(text(a, "path"), text(b, "path"))
+                        .then_with(|| by_name(text(a, "name"), text(b, "name")))
                 });
                 Ok(json!(secrets))
             }
@@ -526,6 +531,13 @@ impl Backend {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn names_sort_case_insensitively() {
+        let mut names = vec!["Zeta", "alpha", "Alpha", "beta"];
+        names.sort_by(|a, b| by_name(a, b));
+        assert_eq!(names, ["Alpha", "alpha", "beta", "Zeta"]);
+    }
     use tokio::{
         io::{AsyncReadExt, AsyncWriteExt},
         net::TcpListener,
@@ -851,7 +863,7 @@ mod tests {
             backend.call("getHttpLogs", json!({})).await.unwrap(),
             json!([])
         );
-        assert!(server.await.unwrap().is_empty());
+        assert_eq!(server.await.unwrap(), Vec::<String>::new());
         let message = validation_error(
             400,
             &json!({"type": "invalid_arguments", "details": [{"help_message": "x".repeat(1000)}]}),

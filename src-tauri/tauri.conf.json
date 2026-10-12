@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "ScwSecrets",
-  "version": "0.10.0",
+  "version": "../package.json",
   "identifier": "io.github.andarius.scw-secrets",
   "build": {
     "beforeDevCommand": "bun run hmr",
