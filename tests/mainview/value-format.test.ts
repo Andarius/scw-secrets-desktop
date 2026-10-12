@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 
 import {
+	normalizeKeyValue,
 	applyStructOp,
 	buildStructure,
 	detectEmbedded,
@@ -563,5 +564,56 @@ describe("tokenizeEnvLine", () => {
 
 	test("keeps comments", () => {
 		expect(tokenizeEnvLine("# note")).toEqual([{ type: "comment", text: "# note" }]);
+	});
+});
+
+describe("normalizeKeyValue", () => {
+	test("quotes top-level numbers and booleans", () => {
+		expect(JSON.parse(normalizeKeyValue('{"A":"x","N":123,"B":true,"F":false}'))).toEqual({ A: "x", N: "123", B: "true", F: "false" });
+	});
+
+	test("keeps the exact number text (no float round-trip)", () => {
+		expect(JSON.parse(normalizeKeyValue('{"ID": 12345678901234567890, "R": 1.10, "E": -1e3}'))).toEqual({
+			ID: "12345678901234567890",
+			R: "1.10",
+			E: "-1e3",
+		});
+	});
+
+	test("keeps formatting and the content of strings", () => {
+		const value = '{\n  "A": "x: 1, \\"y\\": 2",\n  "N": 42,\n  "B": false\n}';
+		expect(normalizeKeyValue(value)).toBe('{\n  "A": "x: 1, \\"y\\": 2",\n  "N": "42",\n  "B": "false"\n}');
+	});
+
+	test("handles tricky strings and escapes", () => {
+		const value = String.raw`{"path":"C:\\","q":"a\"b","u":"\u0031","s":"true 1 {","z":0,"e":-2.5E+3}`;
+		expect(JSON.parse(normalizeKeyValue(value))).toEqual({
+			path: "C:\\",
+			q: 'a"b',
+			u: "1",
+			s: "true 1 {",
+			z: "0",
+			e: "-2.5E+3",
+		});
+	});
+
+	test("rejects null, objects and arrays with the offending keys", () => {
+		expect(() => normalizeKeyValue('{"A":"x","Z":null,"O":{"k":"v"},"L":["a"],"N":1}')).toThrow(
+			"Key/Value secrets only accept string values: Z, O, L",
+		);
+	});
+
+	test("normalizes a large value in one pass", () => {
+		const entries = Array.from({ length: 20_000 }, (_, i) => [`K${i}`, i % 2 ? i : `v${i}`]);
+		const result = JSON.parse(normalizeKeyValue(JSON.stringify(Object.fromEntries(entries))));
+		expect(Object.values(result).every((item) => typeof item === "string")).toBe(true);
+		expect(result.K19999).toBe("19999");
+	});
+
+	test("leaves all-string, non-object and invalid values untouched", () => {
+		const value = '{\n  "A": "x"\n}';
+		expect(normalizeKeyValue(value)).toBe(value);
+		expect(normalizeKeyValue("42")).toBe("42");
+		expect(normalizeKeyValue('{"A": 1,')).toBe('{"A": 1,');
 	});
 });

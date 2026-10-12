@@ -6,7 +6,7 @@ import type { ProfileSummary, Project, Secret } from "../../../shared/models";
 import { secretConsoleUrl } from "../../lib/console";
 import { keepLatestVersionOnly } from "../../lib/secret-versions";
 
-export type ValueEntry = { secretId: string; name: string; path?: string; value: string };
+export type ValueEntry = { secretId: string; name: string; path?: string; type?: Secret["type"]; value: string };
 
 type DetailPanelProps = {
 	secrets: Secret[];
@@ -126,7 +126,7 @@ function SingleSecretDetail({
 				profile: selectedProfileSummary?.name,
 				projectId: selectedProject?.id,
 			});
-			onViewValues(secret.name, [{ secretId: secret.id, name: secret.name, path: secret.path, value: response.value }]);
+			onViewValues(secret.name, [{ secretId: secret.id, name: secret.name, path: secret.path, type: secret.type, value: response.value }]);
 		} catch (reason) {
 			setValueError(reason instanceof Error ? reason.message : String(reason));
 		} finally {
@@ -715,7 +715,7 @@ function MultiSecretDetail({
 						profile: selectedProfileSummary?.name,
 						projectId: selectedProject?.id,
 					});
-					return { secretId: secret.id, name: secret.name, path: secret.path, value: response.value };
+					return { secretId: secret.id, name: secret.name, path: secret.path, type: secret.type, value: response.value };
 				}),
 			);
 			onViewValues(`${secrets.length} Secrets`, results);

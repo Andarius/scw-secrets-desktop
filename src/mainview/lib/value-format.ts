@@ -836,6 +836,23 @@ export function setValueAtRow(value: string, row: EditableRow, raw: string): str
 	return value;
 }
 
+// Whole strings (escapes included) or a bare number/boolean. Strings match whole, so their
+// content is never tokenized; whitespace and punctuation fall through untouched.
+const JSON_SCALAR_RE = /"(?:[^"\\]|\\.)*"|-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?|true|false/g;
+const KEY_VALUE_SCALARS = new Set(["string", "number", "boolean"]);
+
+// Scaleway key_value secrets only accept string values. Top-level numbers and booleans are
+// quoted in place (exact digits, formatting kept); null, objects and arrays have no faithful
+// string form, so they throw a readable error. Non-object/invalid JSON is left to the API.
+export function normalizeKeyValue(value: string): string {
+	const root = parseJsonContainer(value);
+	if (!isPlainObject(root)) return value;
+	const invalid = Object.keys(root).filter((key) => !KEY_VALUE_SCALARS.has(typeof root[key]));
+	if (invalid.length > 0) throw new Error(`Key/Value secrets only accept string values: ${invalid.join(", ")}`);
+	// the root is flat now, so every bare scalar outside a string is a value to quote
+	return value.replace(JSON_SCALAR_RE, (token) => (token[0] === '"' ? token : `"${token}"`));
+}
+
 function isPlainObject(value: unknown): value is Record<string, unknown> {
 	return typeof value === "object" && value !== null && !Array.isArray(value);
 }
