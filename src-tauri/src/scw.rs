@@ -559,6 +559,18 @@ mod tests {
     }
 
     async fn mock(responses: Vec<(u16, Value)>) -> (Backend, tokio::task::JoinHandle<Vec<String>>) {
+        mock_raw(
+            responses
+                .into_iter()
+                .map(|(status, body)| (status, body.to_string()))
+                .collect(),
+        )
+        .await
+    }
+
+    async fn mock_raw(
+        responses: Vec<(u16, String)>,
+    ) -> (Backend, tokio::task::JoinHandle<Vec<String>>) {
         let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
         let address = listener.local_addr().unwrap();
         let handle = tokio::spawn(async move {
@@ -566,11 +578,7 @@ mod tests {
             for (status, body) in responses {
                 let (mut socket, _) = listener.accept().await.unwrap();
                 requests.push(read_request(&mut socket).await);
-                let body = if status == 204 {
-                    String::new()
-                } else {
-                    body.to_string()
-                };
+                let body = if status == 204 { String::new() } else { body };
                 socket.write_all(format!("HTTP/1.1 {status} Test\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}", body.len()).as_bytes()).await.unwrap();
             }
             requests
@@ -721,6 +729,39 @@ mod tests {
             backend.call("getHttpLogs", json!({})).await.unwrap(),
             json!([])
         );
+    }
+
+    #[tokio::test]
+    async fn unrecognized_upstream_errors_keep_responses_and_logs_private() {
+        let responses = vec![
+            (502, "<html>private-token secret-value</html>".into()),
+            (400, json!({"type": "other_error", "message": "private-token", "details": [{"help_message": "secret-value"}]}).to_string()),
+            (400, json!({"type": "invalid_arguments", "message": "private-token", "details": [{"message": "secret-value"}]}).to_string()),
+        ];
+        let statuses: Vec<_> = responses.iter().map(|(status, _)| *status).collect();
+        let (backend, server) = mock_raw(responses).await;
+        for status in &statuses {
+            assert_eq!(
+                backend
+                    .call(
+                        "updateSecretValue",
+                        json!({"secretId": ID, "value": "secret-value"})
+                    )
+                    .await
+                    .unwrap_err(),
+                "request failed",
+                "upstream HTTP {status}"
+            );
+        }
+        assert_eq!(server.await.unwrap().len(), statuses.len());
+        let logs = backend.call("getHttpLogs", json!({})).await.unwrap();
+        assert_eq!(logs.as_array().unwrap().len(), statuses.len());
+        for (log, status) in logs.as_array().unwrap().iter().zip(statuses.iter().rev()) {
+            assert_eq!(log["status"], *status);
+            assert_eq!(log["error"], "request failed");
+        }
+        let serialized = logs.to_string();
+        assert!(!serialized.contains("private-token") && !serialized.contains("secret-value"));
     }
 
     #[tokio::test]

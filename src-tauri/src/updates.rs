@@ -319,52 +319,59 @@ async fn replace_macos(path: &Path, bytes: &[u8]) -> InstallResult {
         .prefix("scw-secrets-update-")
         .tempdir()
         .map_err(|e| e.to_string())?;
-    let zip = work.path().join("update.zip");
-    let extract = work.path().join("extract");
-    tokio::fs::write(&zip, bytes)
-        .await
-        .map_err(|e| e.to_string())?;
-    run("/usr/bin/ditto", &[Path::new("-xk"), &zip, &extract]).await?;
-    let app = extract.join("ScwSecrets.app");
-    let metadata = tokio::fs::symlink_metadata(app.join("Contents/MacOS"))
-        .await
-        .map_err(|e| e.to_string())?;
-    if !metadata.is_dir() || metadata.file_type().is_symlink() {
-        return Err("update archive has no app executable directory".into());
-    }
     let parent = path
         .parent()
         .ok_or("install target has no parent directory")?;
-    let stage = tempfile::Builder::new()
+    let mut stage = tempfile::Builder::new()
         .prefix(".scw-secrets-update-")
         .tempdir_in(parent)
         .map_err(|e| e.to_string())?;
-    let next = stage.path().join("ScwSecrets.app");
-    let previous = stage.path().join("previous.app");
-    run("/usr/bin/ditto", &[&app, &next]).await?;
-    let _ = run(
-        "/usr/bin/xattr",
-        &[Path::new("-dr"), Path::new("com.apple.quarantine"), &next],
-    )
+    let result = async {
+        let zip = work.path().join("update.zip");
+        let extract = work.path().join("extract");
+        tokio::fs::write(&zip, bytes)
+            .await
+            .map_err(|e| e.to_string())?;
+        run("/usr/bin/ditto", &[Path::new("-xk"), &zip, &extract]).await?;
+        let app = extract.join("ScwSecrets.app");
+        let metadata = tokio::fs::symlink_metadata(app.join("Contents/MacOS"))
+            .await
+            .map_err(|e| e.to_string())?;
+        if !metadata.is_dir() || metadata.file_type().is_symlink() {
+            return Err("update archive has no app executable directory".into());
+        }
+        let next = stage.path().join("ScwSecrets.app");
+        let previous = stage.path().join("previous.app");
+        run("/usr/bin/ditto", &[&app, &next]).await?;
+        let _ = run(
+            "/usr/bin/xattr",
+            &[Path::new("-dr"), Path::new("com.apple.quarantine"), &next],
+        )
+        .await;
+        swap_macos(path, &next, &previous, &mut stage).await
+    }
     .await;
-    swap_macos(path, &next, &previous, stage).await
+    tokio::task::spawn_blocking(move || drop((work, stage)))
+        .await
+        .map_err(|e| e.to_string())?;
+    result
 }
 
 async fn swap_macos(
     path: &Path,
     next: &Path,
     previous: &Path,
-    stage: tempfile::TempDir,
+    stage: &mut tempfile::TempDir,
 ) -> InstallResult {
     tokio::fs::rename(path, previous)
         .await
         .map_err(|e| e.to_string())?;
     if let Err(error) = tokio::fs::rename(next, path).await {
         if let Err(rollback) = tokio::fs::rename(previous, path).await {
-            let recovery = stage.keep();
+            stage.disable_cleanup(true);
             return Err(format!(
                 "{error}; rollback failed: {rollback}; previous app preserved in {}",
-                recovery.display()
+                stage.path().display()
             ));
         }
         return Err(error.to_string());
@@ -554,16 +561,36 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn failed_macos_swap_restores_previous_app() {
-        let dir = tempfile::tempdir().unwrap();
-        let app = dir.path().join("ScwSecrets.app");
-        tokio::fs::create_dir(&app).await.unwrap();
-        tokio::fs::write(app.join("marker"), b"old").await.unwrap();
-        let stage = tempfile::tempdir_in(dir.path()).unwrap();
-        let next = stage.path().join("missing.app");
-        let previous = stage.path().join("previous.app");
-        assert!(swap_macos(&app, &next, &previous, stage).await.is_err());
-        assert_eq!(tokio::fs::read(app.join("marker")).await.unwrap(), b"old");
+    async fn macos_swap_replaces_app_or_restores_previous_on_failure() {
+        for valid_next in [true, false] {
+            let dir = tempfile::tempdir().unwrap();
+            let app = dir.path().join("ScwSecrets.app");
+            tokio::fs::create_dir(&app).await.unwrap();
+            tokio::fs::write(app.join("marker"), b"old").await.unwrap();
+            let mut stage = tempfile::tempdir_in(dir.path()).unwrap();
+            let next = stage.path().join("next.app");
+            let previous = stage.path().join("previous.app");
+            if valid_next {
+                tokio::fs::create_dir(&next).await.unwrap();
+                tokio::fs::write(next.join("marker"), b"new").await.unwrap();
+            }
+
+            let result = swap_macos(&app, &next, &previous, &mut stage).await;
+
+            assert_eq!(result.is_ok(), valid_next);
+            assert_eq!(
+                tokio::fs::read(app.join("marker")).await.unwrap(),
+                if valid_next { b"new" } else { b"old" }
+            );
+            if valid_next {
+                assert_eq!(
+                    tokio::fs::read(previous.join("marker")).await.unwrap(),
+                    b"old"
+                );
+            } else {
+                assert!(!previous.exists());
+            }
+        }
     }
 
     #[tokio::test]
