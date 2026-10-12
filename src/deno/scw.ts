@@ -1,6 +1,7 @@
 import { decodeBase64, encodeBase64 } from "@std/encoding/base64";
 
 import { HOME_DIR } from "./config.ts";
+import { PublicError } from "./http.ts";
 import { REVISION_PATTERN, UUID_PATTERN } from "../shared/validation.ts";
 import type {
 	HttpLog,
@@ -271,12 +272,30 @@ function loadProfile(profile?: string): LoadedProfile {
 	return selected;
 }
 
+const MAX_VALIDATION_MESSAGE = 300;
+
+// Scaleway's invalid_arguments help describes the user's own input (e.g. "N: Invalid type. Expected: string"), so it may reach the page.
+function validationError(status: number, parsed: Record<string, unknown>): PublicError | null {
+	if (status !== 400 || parsed.type !== "invalid_arguments" || !Array.isArray(parsed.details)) return null;
+	const lines = parsed.details
+		.flatMap((detail: unknown) => {
+			const help = (detail as { help_message?: unknown } | null)?.help_message;
+			return typeof help === "string" ? help.split("\n") : [];
+		})
+		.map((line) => line.replace(/[\u0000-\u001f\u007f]/g, " ").replace(/^\s*-\s*/, "").trim())
+		.filter(Boolean);
+	if (lines.length === 0) return null;
+	const message = `invalid value: ${lines.join("; ")}`;
+	return new PublicError(message.length > MAX_VALIDATION_MESSAGE ? `${message.slice(0, MAX_VALIDATION_MESSAGE - 1)}…` : message);
+}
+
 async function parseJson<T>(response: Response): Promise<T> {
 	if (!response.ok) {
 		const body = await response.text();
 		let detail = `${response.status} ${response.statusText}`;
+		let parsed: Record<string, unknown> | null = null;
 		try {
-			const parsed = JSON.parse(body) as Record<string, unknown>;
+			parsed = JSON.parse(body) as Record<string, unknown>;
 			const message = parsed.message;
 			if (typeof message === "string" && message) {
 				detail = message;
@@ -286,7 +305,7 @@ async function parseJson<T>(response: Response): Promise<T> {
 				detail = body;
 			}
 		}
-		throw new Error(detail);
+		throw (parsed && validationError(response.status, parsed)) ?? new Error(detail);
 	}
 
 	return (await response.json()) as T;
