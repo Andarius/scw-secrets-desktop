@@ -3,7 +3,7 @@
 # USAGE: curl -fsSL https://raw.githubusercontent.com/Andarius/scw-secrets-desktop/master/bin/quickstart.sh | bash
 # EXAMPLES:
 #   curl -fsSL .../quickstart.sh | SCW_SECRETS_VERSION=v0.6.0 bash    # pin a release
-#   curl -fsSL .../quickstart.sh | SCW_SECRETS_APP=appimage bash      # force the AppImage (no sudo)
+#   curl -fsSL .../quickstart.sh | SCW_SECRETS_APP=snap bash          # the snap instead of the AppImage (needs sudo)
 #   curl -fsSL .../quickstart.sh | SCW_SECRETS_APP=source bash        # clone + build from source
 #   curl -fsSL .../quickstart.sh | SCW_SECRETS_DIR=~/code/scw bash    # custom checkout dir (source only)
 
@@ -37,7 +37,7 @@ detect_flavor() {
     fi
     case "$(uname -s)/$(uname -m)" in
         Linux/x86_64)
-            if command -v snap >/dev/null; then echo snap; else echo appimage; fi ;;
+            echo appimage ;;
         Darwin/arm64) echo macos-arm64 ;;
         Darwin/x86_64) echo macos-x64 ;;
         *) echo source ;;
