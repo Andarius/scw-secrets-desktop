@@ -836,40 +836,23 @@ export function setValueAtRow(value: string, row: EditableRow, raw: string): str
 	return value;
 }
 
+// Strings (escapes included), brackets, and the scalars to quote. Strings match whole, so
+// their content is never tokenized; whitespace, ',' ':' and null fall through untouched.
+const JSON_TOKEN_RE = /"(?:[^"\\]|\\.)*"|[{}[\]]|-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?|true|false/g;
+
 // Scaleway key_value secrets only accept string values: quote top-level numbers and
-// booleans before saving. Edits the text in place so each number keeps its exact digits
-// (no float round-trip) and the formatting survives. Anything else is left to the API.
+// booleans before saving. Rewrites the tokens in place (one pass) so each number keeps
+// its exact digits and the formatting survives. Anything else is left to the API.
 export function normalizeKeyValue(value: string): string {
 	if (!isPlainObject(parseJsonContainer(value))) return value;
-	let out = "";
+	// inside the root object (depth 1) keys are strings, so any bare scalar is a top-level value
 	let depth = 0;
-	let atValue = false; // just past a top-level ':'
-	let i = 0;
-	while (i < value.length) {
-		const ch = value[i];
-		if (ch === '"') {
-			let end = i + 1;
-			while (value[end] !== '"') end += value[end] === "\\" ? 2 : 1;
-			out += value.slice(i, end + 1);
-			i = end + 1;
-			atValue = false;
-			continue;
-		}
-		if (atValue && /[-\dtf]/.test(ch)) {
-			// the text already parsed as JSON, so a scalar token is here
-			const token = /^(?:-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?|true|false)/.exec(value.slice(i))![0];
-			out += `"${token}"`;
-			i += token.length;
-			atValue = false;
-			continue;
-		}
-		if (ch === "{" || ch === "[") depth++;
-		else if (ch === "}" || ch === "]") depth--;
-		if (!/\s/.test(ch)) atValue = ch === ":" && depth === 1;
-		out += ch;
-		i++;
-	}
-	return out;
+	return value.replace(JSON_TOKEN_RE, (token) => {
+		if (token === "{" || token === "[") depth++;
+		else if (token === "}" || token === "]") depth--;
+		else if (depth === 1 && token[0] !== '"') return `"${token}"`;
+		return token;
+	});
 }
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {

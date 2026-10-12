@@ -587,6 +587,26 @@ describe("normalizeKeyValue", () => {
 		);
 	});
 
+	test("handles tricky strings, escapes and nesting", () => {
+		const value = String.raw`{"path":"C:\\","q":"a\"b","u":"\u0031","s":"true 1 {","n":[{"a":[1]}],"z":0,"e":-2.5E+3}`;
+		expect(JSON.parse(normalizeKeyValue(value))).toEqual({
+			path: "C:\\",
+			q: 'a"b',
+			u: "1",
+			s: "true 1 {",
+			n: [{ a: [1] }],
+			z: "0",
+			e: "-2.5E+3",
+		});
+	});
+
+	test("normalizes a large value in one pass", () => {
+		const entries = Array.from({ length: 20_000 }, (_, i) => [`K${i}`, i % 2 ? i : `v${i}`]);
+		const result = JSON.parse(normalizeKeyValue(JSON.stringify(Object.fromEntries(entries))));
+		expect(Object.values(result).every((item) => typeof item === "string")).toBe(true);
+		expect(result.K19999).toBe("19999");
+	});
+
 	test("leaves all-string, non-object and invalid values untouched", () => {
 		const value = '{\n  "A": "x"\n}';
 		expect(normalizeKeyValue(value)).toBe(value);
