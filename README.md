@@ -73,6 +73,7 @@ bun run mock         # Browser preview with mock data (port 5199)
 
 Native commands run in the Rust process. Production frontend assets are embedded by Tauri at build time;
 rebuild the desktop app to update them.
+Opening the frontend in a browser automatically shows a labeled preview with sample data.
 
 When upgrading from the previous desktop runtime, Scaleway profiles and saved window geometry are reused.
 Window geometry is saved shortly after resizing or moving, as well as on exit.

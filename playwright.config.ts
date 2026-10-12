@@ -27,12 +27,18 @@ export default defineConfig({
 		// full viewport size; Playwright otherwise scales videos down to 800x450
 		...(recordVideo ? { video: { mode: "on", size: { width: 1280, height: 720 } } } : {}),
 	},
-	webServer: {
+	webServer: [{
 		command: "bun run mock:e2e",
 		url: "http://127.0.0.1:5199",
 		reuseExistingServer: true,
 		timeout: 120_000,
-	},
+	}, {
+		command: "bunx vite --host 127.0.0.1 --port 5198",
+		env: { VITE_MOCK: "0" },
+		url: "http://127.0.0.1:5198",
+		reuseExistingServer: false,
+		timeout: 120_000,
+	}],
 	projects: [
 		{
 			name: "chromium",

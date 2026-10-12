@@ -5,6 +5,7 @@ test("RPC uses Tauri IPC and preserves user-facing errors", () => {
 		import assert from "node:assert/strict";
 		import { mockIPC, clearMocks } from "@tauri-apps/api/mocks";
 		globalThis.window = {};
+		globalThis.isTauri = true;
 		const requests = [];
 		mockIPC((command, args) => {
 			assert.equal(command, "rpc");
@@ -22,6 +23,24 @@ test("RPC uses Tauri IPC and preserves user-facing errors", () => {
 		clearMocks();
 	`;
 	const result = Bun.spawnSync([process.execPath, "-e", script], { env: { ...process.env, VITE_MOCK: "0" } });
+	expect(result.stderr.toString()).toBe("");
+	expect(result.exitCode).toBe(0);
+});
+
+test.each([
+	["browser preview", false, "0"],
+	["explicit mock mode", true, "1"],
+] as const)("%s uses sample data without invoking native commands", (_name, desktop, mockMode) => {
+	const script = `
+		import assert from "node:assert/strict";
+		globalThis.window = {};
+		globalThis.isTauri = ${desktop};
+		const { api } = await import("./src/mainview/lib/rpc.ts");
+		assert.deepEqual(await api.getProfiles({}), { active: null, profiles: [] });
+		const { value } = await api.getSecretValue({ secretId: "sample", revision: "latest_enabled" });
+		assert.equal(JSON.parse(value).host, "db.fr-par.scw.cloud");
+	`;
+	const result = Bun.spawnSync([process.execPath, "-e", script], { env: { ...process.env, VITE_MOCK: mockMode } });
 	expect(result.stderr.toString()).toBe("");
 	expect(result.exitCode).toBe(0);
 });

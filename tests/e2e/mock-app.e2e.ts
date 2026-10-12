@@ -27,6 +27,17 @@ test("loads the mock inventory with the default selection", async ({ page }) => 
 	await expect(page.getByRole("button", { name: "View & Edit Value" })).toBeVisible();
 });
 
+test("previews the desktop frontend in a browser without a Tauri bridge", async ({ page }) => {
+	const errors: string[] = [];
+	page.on("pageerror", error => errors.push(error.message));
+	await page.goto("http://127.0.0.1:5198");
+	await expect(page.getByRole("status")).toContainText("Preview · Sample data");
+	await expect(inventoryRows(page)).toHaveCount(12);
+	await page.getByRole("button", { name: "View & Edit Value" }).click();
+	await expect(page.getByText("gcp_credentials.type", { exact: true })).toBeVisible();
+	expect(errors).toEqual([]);
+});
+
 test("switches project from the header dropdown", async ({ page }) => {
 	await page.locator("header").getByRole("button", { name: /^Project/ }).click();
 
