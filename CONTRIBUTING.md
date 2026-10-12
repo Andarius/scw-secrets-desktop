@@ -55,6 +55,6 @@ you must understand it and explain it in your own words, in the PR body and in r
 
 ## Releases
 
-Releases are cut by maintainers: `just bump <patch|minor|major|x.y.z>` bumps `package.json`,
-`src-tauri/tauri.conf.json`, `src-tauri/Cargo.toml` and `src-tauri/Cargo.lock`, then commits and tags `v<version>`. Pushing the tag runs the `Release` workflow, which checks the tag matches `package.json` and
+Releases are cut by maintainers: `just bump <patch|minor|major|x.y.z>` bumps `package.json`
+(which `src-tauri/tauri.conf.json` reads), `src-tauri/Cargo.toml` and `src-tauri/Cargo.lock`, then commits and tags `v<version>`. Pushing the tag runs the `Release` workflow, which checks the tag matches `package.json` and `Cargo.toml` and
 builds a draft GitHub release whose notes are that version's `CHANGELOG.md` entry; add it in the release PR.
