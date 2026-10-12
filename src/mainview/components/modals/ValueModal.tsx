@@ -96,18 +96,25 @@ function EditableEntry({
 	onDirtyChange: (secretId: string, dirty: boolean) => void;
 }) {
 	const formatted = useMemo(() => tryFormatJson(entry.value) ?? entry.value, [entry.value]);
+	const target = { secretId: entry.secretId, profile, projectId, autoKeepLatest, secretType: entry.type };
 	const [value, setValue] = useState(formatted);
 	const [tab, setTab] = useState<EditTab>(() => (prefersTableMode() ? "table" : "raw"));
-	const target = { secretId: entry.secretId, profile, projectId, autoKeepLatest, secretType: entry.type };
 	const { save, saving, error } = useSaveSecretValue(target, onSaved);
-	const hasChanges = value !== formatted;
-	const revision = useNextRevision(target, hasChanges);
-	useEffect(() => onDirtyChange(entry.secretId, hasChanges), [entry.secretId, hasChanges]);
 	const formattedJson = useMemo(() => tryFormatJson(value), [value]);
 	const canFormatJson = formattedJson !== null && formattedJson !== value;
 	const containerRef = useRef<HTMLDivElement>(null);
+	const hasChanges = value !== formatted;
+	const revision = useNextRevision(target, hasChanges);
 
-	// Ctrl/Cmd+S saves this entry when it is the only one, or when focus is inside it.
+	/**
+	 * Report unsaved changes to ValueView so Escape / leaving edit mode asks before dropping drafts.
+	 * onDirtyChange is left out of the deps: the parent recreates it each render, and it only sets state.
+	 */
+	useEffect(() => onDirtyChange(entry.secretId, hasChanges), [entry.secretId, hasChanges]);
+
+	/**
+	 * Ctrl/Cmd+S saves this entry when it is the only one, or when focus is inside it.
+	 */
 	useEffect(() => {
 		function handleKey(e: KeyboardEvent) {
 			if (!(e.ctrlKey || e.metaKey) || e.key !== "s") return;

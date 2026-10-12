@@ -276,11 +276,12 @@ function AddSectionRow({ onAdd }: { onAdd: (title: string) => void }) {
 
 // Design D: structured tree editor — sections as collapsible groups, typed leaves,
 // array chips, add/remove keys/sections, key filter. Mutations flow through applyStructOp.
-export function ValueStructureEditor({ value, onChange }: { value: string; onChange: (value: string) => void }) {
-	return <ValueRenderBoundary value={value}><ValueStructureEditorContent value={value} onChange={onChange} /></ValueRenderBoundary>;
+// flat: no "add section" — Scaleway key_value secrets only hold top-level string values.
+export function ValueStructureEditor({ value, onChange, flat = false }: { value: string; onChange: (value: string) => void; flat?: boolean }) {
+	return <ValueRenderBoundary value={value}><ValueStructureEditorContent value={value} onChange={onChange} flat={flat} /></ValueRenderBoundary>;
 }
 
-function ValueStructureEditorContent({ value, onChange }: { value: string; onChange: (value: string) => void }) {
+function ValueStructureEditorContent({ value, onChange, flat }: { value: string; onChange: (value: string) => void; flat: boolean }) {
 	const groups = useMemo(() => buildStructure(value), [value]);
 	const format = useMemo(() => detectFormat(value), [value]);
 	const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
@@ -390,7 +391,7 @@ function ValueStructureEditorContent({ value, onChange }: { value: string; onCha
 					</div>
 				);
 			})}
-			{!query && (format === "toml" || format === "json") ? (
+			{!query && !flat && (format === "toml" || format === "json") ? (
 				<AddSectionRow onAdd={(title) => onChange(applyStructOp(value, [], { type: "addSection", title }))} />
 			) : null}
 		</div>
