@@ -27,8 +27,15 @@ jobs:
       - name: Setup Rust
         run: rustup toolchain install --profile minimal
 
+      - name: Cache Rust build
+        uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+        with:
+          workspaces: src-tauri
+
       - name: Install native dependencies
         run: |
+          # skip the slow man-db trigger
+          sudo rm -f /var/lib/man-db/auto-update
           sudo apt-get update
           sudo apt-get install -y libwebkit2gtk-4.1-dev build-essential libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev
 
@@ -78,7 +85,9 @@ jobs:
         run: bunx playwright install --with-deps chromium
 
       - name: Install ffmpeg
-        run: sudo apt-get update && sudo apt-get install -y ffmpeg
+        run: |
+          sudo rm -f /var/lib/man-db/auto-update
+          sudo apt-get update && sudo apt-get install -y ffmpeg
 
       - name: Run E2E tests with recording
         run: bun run test:e2e:record
