@@ -15,7 +15,7 @@ function collectFiles(root: string): string[] {
 	for (const entry of entries) {
 		const fullPath = join(root, entry);
 		const stat = statSync(fullPath);
-		if (stat.isDirectory()) {
+		if (stat.isDirectory() && !entry.endsWith(".app")) {
 			files.push(...collectFiles(fullPath));
 		} else if (stat.isFile()) {
 			files.push(fullPath);
@@ -32,13 +32,12 @@ if (!releaseTag) {
 	throw new Error("RELEASE_TAG is required");
 }
 
-const artifactsDir = join(process.cwd(), "build");
+const artifactsDir = join(process.cwd(), "src-tauri", "target", "release", "bundle");
 if (!existsSync(artifactsDir)) {
 	throw new Error(`Artifacts directory not found: ${artifactsDir}`);
 }
 
-// only distributables — bundling leaves intermediate dirs (extracted AppImage
-// payloads, partial .app trees) under build/ that must not reach the release
+// Upload distributables only; native bundle directories contain intermediate files.
 const DIST_EXT_RE = /\.(AppImage|deb|rpm|dmg|msi|zip|snap)$/i;
 const artifactFiles = collectFiles(artifactsDir).filter((file) => DIST_EXT_RE.test(file));
 if (artifactFiles.length === 0) {
@@ -51,7 +50,15 @@ mkdirSync(stagingDir, { recursive: true });
 
 const stagedFiles: string[] = [];
 for (const filePath of artifactFiles) {
-	const stagedPath = join(stagingDir, basename(filePath));
+	const name = filePath.endsWith(".AppImage")
+		? "ScwSecrets.AppImage"
+		: filePath.endsWith(".msi")
+			? "ScwSecrets.msi"
+			: basename(filePath);
+	const stagedPath = join(stagingDir, name);
+	if (existsSync(stagedPath)) {
+		throw new Error(`Duplicate release asset: ${name}`);
+	}
 	cpSync(filePath, stagedPath);
 	stagedFiles.push(stagedPath);
 }
@@ -78,4 +85,5 @@ const upload = Bun.spawn({
 });
 
 const exitCode = await upload.exited;
+rmSync(stagingDir, { force: true, recursive: true });
 process.exit(exitCode);

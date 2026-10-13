@@ -3,13 +3,14 @@
 ## Issues
 
 Include the app version, OS, install method (snap, AppImage, .dmg, source) and steps to reproduce. Never paste
-secret values, API keys or the `#token=...` launch URL.
+secret values or API keys.
 
-Open an issue to discuss before starting a large feature or a change to the local API.
+Open an issue to discuss before starting a large feature or a change to native commands.
 
 ## Setup
 
-Requires [Bun](https://bun.sh) 1.3+, [Deno](https://deno.com) 2.9+ and [just](https://github.com/casey/just).
+Requires [Bun](https://bun.sh) 1.3+, [Rust](https://rustup.rs) (rustup installs the version pinned in `rust-toolchain.toml`) and [just](https://github.com/casey/just).
+Install the [Tauri system prerequisites](https://v2.tauri.app/start/prerequisites/) for your platform first.
 
 ```bash
 just install    # bun install
@@ -24,19 +25,22 @@ Run `just` to list all recipes.
 CI runs these on every PR; run them before opening one:
 
 ```bash
-just ci         # typecheck + build + deno check + unit tests + e2e
+just ci         # typecheck + build + Rust checks + unit tests + e2e
 ```
 
 E2E tests run Playwright against mock mode; install the browser once with `bunx playwright install chromium`. On a
 PR, CI runs them only once a maintainer adds the `e2e` label; the run records every test into a single video and
 links it in a PR comment (`bun run test:e2e:record` produces the same `videos/e2e.mp4` locally, needs ffmpeg).
 
+Rust uses uv-style pedantic Clippy rules in `src-tauri/Cargo.toml` and Rust 2024 formatting in
+`src-tauri/rustfmt.toml`. CI treats lint warnings as errors; the crate language edition remains 2021.
+
 ## Guidelines
 
-- UI behavior changes come with a Playwright test in `tests/e2e/`; logic in `src/mainview/lib/` and `src/deno/`
+- UI behavior changes come with a Playwright test in `tests/e2e/`; logic in `src/mainview/lib/` and `src-tauri/src/`
   comes with unit tests.
-- Changes to the local API checks (`src/deno/http.ts`) must be covered in `tests/deno/http.test.ts`.
-- Don't commit generated files: `src/deno/embed.ts` is rebuilt by `just build`.
+- Changes to credential handling, native command validation and capabilities need Rust regression tests.
+- Don't commit generated build outputs (`dist/` and `src-tauri/target/`).
 - Update `README.md` for user-facing changes.
 
 ## Pull requests
@@ -51,6 +55,6 @@ you must understand it and explain it in your own words, in the PR body and in r
 
 ## Releases
 
-Releases are cut by maintainers: `just bump <patch|minor|major|x.y.z>` bumps `package.json` and `deno.json`, commits
-and tags `v<version>`. Pushing the tag runs the `Release` workflow, which checks the tag matches `package.json` and
+Releases are cut by maintainers: `just bump <patch|minor|major|x.y.z>` bumps `package.json`
+(which `src-tauri/tauri.conf.json` reads), `src-tauri/Cargo.toml` and `src-tauri/Cargo.lock`, then commits and tags `v<version>`. Pushing the tag runs the `Release` workflow, which checks the tag matches `package.json` and `Cargo.toml` and
 builds a draft GitHub release whose notes are that version's `CHANGELOG.md` entry; add it in the release PR.

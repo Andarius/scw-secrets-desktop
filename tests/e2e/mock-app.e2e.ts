@@ -4,7 +4,7 @@ import { highlightExpect, patchHighlights } from "./highlights";
 
 const recording = process.env.PW_VIDEO === "1";
 const expect: typeof baseExpect = recording
-	? ((target: unknown) => highlightExpect(target)) as typeof baseExpect
+	? Object.assign((target: unknown) => highlightExpect(target), { poll: baseExpect.poll }) as typeof baseExpect
 	: baseExpect;
 
 function inventoryRows(page: Page) {
@@ -25,6 +25,17 @@ test("loads the mock inventory with the default selection", async ({ page }) => 
 	await expect(page.locator("tbody tr").filter({ hasText: "DATABASE_URL" })).toHaveCount(1);
 	await expect(page.locator("header").getByRole("button", { name: /^Project/ })).toContainText("webapp-api");
 	await expect(page.getByRole("button", { name: "View & Edit Value" })).toBeVisible();
+});
+
+test("previews the desktop frontend in a browser without a Tauri bridge", async ({ page }) => {
+	const errors: string[] = [];
+	page.on("pageerror", error => errors.push(error.message));
+	await page.goto("http://127.0.0.1:5198");
+	await expect(page.getByRole("status")).toContainText("Preview · Sample data");
+	await expect(inventoryRows(page)).toHaveCount(12);
+	await page.getByRole("button", { name: "View & Edit Value" }).click();
+	await expect(page.getByText("gcp_credentials.type", { exact: true })).toBeVisible();
+	expect(errors).toEqual([]);
 });
 
 test("switches project from the header dropdown", async ({ page }) => {
@@ -280,3 +291,32 @@ for (const [type, secret, isKeyValue] of [
 		}
 	});
 }
+
+test("copies share links and expires secret values through the native clipboard bridge", async ({ page }) => {
+	await page.addInitScript(() => {
+		const desktop = window as unknown as {
+			isTauri: boolean;
+			__clipboard: string;
+			__TAURI_INTERNALS__: { invoke: (command: string, args?: { text: string }) => Promise<string | void> };
+		};
+		desktop.isTauri = true;
+		desktop.__clipboard = "";
+		desktop.__TAURI_INTERNALS__ = {
+			invoke: async (command, args) => {
+				if (command === "plugin:clipboard-manager|write_text") desktop.__clipboard = args!.text;
+				else if (command === "plugin:clipboard-manager|read_text") return desktop.__clipboard;
+				else throw new Error(`Unexpected command: ${command}`);
+			},
+		};
+	});
+	await page.reload();
+	const clipboard = () => page.evaluate(() => (window as unknown as { __clipboard: string }).__clipboard);
+	await page.getByRole("button", { name: "Share Secret" }).click();
+	await expect.poll(clipboard).toMatch(/^https:\/\/console\.scaleway\.com\/secret-manager\/secrets\//);
+	await page.getByRole("button", { name: "View & Edit Value" }).click();
+	await page.clock.install();
+	await page.getByRole("button", { name: "Copy value (clears after 45 seconds when clipboard access is available)", exact: true }).click();
+	await expect.poll(clipboard).toContain("db.fr-par.scw.cloud");
+	await page.clock.fastForward(45_000);
+	await expect.poll(clipboard).toBe("");
+});

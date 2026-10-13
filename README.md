@@ -2,7 +2,7 @@
 
 Desktop app for browsing and managing [Scaleway Secret Manager](https://www.scaleway.com/en/secret-manager/) secrets.
 
-Built with [Deno desktop](https://docs.deno.com/go/desktop), React, TypeScript, and Tailwind CSS.
+Built with [Tauri 2](https://v2.tauri.app/), Rust, React, TypeScript, and Tailwind CSS.
 
 ## Disclaimer
 
@@ -53,45 +53,50 @@ updates; `SCW_SECRETS_APP=snap` installs the snap instead), zipped `.app` on mac
 bun install
 ```
 
-Requires [Deno](https://deno.com) 2.9+ for `deno desktop`.
+Requires [Rust](https://rustup.rs) (version pinned in `rust-toolchain.toml`), [Bun](https://bun.sh) 1.3+ and the
+[Tauri system prerequisites](https://v2.tauri.app/start/prerequisites/) for your platform.
 
 ### macOS
 
 If macOS shows "app is damaged and can't be opened", clear the quarantine attribute:
 
 ```bash
-xattr -c "/Applications/Scw Secrets.app"
+xattr -dr com.apple.quarantine "/Applications/ScwSecrets.app"
 ```
 
 ## Development
 
 ```bash
-bun run dev          # Vite build + desktop window (deno desktop)
-bun run dev:hmr      # Vite dev server (port 5181) + headless deno backend (port 8790)
+bun run dev          # Tauri desktop window + Vite HMR (port 5181)
 bun run mock         # Browser preview with mock data (port 5199)
 ```
 
-Headless/HMR startup prints an authenticated launch URL containing `#token=...`; open
-that URL for the corresponding port. Treat it as a credential and do not share it.
-Each backend restart issues a new token. The desktop window authenticates automatically.
-Production assets are embedded at build time; rebuild and restart to update them.
+Native commands run in the Rust process. Production frontend assets are embedded by Tauri at build time;
+rebuild the desktop app to update them.
+Opening the frontend in a browser automatically shows a labeled preview with sample data.
+
+When upgrading from the previous desktop runtime, Scaleway profiles and saved window geometry are reused.
+Window geometry is saved shortly after resizing or moving, as well as on exit.
+UI preferences start fresh because Tauri uses a different WebView storage origin.
 
 ## Testing
 
 ```bash
-bun run test         # Unit tests (bun test)
+bun run test         # Frontend unit tests (bun test)
+just rust-check      # Rust formatting, lint and unit tests
 bun run test:e2e     # E2E tests (Playwright against mock mode)
 ```
 
 ## Build
 
 ```bash
-bun run build        # Vite production build
-bun run bundle       # Vite build + embed assets + Linux AppImage (build/linux)
-deno task bundle:mac # macOS .dmg
-deno task bundle:msi # Windows .msi
+bun run build        # Vite production build → dist/
+bun run bundle       # Native installers → src-tauri/target/release/bundle/
+just bundle-deb      # Linux .deb
+just bundle-mac      # macOS .app and .dmg
+just bundle-msi      # Windows .msi
 bun run typecheck    # TypeScript check (frontend)
-deno task check      # Type-check the deno backend
+just rust-check      # Rust formatting, lint and unit tests
 ```
 
 ## Linux Release
@@ -104,24 +109,19 @@ chmod +x ScwSecrets.AppImage
 ./ScwSecrets.AppImage
 ```
 
-The app needs a graphical session (webkit2gtk). If you launch it from a plain shell without
+The app needs a graphical session (WebKitGTK 4.1). If you launch it from a plain shell without
 a usable display, GTK will fail with `cannot open display`.
 
 ## Project Structure
 
 ```
 src/
-├── deno/
-│   ├── main.ts               # Deno-desktop entrypoint: HTTP server, /api routes, window
-│   ├── scw.ts                # Scaleway config parsing and API client
-│   ├── config.ts             # Env-overridable settings (port, data dir)
-│   └── embed.ts              # Generated asset embeds (deno task embed)
 ├── mainview/
 │   ├── main.tsx              # React entry point (loads App, or MockApp with VITE_MOCK=1)
 │   ├── App.tsx               # React application shell
 │   ├── assets/               # Global styles (index.css)
 │   ├── lib/
-│   │   ├── rpc.ts            # Typed fetch client for the /api backend
+│   │   ├── rpc.ts            # Typed Tauri command client
 │   │   ├── secret-list.ts    # Filtering, sorting, and selection reconciliation
 │   │   ├── secret-versions.ts # Version pruning plan and next revision logic
 │   │   ├── inventory-selection.ts # Row click and select-all state helpers
@@ -139,5 +139,7 @@ src/
 │       └── search/           # SpotlightSearch
 └── shared/
     ├── models.ts             # Shared types
-    └── rpc.ts                # API contract (POST /api/<method>)
+    └── rpc.ts                # Typed native command contract
 ```
+
+`src-tauri/` contains the Rust backend, native command handlers, Tauri configuration and capabilities.

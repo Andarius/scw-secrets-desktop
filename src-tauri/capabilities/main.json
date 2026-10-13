@@ -1,0 +1,7 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "main",
+  "description": "Only the local main window can access secrets and the clipboard.",
+  "windows": ["main"],
+  "permissions": ["allow-rpc", "clipboard-manager:allow-read-text", "clipboard-manager:allow-write-text"]
+}

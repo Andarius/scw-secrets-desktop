@@ -1,13 +1,13 @@
 {
 	"name": "scw-secrets-desktop",
 	"version": "0.10.0",
-	"description": "Deno-desktop client for Scaleway Secret Manager",
+	"description": "Tauri desktop client for Scaleway Secret Manager",
 	"private": true,
 	"scripts": {
-		"build": "vite build && deno task embed",
-		"start": "bun run build && deno task dev",
-		"dev": "bun run build && deno task dev",
-		"dev:hmr": "concurrently \"bun run hmr\" \"deno task serve\"",
+		"build": "vite build",
+		"start": "tauri dev",
+		"dev": "tauri dev",
+		"dev:hmr": "tauri dev",
 		"hmr": "vite --port 5181",
 		"mock": "VITE_MOCK=1 vite --port 5199",
 		"mock:e2e": "VITE_MOCK=1 vite --host 127.0.0.1 --port 5199",
@@ -17,13 +17,16 @@
 		"screenshot": "bun scripts/update-screenshot.ts",
 		"typecheck": "tsc --noEmit",
 		"bump": "bun run scripts/bump.ts",
-		"bundle": "bun run build && deno task bundle"
+		"bundle": "tauri build",
+		"tauri": "tauri"
 	},
 	"dependencies": {
 		"lucide-react": "^1.0.1",
 		"react": "^18.3.1",
 		"react-dom": "^18.3.1",
-		"smol-toml": "^1.7.1"
+		"smol-toml": "^1.7.1",
+		"@tauri-apps/api": "^2",
+		"@tauri-apps/plugin-clipboard-manager": "^2"
 	},
 	"devDependencies": {
 		"@playwright/test": "^1.58.2",
@@ -32,10 +35,10 @@
 		"@types/react-dom": "^18.3.1",
 		"@vitejs/plugin-react": "^4.3.4",
 		"autoprefixer": "^10.4.20",
-		"concurrently": "^9.1.0",
 		"postcss": "^8.4.49",
 		"tailwindcss": "^3.4.16",
 		"typescript": "^5.7.2",
-		"vite": "^6.0.3"
+		"vite": "^6.0.3",
+		"@tauri-apps/cli": "^2"
 	}
 }

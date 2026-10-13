@@ -1,6 +1,6 @@
 import type { HttpLog, LatestRelease, ProfilesResponse, Project, Secret, SecretFilters, SecretVersion } from "./models.ts";
 
-// Backend API contract: each method is POST /api/<name> with a JSON params body.
+// Backend API contract: Tauri rpc command with a method and JSON params.
 export type ApiRequests = {
 	getProfiles: {
 		params: Record<string, never>;

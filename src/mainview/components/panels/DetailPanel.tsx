@@ -1,3 +1,4 @@
+import { writeClipboardText } from "../../lib/clipboard";
 import { useEffect, useState } from "react";
 import { Check, Copy, CopyPlus, Eye, Pencil, Clock, Key as KeyIcon, Globe, Loader2, ExternalLink, Trash2, Layers2, X, Plus, Share2, Tag, PanelRightClose } from "lucide-react";
 
@@ -39,7 +40,7 @@ function CopyButton({ text }: { text: string }) {
 	return (
 		<button
 			type="button"
-			onClick={() => navigator.clipboard.writeText(text)}
+			onClick={() => writeClipboardText(text)}
 			className="p-1 hover:bg-white/10 rounded transition-colors flex-shrink-0"
 		>
 			<Copy className="w-3 h-3 text-gray-400" />
@@ -229,7 +230,7 @@ function SingleSecretDetail({
 	}
 
 	function handleShareSecret() {
-		void navigator.clipboard.writeText(secretConsoleUrl(secret.id));
+		void writeClipboardText(secretConsoleUrl(secret.id));
 		setShareCopied(true);
 		setTimeout(() => setShareCopied(false), 2000);
 	}

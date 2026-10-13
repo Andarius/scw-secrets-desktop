@@ -1,4 +1,4 @@
-// DESCRIPTION: Bump package.json version, commit, and create a git tag.
+// DESCRIPTION: Bump frontend and Rust package versions, commit, and create a git tag.
 // USAGE: bun run bump <version|patch|minor|major>
 // EXAMPLES:
 //   bun run bump 0.3.0
@@ -8,10 +8,10 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import { execSync } from "node:child_process";
 
-const pkgPath = new URL("../package.json", import.meta.url).pathname;
-const denoPath = new URL("../deno.json", import.meta.url).pathname;
+const pkgPath = new URL("../package.json", import.meta.url);
+const cargoPath = new URL("../src-tauri/Cargo.toml", import.meta.url);
 const pkg = JSON.parse(readFileSync(pkgPath, "utf8"));
-const denoJson = JSON.parse(readFileSync(denoPath, "utf8"));
+const cargo = readFileSync(cargoPath, "utf8");
 const current = pkg.version as string;
 
 const arg = process.argv[2];
@@ -51,12 +51,17 @@ if (next === current) {
 const tag = `v${next}`;
 const run = (cmd: string) => execSync(cmd, { stdio: "inherit" });
 
+const cargoVersion = /(\[package\][\s\S]*?^version\s*=\s*")[^"]+(")/m;
+if (!cargoVersion.test(cargo)) {
+	throw new Error("Cargo.toml is missing the package version");
+}
+
 pkg.version = next;
 writeFileSync(pkgPath, `${JSON.stringify(pkg, null, "\t")}\n`);
-denoJson.version = next;
-writeFileSync(denoPath, `${JSON.stringify(denoJson, null, "\t")}\n`);
+writeFileSync(cargoPath, cargo.replace(cargoVersion, (_, before, after) => `${before}${next}${after}`));
+run("cargo update --manifest-path src-tauri/Cargo.toml --workspace --offline");
 
-run("git add package.json deno.json");
+run("git add package.json src-tauri/Cargo.toml src-tauri/Cargo.lock");
 run(`git commit -m "chore: bump version to ${next}"`);
 run(`git tag -a ${tag} -m ${tag}`);
 

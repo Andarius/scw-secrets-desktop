@@ -129,6 +129,9 @@ function MockApp() {
 
 	return (
 		<div className="h-screen flex flex-col bg-[#0a0a0a] text-white overflow-hidden">
+			<div role="status" className="shrink-0 bg-cyan-950 px-6 py-2 text-sm text-cyan-100">
+				Preview · Sample data. Open the desktop app to access your Scaleway secrets.
+			</div>
 			<Header
 				profiles={profiles}
 				selectedProfile={selectedProfile}

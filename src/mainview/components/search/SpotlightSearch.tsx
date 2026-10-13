@@ -1,3 +1,4 @@
+import { writeClipboardText } from "../../lib/clipboard";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Copy, Eye, Loader2, Search, X } from "lucide-react";
 
@@ -307,7 +308,7 @@ export function SpotlightSearch({
 								type="button"
 								onClick={(e) => {
 									e.stopPropagation();
-									navigator.clipboard.writeText(match.secret.id);
+									writeClipboardText(match.secret.id);
 								}}
 								className="p-1 hover:bg-white/10 rounded transition-colors flex-shrink-0"
 								title="Copy ID"

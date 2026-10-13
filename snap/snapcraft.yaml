@@ -2,7 +2,7 @@ name: scw-secrets
 adopt-info: scw-secrets
 summary: Desktop UI for managing Scaleway secrets
 description: |
-  A desktop client for Scaleway Secret Manager built with Deno desktop,
+  A desktop client for Scaleway Secret Manager built with Tauri and Rust,
   React, and TypeScript.
 license: MIT
 grade: stable
@@ -16,11 +16,14 @@ platforms:
 apps:
   scw-secrets:
     command: opt/scw-secrets/scw-secrets
+    environment:
+      LD_LIBRARY_PATH: $SNAP/usr/lib/x86_64-linux-gnu:$SNAP/lib/x86_64-linux-gnu:$LD_LIBRARY_PATH
+      WEBKIT_EXEC_PATH: $SNAP/usr/lib/x86_64-linux-gnu/webkit2gtk-4.1
 
 parts:
   scw-secrets:
     plugin: dump
-    # Prebuilt by CI (deno task bundle:dir) before snapcraft runs — see release.yml
+    # Prebuilt by Tauri and staged before snapcraft runs — see release.yml
     source: build/linux/scw-secrets
     override-pull: |
       craftctl default

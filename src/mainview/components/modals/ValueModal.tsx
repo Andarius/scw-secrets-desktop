@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Check, Copy, Eye, Loader2, Pencil, Save, Share2, X } from "lucide-react";
-import { copySecret } from "../../lib/clipboard";
+import { copySecret, writeClipboardText } from "../../lib/clipboard";
 import { secretConsoleUrl } from "../../lib/console";
 import { useNextRevision } from "../../hooks/useNextRevision";
 import { useSaveSecretValue } from "../../hooks/useSaveSecretValue";
@@ -255,7 +255,7 @@ export function ValueView({ title, values, profile, projectId, autoKeepLatest, o
 	const [shareCopied, setShareCopied] = useState(false);
 
 	function handleShare() {
-		void navigator.clipboard.writeText(secretConsoleUrl(values[0].secretId));
+		void writeClipboardText(secretConsoleUrl(values[0].secretId));
 		setShareCopied(true);
 		setTimeout(() => setShareCopied(false), 2000);
 	}

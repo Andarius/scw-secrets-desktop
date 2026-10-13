@@ -9,55 +9,48 @@ default:
 install:
     bun install
 
-# Desktop app: vite build + native window (Deno 2.9+, backend hot-reload)
+# Tauri desktop app with frontend HMR
 [group('dev')]
 dev:
     bun run dev
-
-# Frontend HMR on :5181 (proxies /api) + headless deno backend on :8790
-[group('dev')]
-dev-hmr:
-    bun run dev:hmr
-
-# Headless backend only — open http://localhost:8790 in a browser
-[group('dev')]
-serve:
-    deno task serve
 
 # Run mock frontend (Vite only, no backend, sample data) on :5199
 [group('dev')]
 mock:
     bun run mock
 
-# Vite production build → dist/ (also regenerates src/deno/embed.ts)
+# Vite production build → dist/
 [group('build')]
 build:
     bun run build
 
-# Linux AppImage → build/linux/ScwSecrets.AppImage
+# Native desktop bundles → src-tauri/target/release/bundle/
 [group('build')]
-bundle: build
-    deno task bundle
+bundle:
+    bun run bundle
 
 # Linux .deb
 [group('build')]
-bundle-deb: build
-    deno task bundle:deb
+bundle-deb:
+    bun run tauri build --bundles deb
 
-# Plain directory bundle (snap source) → build/linux/scw-secrets
+# Stage the Linux binary for snapcraft
 [group('build')]
-bundle-dir: build
-    deno task bundle:dir
+bundle-dir:
+    bun run tauri build --no-bundle
+    mkdir -p build/linux/scw-secrets
+    cp src-tauri/target/release/scw-secrets build/linux/scw-secrets/
+    cp icon.png build/linux/scw-secrets/AppIcon.png
 
-# macOS .dmg
+# macOS .app and .dmg
 [group('build')]
-bundle-mac: build
-    deno task bundle:mac
+bundle-mac:
+    bun run tauri build --bundles app,dmg
 
 # Windows .msi
 [group('build')]
-bundle-msi: build
-    deno task bundle:msi
+bundle-msi:
+    bun run tauri build --bundles msi
 
 # Run unit tests (bun test)
 [group('test')]
@@ -79,32 +72,34 @@ e2e-record:
 typecheck:
     bun run typecheck
 
-# Type-check the deno backend (needs embed.ts in sync — `just build` regenerates it)
+# Rust formatting, lint and unit tests
 [group('check')]
-deno-check:
-    deno task check
+rust-check:
+    cargo fmt --manifest-path src-tauri/Cargo.toml --check
+    cargo clippy --manifest-path src-tauri/Cargo.toml --locked --all-targets -- -D warnings
+    cargo test --manifest-path src-tauri/Cargo.toml --locked
 
-# Typecheck + deno check + unit tests + e2e
+# Frontend and Rust checks, unit tests and e2e
 [group('check')]
-ci: typecheck build deno-check test e2e
+ci: typecheck build rust-check test e2e
 
 # Update screenshot
 [group('tools')]
 screenshot:
     bun run screenshot
 
-# Bump version in package.json + deno.json (e.g. just bump patch)
+# Bump frontend and Rust package versions (e.g. just bump patch)
 [group('tools')]
 bump *args:
     bun run bump {{ args }}
 
 # Clean build artifacts
-[confirm('Delete dist/, build/, test-results/, videos/? Continue?')]
+[confirm('Delete dist/, build/, src-tauri/target/, test-results/, videos/? Continue?')]
 [group('tools')]
 clean:
-    rm -rf dist build test-results videos
+    rm -rf dist build src-tauri/target test-results videos
 
-# Build .snap package (dir bundle first — snapcraft dumps build/linux/scw-secrets)
+# Build .snap package from the staged Linux binary
 [group('snap')]
 snap-build: bundle-dir
     snapcraft pack
