@@ -16,7 +16,7 @@ permissions:
 
 jobs:
   prepare:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     outputs:
       tag: ${{ steps.tag.outputs.value }}
     steps:
@@ -108,10 +108,10 @@ jobs:
           - runner: ubuntu-22.04
             target: linux-x64
             bundle: appimage
-          - runner: windows-2025
+          - runner: windows-latest
             target: win-x64
             bundle: msi
-          - runner: macos-26
+          - runner: macos-latest
             target: macos-arm64
             bundle: app
           - runner: macos-15-intel
@@ -178,7 +178,7 @@ jobs:
     needs:
       - prepare
       - build
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     env:
       RELEASE_TAG: ${{ needs.prepare.outputs.tag }}
     steps:
@@ -218,7 +218,7 @@ jobs:
       - prepare
       - build
       - snap
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     steps:
       - name: Publish draft release
         env:

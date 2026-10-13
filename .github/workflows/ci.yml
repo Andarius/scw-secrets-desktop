@@ -12,7 +12,7 @@ permissions:
 
 jobs:
   test:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     timeout-minutes: 40
 
     steps:
@@ -63,7 +63,7 @@ jobs:
   e2e:
     # on PRs, only when the `e2e` label is set
     if: github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'e2e')
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     timeout-minutes: 20
     permissions:
       contents: read
