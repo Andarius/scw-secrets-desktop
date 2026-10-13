@@ -16,7 +16,7 @@ permissions:
 
 jobs:
   prepare:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     outputs:
       tag: ${{ steps.tag.outputs.value }}
     steps:
@@ -108,10 +108,10 @@ jobs:
           - runner: ubuntu-22.04
             target: linux-x64
             bundle: appimage
-          - runner: windows-latest
+          - runner: windows-2025
             target: win-x64
             bundle: msi
-          - runner: macos-latest
+          - runner: macos-26
             target: macos-arm64
             bundle: app
           - runner: macos-15-intel
@@ -178,7 +178,7 @@ jobs:
     needs:
       - prepare
       - build
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     env:
       RELEASE_TAG: ${{ needs.prepare.outputs.tag }}
     steps:
@@ -203,7 +203,7 @@ jobs:
         id: snapcraft
         # official snapcraft OCI image — the docs-recommended CI path (snapcore/action-build is unmaintained, node20)
         run: |
-          docker run --rm -v "${PWD}:/project" ghcr.io/canonical/snapcraft:8_core24 pack
+          docker run --rm -v "${PWD}:/project" ghcr.io/canonical/snapcraft:8_core24@sha256:0443273552768a3230c2ede3aa47e567da0242bfbb0a7bb1283093208c404a0c pack
           echo "snap=$(ls scw-secrets_*.snap)" >> "${GITHUB_OUTPUT}"
 
       - name: Upload snap to release
@@ -218,7 +218,7 @@ jobs:
       - prepare
       - build
       - snap
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Publish draft release
         env:
