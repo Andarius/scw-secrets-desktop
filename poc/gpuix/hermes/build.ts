@@ -3,6 +3,8 @@ import { $ } from "bun";
 import { join } from "node:path";
 
 const root = join(import.meta.dir, "..");
+const mac = process.platform === "darwin";
+const renderer = mac ? "native-darwin-arm64/gpuix-native.darwin-arm64.node" : "native-linux-x64-gnu/gpuix-native.linux-x64-gnu.node";
 const out = join(root, "dist-hermes");
 const build = await Bun.build({
 	entrypoints: [join(import.meta.dir, "main.ts")],
@@ -28,13 +30,13 @@ const build = await Bun.build({
 	}],
 });
 if (!build.success) throw new AggregateError(build.logs, "build failed");
-await $`cp ${join(root, "node_modules/@gpuix/native-linux-x64-gnu/gpuix-native.linux-x64-gnu.node")} ${join(out, "gpuix-native.node")}`;
+await $`cp ${join(root, "node_modules/@gpuix", renderer)} ${join(out, "gpuix-native.node")}`;
 await $`cargo build --profile dist`.cwd(join(root, "native")).env({ ...process.env, RUSTC_WRAPPER: "" }).quiet();
-await $`cp ${join(root, "native/target/dist/libscw_gpuix_native.so")} ${join(out, "scw-native.node")}`;
-await $`strip --strip-unneeded ${join(out, "gpuix-native.node")}`;
+await $`cp ${join(root, "native/target/dist", mac ? "libscw_gpuix_native.dylib" : "libscw_gpuix_native.so")} ${join(out, "scw-native.node")}`;
+await (mac ? $`strip -x ${join(out, "gpuix-native.node")}` : $`strip --strip-unneeded ${join(out, "gpuix-native.node")}`);
 
-// Links dist-hermes/scw-secrets: the runtime with the bytecode bundle appended.
+// Links dist-hermes/scw-secrets: the runtime with the bytecode bundle appended. macOS needs a source build (see README).
 const hermes = process.env.HERMES_NODE ?? join(import.meta.dir, "hermes-node-0.0.2-linux-x64/hermes-node");
 await $`${hermes} --build-bundle=app.bundle app.cjs`.cwd(out).quiet();
-await $`${hermes} --build-exe=scw-secrets --kit=${join(hermes, "..", "kit")} app.bundle`.cwd(out).quiet();
+await $`${hermes} --build-exe=scw-secrets --kit=${process.env.HERMES_KIT ?? join(hermes, "..", "kit")} app.bundle`.cwd(out).quiet();
 await $`rm app.bundle`.cwd(out);

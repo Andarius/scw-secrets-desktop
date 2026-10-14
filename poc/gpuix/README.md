@@ -24,6 +24,8 @@ bun e2e.ts                          # automation checks (opens a window)
 bun web/serve.ts & bun web/shot.ts out/ click:500,550 shot:home   # WASM build in headless Chromium
 bun run build && ./dist/scw-secrets # standalone binary on Bun (140 MB)
 # build:hermes needs github.com/tmikov/hermes-node v0.0.2 linux-x64 extracted in hermes/ (or HERMES_NODE=path)
+# macOS: build hermes-node v0.0.2 from source without -Wl,-dead_strip (tools/hermes-node/CMakeLists.txt), then
+# HERMES_NODE=<build>/bin/hermes-node HERMES_KIT=<build>/kit bun run build:hermes
 bun run build:hermes && ./dist-hermes/scw-secrets  # on hermes-node: exe + 2 .node files beside it (55 MB)
 APP_BINARY=$PWD/dist-hermes/scw-secrets bun e2e.ts
 # headless (no desktop): run the e2e inside a virtual KWin; add VK_ICD_FILENAMES=.../lvp_icd.json for software Vulkan
@@ -73,6 +75,11 @@ cd native && RUSTC_WRAPPER= cargo test --release
 - Memory with the test compositor on Intel (like the desktop), real project: Tauri 279 MiB, Hermes 180 MiB. Both load
   the NVIDIA driver while listing GPUs; skipping it (`VK_LOADER_DRIVERS_SELECT='*intel*'`, Mesa-only
   `__EGL_VENDOR_LIBRARY_FILENAMES`) gives Tauri 256 MiB and Hermes 134 MiB. Machine-specific, so not set by the app.
+- Tauri packages, same setup (heap / total PSS, total swings under memory pressure): binary 150 / 273–297 MiB,
+  AppImage 141–158 / 305–331 MiB, snap 139–143 / 265 MiB; Hermes 93 / 137–209 MiB. All idle at 0.03–0.1 % CPU.
+- macOS (M2 Pro, macOS 26.6.1), real project: Tauri .app 100–106 MiB footprint, 0.2–1.4 % idle CPU; Hermes 72–80 MiB,
+  2.2–2.5 % (the 8 ms loop pumps AppKit). Hermes build: 33 MB (exe 13.8 + renderer 18.6 + addon 2.4), 10.5 MB
+  `.tar.xz`, unsigned; Tauri .app 15 MB, 5.2 MB zip. Cold Rust build: Tauri 44 s, addon 23 s. e2e passes on both runtimes.
 - Not ported: writes (create, edit, history, duplicate, share, delete, cleanup; shown disabled), copy buttons (no
   clipboard API), Spotlight search, keyboard shortcuts, settings/logs, the JSON tree in "Formatted" (plain JSON).
 - GPUI gaps worked around: no letter-spacing, no vertical text (pane rails stack letters), no auto-width table
