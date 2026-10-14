@@ -102,6 +102,7 @@ just rust-check      # Rust formatting, lint and unit tests
 ## Linux Release
 
 Download the Linux release from the GitHub releases page: the `.AppImage` or the `.snap`.
+The snap uses the system WebKitGTK 4.1 (`sudo apt install libwebkit2gtk-4.1-0` on Debian/Ubuntu).
 The AppImage is self-contained (run this way it gets no menu entry; the quickstart adds one):
 
 ```bash
