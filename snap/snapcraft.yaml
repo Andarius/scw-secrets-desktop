@@ -16,9 +16,6 @@ platforms:
 apps:
   scw-secrets:
     command: opt/scw-secrets/scw-secrets
-    environment:
-      LD_LIBRARY_PATH: $SNAP/usr/lib/x86_64-linux-gnu:$SNAP/lib/x86_64-linux-gnu:$LD_LIBRARY_PATH
-      WEBKIT_EXEC_PATH: $SNAP/usr/lib/x86_64-linux-gnu/webkit2gtk-4.1
 
 parts:
   scw-secrets:
@@ -31,5 +28,3 @@ parts:
       craftctl set version="${version}"
     organize:
       "*": opt/scw-secrets/
-    stage-packages:
-      - libwebkit2gtk-4.1-0

@@ -86,6 +86,10 @@ install_release() { # flavor
             fetch_asset "$tag" "scw-secrets_${ver}_amd64.snap" "$tmp/scw-secrets.snap"
             echo "Installing the snap $tag (needs sudo)..."
             sudo snap install --dangerous --classic "$tmp/scw-secrets.snap"
+            # The classic snap runs on the system WebKitGTK.
+            if ! ldconfig -p 2>/dev/null | grep -q 'libwebkit2gtk-4\.1\.so\.0'; then
+                echo "warning: libwebkit2gtk-4.1 not found; install it (Debian/Ubuntu: sudo apt install libwebkit2gtk-4.1-0)" >&2
+            fi
             RUN_HINT="scw-secrets"
             ;;
         appimage)
