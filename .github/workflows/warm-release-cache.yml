@@ -1,0 +1,70 @@
+name: Warm release cache
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - "src-tauri/Cargo.lock"
+      - "src-tauri/Cargo.toml"
+      - "rust-toolchain.toml"
+      - ".github/workflows/warm-release-cache.yml"
+  # GitHub evicts caches unused for 7 days
+  schedule:
+    - cron: "0 4 * * 1"
+  pull_request:
+    paths:
+      - ".github/workflows/warm-release-cache.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  warm:
+    strategy:
+      fail-fast: false
+      # keep in sync with the release.yml build matrix
+      matrix:
+        include:
+          - runner: ubuntu-22.04
+            target: linux-x64
+          - runner: windows-latest
+            target: win-x64
+          - runner: macos-latest
+            target: macos-arm64
+          - runner: macos-15-intel
+            target: macos-x64
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version: "1.3.3"
+
+      - name: Setup Rust
+        run: rustup toolchain install --profile minimal
+
+      - name: Cache Rust
+        uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+        with:
+          workspaces: src-tauri
+          shared-key: release-${{ matrix.target }}
+          save-if: ${{ github.ref == 'refs/heads/master' }}
+
+      - name: Install native dependencies
+        if: runner.os == 'Linux'
+        run: |
+          # skip the slow man-db trigger
+          sudo rm -f /var/lib/man-db/auto-update
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev build-essential libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      # same compile as the release build, without bundling
+      - name: Build release binary
+        run: bun run tauri build --no-bundle -- --locked
