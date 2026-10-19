@@ -221,11 +221,55 @@ jobs:
           SNAP_FILE: ${{ steps.snapcraft.outputs.snap }}
         run: gh release upload "${RELEASE_TAG}" "${SNAP_FILE}" --repo "${GH_REPO}" --clobber
 
+  sign:
+    needs:
+      - prepare
+      - build
+      - snap
+    runs-on: ubuntu-latest
+    env:
+      RELEASE_TAG: ${{ needs.prepare.outputs.tag }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: ${{ needs.prepare.outputs.tag }}
+
+      - name: Install minisign
+        run: |
+          sudo rm -f /var/lib/man-db/auto-update
+          sudo apt-get update && sudo apt-get install -y minisign
+
+      # the updater and install scripts only accept assets signed with this key, for this tag and file name
+      - name: Sign release assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          SIGNING_KEY: ${{ secrets.UPDATE_SIGNING_KEY }}
+        run: |
+          set -euo pipefail
+          if [[ -z "${SIGNING_KEY}" ]]; then
+            echo "UPDATE_SIGNING_KEY secret is not set" >&2
+            exit 1
+          fi
+          key="${RUNNER_TEMP}/update-signing.key"
+          trap 'rm -f "${key}"' EXIT
+          (umask 077 && printf '%s\n' "${SIGNING_KEY}" > "${key}")
+          mkdir assets && cd assets
+          gh release download "${RELEASE_TAG}" --repo "${GH_REPO}"
+          rm -f ./*.minisig
+          for file in *; do
+            minisign -S -s "${key}" -m "${file}" -t "scw-secrets ${RELEASE_TAG} ${file}"
+          done
+          minisign -V -p ../src-tauri/update-signing.pub -m "${file}"
+          gh release upload "${RELEASE_TAG}" --repo "${GH_REPO}" ./*.minisig --clobber
+
   publish:
     needs:
       - prepare
       - build
       - snap
+      - sign
     runs-on: ubuntu-latest
     steps:
       - name: Publish draft release

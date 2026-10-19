@@ -11,6 +11,8 @@ set -euo pipefail
 
 REPO_SLUG="Andarius/scw-secrets-desktop"
 RUN_HINT=""
+# minisign key that signs release assets; keep in sync with src-tauri/update-signing.pub
+SIGNING_KEY="RWTGhZ8NSmkVq/y4pDwht/KbYbX8RV6RA0djY4b7nLvDadE2PAsmhLJo"
 
 resolve_tag() {
     local tag="${SCW_SECRETS_VERSION:-latest}"
@@ -21,11 +23,25 @@ resolve_tag() {
     [[ -n "$tag" ]] && echo "$tag"
 }
 
-fetch_asset() { # tag asset dest
+fetch_asset() { # tag asset dest — dest is written only once its signature checks out
+    local url="https://github.com/$REPO_SLUG/releases/download/$1/$2" comment
+    command -v minisign >/dev/null || {
+        echo "minisign is required to verify the download: https://jedisct1.github.io/minisign/" >&2
+        return 1
+    }
     echo "Downloading $2..."
     local progress="-sS"
     [[ -t 2 ]] && progress="--progress-bar"
-    curl -fL "$progress" "https://github.com/$REPO_SLUG/releases/download/$1/$2" -o "$3"
+    curl -fL "$progress" "$url" -o "$3.part"
+    curl -fsSL "$url.minisig" -o "$3.minisig"
+    if ! comment="$(minisign -V -Q -P "$SIGNING_KEY" -m "$3.part" -x "$3.minisig")" \
+        || [[ "$comment" != "scw-secrets $1 $2" ]]; then
+        rm -f "$3.part" "$3.minisig"
+        echo "$2 is not signed by the Scw Secrets release key; refusing to install it" >&2
+        return 1
+    fi
+    rm -f "$3.minisig"
+    mv "$3.part" "$3"
 }
 
 # release → the packaged app matching this platform; no prebuilt asset → source
