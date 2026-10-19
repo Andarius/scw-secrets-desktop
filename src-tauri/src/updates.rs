@@ -390,11 +390,25 @@ async fn replace_macos(path: &Path, bytes: &[u8]) -> InstallResult {
         let next = stage.path().join("ScwSecrets.app");
         let previous = stage.path().join("previous.app");
         run("/usr/bin/ditto", &[&app, &next]).await?;
-        let _ = run(
-            "/usr/bin/xattr",
-            &[Path::new("-dr"), Path::new("com.apple.quarantine"), &next],
+        // notarized bundles pass Gatekeeper as is; unnotarized ones were minisign-verified above
+        let notarized = run(
+            "/usr/sbin/spctl",
+            &[
+                Path::new("--assess"),
+                Path::new("--type"),
+                Path::new("execute"),
+                &next,
+            ],
         )
-        .await;
+        .await
+        .is_ok();
+        if !notarized {
+            let _ = run(
+                "/usr/bin/xattr",
+                &[Path::new("-dr"), Path::new("com.apple.quarantine"), &next],
+            )
+            .await;
+        }
         swap_macos(path, &next, &previous, &mut stage).await
     }
     .await;

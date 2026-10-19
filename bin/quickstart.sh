@@ -120,7 +120,9 @@ install_release() { # flavor
             ditto -xk "$tmp/ScwSecrets.app.zip" "$tmp/extract"
             rm -rf /Applications/ScwSecrets.app
             cp -R "$tmp/extract/ScwSecrets.app" /Applications/
-            xattr -dr com.apple.quarantine /Applications/ScwSecrets.app
+            # signature checked by fetch_asset; only unnotarized builds need the quarantine cleared
+            spctl --assess --type execute /Applications/ScwSecrets.app 2>/dev/null \
+                || xattr -dr com.apple.quarantine /Applications/ScwSecrets.app
             RUN_HINT="open /Applications/ScwSecrets.app"
             ;;
         *)
