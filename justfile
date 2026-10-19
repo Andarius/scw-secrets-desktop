@@ -79,6 +79,12 @@ rust-check:
     cargo clippy --manifest-path src-tauri/Cargo.toml --locked --all-targets -- -D warnings
     cargo test --manifest-path src-tauri/Cargo.toml --locked
 
+# Known-advisory scan of npm and Rust dependencies (needs cargo-deny)
+[group('check')]
+audit:
+    bun audit --ignore=GHSA-vfj7-8cjw-p6xm --ignore=GHSA-rj75-hqrm-r3gf
+    cargo deny --manifest-path src-tauri/Cargo.toml check advisories
+
 # Frontend and Rust checks, unit tests and e2e
 [group('check')]
 ci: typecheck build rust-check test e2e
