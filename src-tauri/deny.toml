@@ -1,0 +1,6 @@
+[advisories]
+ignore = [
+    # gtk-rs 0.18 stack pinned by Tauri on Linux; no fix until Tauri moves off GTK3
+    { id = "RUSTSEC-2024-0429", reason = "glib 0.18 via tauri; VariantStrIter unused" },
+    { id = "RUSTSEC-2024-0370", reason = "proc-macro-error via glib-macros 0.18 (build-time only)" },
+]

@@ -47,6 +47,14 @@ updates; `SCW_SECRETS_APP=snap` installs the snap instead), zipped `.app` on mac
 `SCW_SECRETS_APP=source` clones and builds from the checkout instead
 (`SCW_SECRETS_DIR` overrides the default `~/scw-secrets-desktop`).
 
+Release assets are signed with [minisign](https://jedisct1.github.io/minisign/) (key in `src-tauri/update-signing.pub`).
+The quickstart, `just snap-install-release` and in-app updates refuse an asset that fails the check, so the
+quickstart needs `minisign` installed (`apt install minisign`, `brew install minisign`). To check a manual download:
+
+```bash
+minisign -Vm ScwSecrets.AppImage -P RWTGhZ8NSmkVq/y4pDwht/KbYbX8RV6RA0djY4b7nLvDadE2PAsmhLJo
+```
+
 ## Setup
 
 ```bash

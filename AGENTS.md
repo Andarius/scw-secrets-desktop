@@ -30,7 +30,8 @@ Match CI (`.github/workflows/ci.yml`):
 just ci        # typecheck + build + Rust checks + unit tests + e2e
 ```
 
-Or piecemeal: `just typecheck`, `just build && just rust-check`, `just test`, `just e2e`.
+Or piecemeal: `just typecheck`, `just build && just rust-check`, `just test`, `just e2e`. CI also runs `just audit`
+(npm and Rust advisory scan; needs `cargo-deny`).
 
 ## Rules linters don't catch
 

@@ -158,7 +158,9 @@ pub(crate) fn can_install() -> bool {
     current_target().is_some()
 }
 
-fn pick_asset(payload: &Value, version: &str, name: &str) -> Option<(String, String)> {
+const SIGNING_KEY: &str = include_str!("../update-signing.pub");
+
+fn asset_url(payload: &Value, version: &str, name: &str) -> Option<(String, Value)> {
     if !valid_version(version) {
         return None;
     }
@@ -168,20 +170,43 @@ fn pick_asset(payload: &Value, version: &str, name: &str) -> Option<(String, Str
         .iter()
         .find(|asset| asset.get("name").and_then(Value::as_str) == Some(name))?;
     let url = format!("https://github.com/{REPO}/releases/download/v{version}/{name}");
-    if asset.get("browser_download_url")?.as_str()? != url {
-        return None;
-    }
+    (asset.get("browser_download_url")?.as_str()? == url).then(|| (url, asset.clone()))
+}
+
+/// Download URL, SHA-256 and signature URL of a release asset; `None` unless all three are published.
+fn pick_asset(payload: &Value, version: &str, name: &str) -> Option<(String, String, String)> {
+    let (url, asset) = asset_url(payload, version, name)?;
+    let (signature, _) = asset_url(payload, version, &format!("{name}.minisig"))?;
     let sha256 = asset.get("digest")?.as_str()?.strip_prefix("sha256:")?;
     (sha256.len() == 64
         && sha256
             .bytes()
             .all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b)))
-    .then(|| (url, sha256.to_owned()))
+    .then(|| (url, sha256.to_owned(), signature))
 }
 
 fn verify_digest(bytes: &[u8], expected: &str) -> InstallResult {
     if format!("{:x}", Sha256::digest(bytes)) != expected {
         return Err("downloaded file doesn't match the published SHA-256".into());
+    }
+    Ok(())
+}
+
+/// Checks `bytes` against a minisign signature whose trusted comment names this exact version and asset.
+fn verify_signature(
+    bytes: &[u8],
+    signature: &str,
+    key: &str,
+    version: &str,
+    name: &str,
+) -> InstallResult {
+    const INVALID: &str = "downloaded file isn't signed by the app's release key";
+    let key = key.lines().last().unwrap_or_default().trim();
+    let key = minisign_verify::PublicKey::from_base64(key).map_err(|_| INVALID)?;
+    let signature = minisign_verify::Signature::decode(signature).map_err(|_| INVALID)?;
+    key.verify(bytes, &signature, false).map_err(|_| INVALID)?;
+    if signature.trusted_comment() != format!("scw-secrets v{version} {name}") {
+        return Err(INVALID.into());
     }
     Ok(())
 }
@@ -250,8 +275,20 @@ async fn run_install(version: &str) -> InstallResult {
         ));
     }
     let payload = release.json::<Value>().await.map_err(|e| e.to_string())?;
-    let (url, sha256) = pick_asset(&payload, version, target.asset)
+    let (url, sha256, signature_url) = pick_asset(&payload, version, target.asset)
         .ok_or_else(|| format!("release v{version} has no verifiable {}", target.asset))?;
+    let signature = client(Duration::from_secs(10))?
+        .get(signature_url)
+        .send()
+        .await
+        .map_err(|e| e.to_string())?;
+    if !signature.status().is_success() {
+        return Err(format!(
+            "signature download failed ({})",
+            signature.status()
+        ));
+    }
+    let signature = signature.text().await.map_err(|e| e.to_string())?;
     let download = client(Duration::from_mins(5))?
         .get(url)
         .send()
@@ -262,6 +299,7 @@ async fn run_install(version: &str) -> InstallResult {
     }
     let bytes = download.bytes().await.map_err(|e| e.to_string())?;
     verify_digest(&bytes, &sha256)?;
+    verify_signature(&bytes, &signature, SIGNING_KEY, version, target.asset)?;
     let replace = if target.macos {
         replace_macos(&target.path, &bytes).await
     } else {
@@ -352,11 +390,25 @@ async fn replace_macos(path: &Path, bytes: &[u8]) -> InstallResult {
         let next = stage.path().join("ScwSecrets.app");
         let previous = stage.path().join("previous.app");
         run("/usr/bin/ditto", &[&app, &next]).await?;
-        let _ = run(
-            "/usr/bin/xattr",
-            &[Path::new("-dr"), Path::new("com.apple.quarantine"), &next],
+        // notarized bundles pass Gatekeeper as is; unnotarized ones were minisign-verified above
+        let notarized = run(
+            "/usr/sbin/spctl",
+            &[
+                Path::new("--assess"),
+                Path::new("--type"),
+                Path::new("execute"),
+                &next,
+            ],
         )
-        .await;
+        .await
+        .is_ok();
+        if !notarized {
+            let _ = run(
+                "/usr/bin/xattr",
+                &[Path::new("-dr"), Path::new("com.apple.quarantine"), &next],
+            )
+            .await;
+        }
         swap_macos(path, &next, &previous, &mut stage).await
     }
     .await;
@@ -499,11 +551,21 @@ mod tests {
     fn assets_require_exact_urls_and_sha256() {
         let hash = format!("{:x}", Sha256::digest(b"app"));
         let url = format!("https://github.com/{REPO}/releases/download/v1.2.3/ScwSecrets.AppImage");
-        let valid = json!({"assets": [{"name": "ScwSecrets.AppImage", "browser_download_url": url, "digest": format!("sha256:{hash}")}]});
+        let signature = format!("{url}.minisig");
+        let valid = json!({"assets": [
+            {"name": "ScwSecrets.AppImage", "browser_download_url": url, "digest": format!("sha256:{hash}")},
+            {"name": "ScwSecrets.AppImage.minisig", "browser_download_url": signature},
+        ]});
         assert_eq!(
             pick_asset(&valid, "1.2.3", "ScwSecrets.AppImage"),
-            Some((url.clone(), hash.clone()))
+            Some((url.clone(), hash.clone(), signature.clone()))
         );
+        let mut unsigned = valid.clone();
+        unsigned["assets"].as_array_mut().unwrap().pop();
+        assert!(pick_asset(&unsigned, "1.2.3", "ScwSecrets.AppImage").is_none());
+        let mut foreign_signature = valid.clone();
+        foreign_signature["assets"][1]["browser_download_url"] = json!("https://evil.example/sig");
+        assert!(pick_asset(&foreign_signature, "1.2.3", "ScwSecrets.AppImage").is_none());
         for digest in [
             "",
             "md5:abc",
@@ -526,6 +588,76 @@ mod tests {
         assert!(pick_asset(&valid, "1.2.3; echo evil", "ScwSecrets.AppImage").is_none());
         assert!(verify_digest(b"app", &hash).is_ok());
         assert!(verify_digest(b"tampered", &hash).is_err());
+    }
+
+    #[test]
+    fn signatures_bind_the_release_key_version_and_asset() {
+        const KEY: &str = "RWT/JlEv8xvgB3kQNsSwuJCkhAPUnmhtcauCwpuCMCIp8fTWi/FAcz1n";
+        let signed = |comment: &str, signature: &str| {
+            format!(
+                "untrusted comment: signature from minisign secret key\nRUT/JlEv8xvgB7jG+XVLoG1dVScKxYH5S4RFGkTPT6+yqmh72dPkpdNoDApW1Pk3mZ9cCAwnMKcCLnz7NXRGpZjlOo6XlEw9iwg=\ntrusted comment: {comment}\n{signature}\n"
+            )
+        };
+        let current = signed(
+            "scw-secrets v1.2.3 ScwSecrets.AppImage",
+            "Z5xDbyuQ8P/Fp4rI0/y/0alOa7IyqXTTKX3YDShwxKDCOxMuRDuum2yjq2wonJdxOd7EzjnhPADC0Olmqj04DA==",
+        );
+        let older = signed(
+            "scw-secrets v1.2.2 ScwSecrets.AppImage",
+            "iFlgpnlOaPbmIibJqmdASP59RCmXlruFTZVBLAuGSGlUry/j9wLYwm9J60kjs15hw58RQ8ShJ73YQZUx7989BA==",
+        );
+        let verify = |bytes: &[u8], signature: &str, key: &str, version: &str, name: &str| {
+            verify_signature(bytes, signature, key, version, name).is_ok()
+        };
+        assert!(verify(
+            b"app",
+            &current,
+            KEY,
+            "1.2.3",
+            "ScwSecrets.AppImage"
+        ));
+        // the shipped key, so a signature from the test key is refused
+        assert!(!verify(
+            b"app",
+            &current,
+            SIGNING_KEY,
+            "1.2.3",
+            "ScwSecrets.AppImage"
+        ));
+        assert!(!verify(
+            b"tampered",
+            &current,
+            KEY,
+            "1.2.3",
+            "ScwSecrets.AppImage"
+        ));
+        assert!(!verify(b"app", &older, KEY, "1.2.3", "ScwSecrets.AppImage"));
+        assert!(!verify(
+            b"app",
+            &current,
+            KEY,
+            "1.2.3",
+            "ScwSecrets-macos-arm64.app.zip"
+        ));
+        assert!(!verify(
+            b"app",
+            &current.replace("1.2.3", "1.2.4"),
+            KEY,
+            "1.2.4",
+            "ScwSecrets.AppImage"
+        ));
+        assert!(!verify(b"app", "", KEY, "1.2.3", "ScwSecrets.AppImage"));
+    }
+
+    #[test]
+    fn install_scripts_pin_the_shipped_key() {
+        let key = SIGNING_KEY.lines().last().unwrap();
+        for script in [
+            include_str!("../../bin/quickstart.sh"),
+            include_str!("../../bin/snap-install-release.sh"),
+        ] {
+            assert!(script.contains(key));
+        }
     }
 
     #[tokio::test]

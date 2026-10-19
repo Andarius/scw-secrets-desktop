@@ -84,6 +84,5 @@ const upload = Bun.spawn({
 	env: process.env,
 });
 
-const exitCode = await upload.exited;
-rmSync(stagingDir, { force: true, recursive: true });
-process.exit(exitCode);
+// .release-assets stays for the release workflow's sign job
+process.exit(await upload.exited);

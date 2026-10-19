@@ -58,3 +58,13 @@ you must understand it and explain it in your own words, in the PR body and in r
 Releases are cut by maintainers: `just bump <patch|minor|major|x.y.z>` bumps `package.json`
 (which `src-tauri/tauri.conf.json` reads), `src-tauri/Cargo.toml` and `src-tauri/Cargo.lock`, then commits and tags `v<version>`. Pushing the tag runs the `Release` workflow, which checks the tag matches `package.json` and `Cargo.toml` and
 builds a draft GitHub release whose notes are that version's `CHANGELOG.md` entry; add it in the release PR.
+
+Before publishing, the workflow signs every asset with the minisign key in the `UPDATE_SIGNING_KEY` secret (an
+unencrypted secret key, `minisign -G -W`). Its public half is `src-tauri/update-signing.pub`, also pinned in
+`bin/quickstart.sh` and `bin/snap-install-release.sh`. Rotating it means updating all three, and installed apps
+only accept the new key once they run a release that ships it.
+
+macOS bundles are signed and notarized when the `APPLE_CERTIFICATE` (base64 Developer ID `.p12`),
+`APPLE_CERTIFICATE_PASSWORD`, `APPLE_SIGNING_IDENTITY`, `APPLE_ID`, `APPLE_PASSWORD` (app-specific) and
+`APPLE_TEAM_ID` secrets are set; without them the build warns and ships unsigned. The updater and quickstart clear
+the quarantine flag only when a bundle fails the Gatekeeper check, after its minisign signature passed.

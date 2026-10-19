@@ -58,7 +58,7 @@ impl Profiles {
         let text = tokio::fs::read_to_string(&self.path)
             .await
             .map_err(|_| "request failed")?;
-        serde_yaml::from_str(&text).map_err(|_| "request failed".into())
+        serde_saphyr::from_str(&text).map_err(|_| "request failed".into())
     }
 
     pub(crate) async fn load(&self, name: Option<&str>) -> Result<Profile, String> {
@@ -80,7 +80,7 @@ impl Profiles {
 
     pub(crate) async fn summaries(&self) -> Result<Value, String> {
         let config = match tokio::fs::read_to_string(&self.path).await {
-            Ok(text) => serde_yaml::from_str::<Config>(&text).map_err(|_| "request failed")?,
+            Ok(text) => serde_saphyr::from_str::<Config>(&text).map_err(|_| "request failed")?,
             Err(_) => Config::default(),
         };
         let active = if self.environment.is_some() {
@@ -164,7 +164,7 @@ mod tests {
         directory
     }
 
-    const CONFIG: &str = "# keep comment\nactive_profile: default\nprofiles:\n  default:\n    secret_key: private-config-token\n    access_key: config-access\n    default_project_id: config-project\n  __proto__:\n    secret_key: proto-token\n    default_project_id: proto-project\n  'name: with spaces':\n    secret_key: named-token\n    default_project_id: named-project\n";
+    const CONFIG: &str = "# keep comment\nactive_profile: default\ndefault_region: fr-par\nsend_telemetry: false\nprofiles:\n  default:\n    secret_key: private-config-token\n    default_zone: fr-par-1\n    access_key: config-access\n    default_project_id: config-project\n  __proto__:\n    secret_key: proto-token\n    default_project_id: proto-project\n  'name: with spaces':\n    secret_key: named-token\n    default_project_id: named-project\n";
 
     #[tokio::test]
     async fn environment_takes_precedence_and_summaries_never_contain_credentials() {
