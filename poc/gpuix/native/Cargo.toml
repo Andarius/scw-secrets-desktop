@@ -1,0 +1,32 @@
+[package]
+name = "scw-gpuix-native"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[lib]
+path = "lib.rs"
+crate-type = ["cdylib"]
+
+[dependencies]
+napi = { version = "=3.14.2", default-features = false, features = ["napi8", "async"] }
+napi-derive = "=3.6.12"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+serde_yaml = "0.9"
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
+tokio = { version = "1", features = ["fs", "io-util", "net", "macros", "rt-multi-thread", "process", "time", "sync"] }
+base64 = "0.22"
+chrono = { version = "0.4", default-features = false, features = ["clock"] }
+futures-util = "0.3"
+tempfile = "3"
+
+[build-dependencies]
+napi-build = "=2.6.0"
+
+[profile.dist]
+inherits = "release"
+opt-level = "s"
+lto = true
+codegen-units = 1
+strip = true
