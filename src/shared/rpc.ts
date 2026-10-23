@@ -1,4 +1,4 @@
-import type { HttpLog, LatestRelease, ProfilesResponse, Project, Secret, SecretFilters, SecretVersion } from "./models.ts";
+import type { ApiKeyInfo, HttpLog, LatestRelease, ProfilesResponse, Project, Secret, SecretFilters, SecretVersion } from "./models.ts";
 
 // Backend API contract: Tauri rpc command with a method and JSON params.
 export type ApiRequests = {
@@ -9,6 +9,10 @@ export type ApiRequests = {
 	switchProfile: {
 		params: { profile: string };
 		response: { active: string };
+	};
+	getApiKeyInfo: {
+		params: { profile?: string };
+		response: ApiKeyInfo;
 	};
 	getProjects: {
 		params: { profile?: string };

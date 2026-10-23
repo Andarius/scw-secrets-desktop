@@ -50,6 +50,18 @@ test("switches project from the header dropdown", async ({ page }) => {
 	await expect(page.locator("header").getByRole("button", { name: /^Project/ })).toContainText("data-pipeline");
 });
 
+test("settings show the selected profile and its API key limits", async ({ page }) => {
+	await page.locator("header").getByRole("button", { name: /^Profile/ }).click();
+	await page.getByRole("listbox").getByRole("option", { name: /staging/ }).click();
+	await page.getByTitle("Settings").click();
+
+	const account = page.getByRole("region", { name: "Account" });
+	await expect(account).toContainText("staging");
+	await expect(account).toContainText("SCW3J9L2QR5YBHD8KWXM");
+	await expect(account).toContainText("Expires 1 Mar 2099");
+	await expect(account).toContainText("365 days");
+});
+
 test("filters the inventory by search term", async ({ page }) => {
 	await page.getByPlaceholder("Filter by name or path").fill("auth");
 

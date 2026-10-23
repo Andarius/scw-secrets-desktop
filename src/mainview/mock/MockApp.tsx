@@ -8,9 +8,11 @@ import { Navigator } from "../components/panels/Navigator";
 import { PaneRail } from "../components/layout/PaneRail";
 import { Inventory } from "../components/panels/Inventory";
 import { DetailPanel, type ValueEntry } from "../components/panels/DetailPanel";
+import { SettingsModal } from "../components/modals/SettingsModal";
 import { ValueView } from "../components/modals/ValueModal";
 import { useActiveVersionCounts } from "../hooks/useActiveVersionCounts";
 import { activeVersionCount } from "../lib/secret-versions";
+import { loadSettings } from "../lib/settings";
 import {
 	filterSecrets,
 	getPathEntries,
@@ -63,6 +65,8 @@ function MockApp() {
 	const [sortKey, setSortKey] = useState<InventorySortKey>("version_count");
 	const [sortDirection, setSortDirection] = useState<InventorySortDirection>("desc");
 	const [spotlightOpen, setSpotlightOpen] = useState(false);
+	const [settingsOpen, setSettingsOpen] = useState(false);
+	const [settings, setSettings] = useState(loadSettings);
 	const [showPathsPane, setShowPathsPane] = useState(true);
 	const [showDetailPane, setShowDetailPane] = useState(true);
 
@@ -146,7 +150,7 @@ function MockApp() {
 				syncingProfile={false}
 				onRefresh={() => {}}
 				refreshing={false}
-				onOpenSettings={() => {}}
+				onOpenSettings={() => setSettingsOpen(true)}
 			/>
 
 				<div className="flex-1 flex flex-col px-6 py-6 min-h-0">
@@ -243,6 +247,17 @@ function MockApp() {
 							setSelectedSecretIds(new Set([secretId]));
 						}}
 						onClose={() => setSpotlightOpen(false)}
+					/>
+				) : null}
+
+				{settingsOpen ? (
+					<SettingsModal
+						profile={selectedProfileSummary}
+						settings={settings}
+						onChange={setSettings}
+						onClose={() => setSettingsOpen(false)}
+						onOpenLogs={() => {}}
+						onCheckForUpdate={async () => null}
 					/>
 				) : null}
 			</div>

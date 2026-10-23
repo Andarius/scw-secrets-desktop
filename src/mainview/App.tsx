@@ -604,6 +604,7 @@ function App() {
 
 				{settingsOpen ? (
 					<SettingsModal
+						profile={selectedProfileSummary}
 						settings={settings}
 						onCheckForUpdate={update.checkNow}
 						onChange={(next) => {

@@ -1,12 +1,15 @@
 import { useEffect, useState } from "react";
 import { Eye, ScrollText, X } from "lucide-react";
 
-import type { LatestRelease } from "../../../shared/models";
+import type { LatestRelease, ProfileSummary } from "../../../shared/models";
+import { useApiKeyInfo } from "../../hooks/useApiKeyInfo";
+import { describeKeyExpiry, formatKeyLifetime } from "../../lib/api-key";
 import type { AppSettings } from "../../lib/settings";
 import { isNewerVersion } from "../../lib/update-check";
 import { UpdateActions } from "../layout/UpdateActions";
 
 type SettingsModalProps = {
+	profile?: ProfileSummary | null;
 	settings: AppSettings;
 	onChange: (settings: AppSettings) => void;
 	onClose: () => void;
@@ -18,6 +21,42 @@ type SettingsModalProps = {
 
 type UpdateStatus = "idle" | "checking" | "up-to-date" | "available" | "failed";
 
+const EXPIRY_TONES = { ok: "text-gray-300", warn: "text-amber-300", expired: "text-red-300" } as const;
+const UNAVAILABLE = <span className="text-gray-500">Not readable with this key</span>;
+
+function AccountSection({ profile }: { profile: ProfileSummary }) {
+	const info = useApiKeyInfo(profile.name);
+	const loading = <span className="text-gray-500">Loading…</span>;
+	const expiry = info?.key ? describeKeyExpiry(info.key.expiresAt) : null;
+	const rows: [string, React.ReactNode][] = [
+		["Profile", profile.name],
+		["Access key", <span className="font-mono">{profile.accessKey || "—"}</span>],
+		["Organization", <span className="font-mono">{profile.organizationId || "—"}</span>],
+		["Default project", <span className="font-mono">{profile.projectId || "—"}</span>],
+		["Key expiry", info === undefined ? loading : expiry ? <span className={EXPIRY_TONES[expiry.tone]}>{expiry.label}</span> : UNAVAILABLE],
+		[
+			"Max key lifetime",
+			info === undefined ? loading : info?.maxKeyLifetimeSeconds != null ? formatKeyLifetime(info.maxKeyLifetimeSeconds) : UNAVAILABLE,
+		],
+	];
+	return (
+		<section aria-label="Account">
+			<div className="text-xs text-gray-400 uppercase tracking-wider mb-3">Account</div>
+			<dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 text-xs">
+				{rows.map(([label, value]) => (
+					<div key={label} className="contents">
+						<dt className="text-gray-500">{label}</dt>
+						<dd className="text-gray-300 truncate">{value}</dd>
+					</div>
+				))}
+			</dl>
+			<div className="text-xs text-gray-500 mt-2">
+				Max key lifetime is the organization's cap on API key expiry, set in its IAM security settings.
+			</div>
+		</section>
+	);
+}
+
 const UPDATE_STATUS_LABELS: Record<Exclude<UpdateStatus, "idle">, string> = {
 	checking: "Checking…",
 	"up-to-date": "You're up to date",
@@ -25,7 +64,7 @@ const UPDATE_STATUS_LABELS: Record<Exclude<UpdateStatus, "idle">, string> = {
 	failed: "Couldn't reach GitHub",
 };
 
-export function SettingsModal({ settings, onChange, onClose, onOpenLogs, deepIndexSize, onClearDeepIndex, onCheckForUpdate }: SettingsModalProps) {
+export function SettingsModal({ profile, settings, onChange, onClose, onOpenLogs, deepIndexSize, onClearDeepIndex, onCheckForUpdate }: SettingsModalProps) {
 	const [updateStatus, setUpdateStatus] = useState<UpdateStatus>("idle");
 	const [latest, setLatest] = useState<LatestRelease | null>(null);
 
@@ -62,7 +101,9 @@ export function SettingsModal({ settings, onChange, onClose, onOpenLogs, deepInd
 				</div>
 
 				<div className="p-5 space-y-6">
-					<div>
+					{profile ? <AccountSection profile={profile} /> : null}
+
+					<div className={profile ? "border-t border-white/10 pt-5" : undefined}>
 						<div className="text-xs text-gray-400 uppercase tracking-wider mb-3">Versions</div>
 						<label className="flex items-start gap-3 cursor-pointer group">
 							<input

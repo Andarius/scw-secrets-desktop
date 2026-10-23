@@ -13,6 +13,7 @@ This project is provided as-is, with no guarantee or warranty of any kind. Use i
 ## Features
 
 - **Profile & project switching** — reads `~/.config/scw/config.yaml` and environment variables
+- **Account details** — Settings shows the selected profile's access key, organization, the key's expiry and the organization's max API key lifetime (when the key may read them)
 - **Path navigator** — browse secrets organized by path hierarchy
 - **Secrets inventory** — searchable table with status and version badges, filter by status
 - **Spotlight search** — `Ctrl/Cmd+P` to search across all secrets, with `id:`, `name:`, `path:`, `tag:`, `type:` field prefixes
@@ -136,6 +137,7 @@ src/
 │   │   ├── inventory-selection.ts # Row click and select-all state helpers
 │   │   ├── value-format.ts   # Secret value parsing, conversion, and structure editing
 │   │   ├── settings.ts       # Persisted app settings
+│   │   ├── api-key.ts        # API key expiry and lifetime labels
 │   │   └── clipboard.ts, console.ts
 │   ├── hooks/                # React hooks, one per file (useSaveSecretValue, useNextRevision…)
 │   ├── mock/                 # Mock mode: MockApp (sample data) and the inert mock API

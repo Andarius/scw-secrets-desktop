@@ -55,6 +55,19 @@ fn secret_path(id: &str, suffix: &str) -> Result<String, String> {
     ))
 }
 
+fn access_key(value: &str) -> bool {
+    !value.is_empty() && value.len() <= 64 && value.bytes().all(|b| b.is_ascii_alphanumeric())
+}
+
+// Scaleway encodes durations as decimal seconds, e.g. "2592000.000000000s".
+fn duration_seconds(value: &Value) -> Option<u64> {
+    let (whole, fraction) = value.as_str()?.strip_suffix('s')?.split_once('.')?;
+    if !fraction.bytes().all(|b| b.is_ascii_digit()) {
+        return None;
+    }
+    whole.parse().ok()
+}
+
 fn validation_error(status: u16, body: &Value) -> Option<String> {
     if status != 400 || body.get("type").and_then(Value::as_str) != Some("invalid_arguments") {
         return None;
@@ -341,6 +354,48 @@ impl Backend {
                     .await?;
                 projects.sort_by(|a, b| by_name(text(a, "name"), text(b, "name")));
                 Ok(json!(projects))
+            }
+            "getApiKeyInfo" => {
+                let key = async {
+                    if !access_key(&profile.access_key) {
+                        return None;
+                    }
+                    let path = format!("/iam/v1alpha1/api-keys/{}", profile.access_key);
+                    let data = self
+                        .request(Method::GET, &path, &profile, &[], None)
+                        .await
+                        .ok()?;
+                    match data.get("expires_at") {
+                        None | Some(Value::Null) => Some(None),
+                        Some(value) => chrono::DateTime::parse_from_rfc3339(value.as_str()?)
+                            .ok()
+                            .map(|date| {
+                                Some(
+                                    date.with_timezone(&chrono::Utc)
+                                        .to_rfc3339_opts(chrono::SecondsFormat::Secs, true),
+                                )
+                            }),
+                    }
+                };
+                let max_lifetime = async {
+                    if !uuid(&profile.organization_id) {
+                        return None;
+                    }
+                    let path = format!(
+                        "/iam/v1alpha1/organizations/{}/security-settings",
+                        profile.organization_id
+                    );
+                    let data = self
+                        .request(Method::GET, &path, &profile, &[], None)
+                        .await
+                        .ok()?;
+                    duration_seconds(data.get("max_api_key_expiration_duration")?)
+                };
+                let (key, max_lifetime) = tokio::join!(key, max_lifetime);
+                Ok(json!({
+                    "key": key.map(|expires_at| json!({"expiresAt": expires_at})),
+                    "maxKeyLifetimeSeconds": max_lifetime,
+                }))
             }
             "getSecrets" => {
                 let mut secrets = self
@@ -953,5 +1008,106 @@ mod tests {
         assert_eq!(result["values"].as_object().unwrap().len(), 15);
         assert_eq!(result["values"][&ids[1]].as_str().unwrap().len(), 65_535);
         assert!((2..=8).contains(&maximum.load(Ordering::SeqCst)));
+    }
+
+    #[tokio::test]
+    async fn api_key_info_reads_key_expiry_and_org_cap_and_hides_what_it_cannot_read() {
+        const ORG: &str = "bbbbbbbb-1234-1234-1234-123456789abc";
+        let key = "/iam/v1alpha1/api-keys/SCWTESTKEY";
+        let settings = format!("/iam/v1alpha1/organizations/{ORG}/security-settings");
+        let denied = json!({"type": "permissions_denied", "message": "private-token"});
+        for (access_key, organization_id, routes, expected) in [
+            (
+                "SCWTESTKEY",
+                ORG,
+                vec![
+                    (key, 200, json!({"expires_at": "2026-12-29T19:18:53.127Z"})),
+                    (
+                        settings.as_str(),
+                        200,
+                        json!({"max_api_key_expiration_duration": "7776000.000000000s"}),
+                    ),
+                ],
+                json!({"key": {"expiresAt": "2026-12-29T19:18:53Z"}, "maxKeyLifetimeSeconds": 7_776_000}),
+            ),
+            (
+                "SCWTESTKEY",
+                ORG,
+                vec![
+                    (key, 200, json!({"expires_at": null})),
+                    (
+                        settings.as_str(),
+                        200,
+                        json!({"max_api_key_expiration_duration": "0.000000000s"}),
+                    ),
+                ],
+                json!({"key": {"expiresAt": null}, "maxKeyLifetimeSeconds": 0}),
+            ),
+            (
+                "SCWTESTKEY",
+                ORG,
+                vec![
+                    (key, 403, denied.clone()),
+                    (settings.as_str(), 403, denied.clone()),
+                ],
+                json!({"key": null, "maxKeyLifetimeSeconds": null}),
+            ),
+            (
+                "SCWTESTKEY",
+                ORG,
+                vec![
+                    (key, 200, json!({"expires_at": "soon"})),
+                    (
+                        settings.as_str(),
+                        200,
+                        json!({"max_api_key_expiration_duration": "-1s"}),
+                    ),
+                ],
+                json!({"key": null, "maxKeyLifetimeSeconds": null}),
+            ),
+            (
+                "../secret-manager",
+                "../../other",
+                vec![],
+                json!({"key": null, "maxKeyLifetimeSeconds": null}),
+            ),
+        ] {
+            let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+            let address = listener.local_addr().unwrap();
+            let routes: Vec<(String, u16, String)> = routes
+                .into_iter()
+                .map(|(path, status, body)| (path.to_owned(), status, body.to_string()))
+                .collect();
+            let count = routes.len();
+            let server = tokio::spawn(async move {
+                let mut requests = Vec::new();
+                for _ in 0..count {
+                    let (mut socket, _) = listener.accept().await.unwrap();
+                    let request = read_request(&mut socket).await;
+                    let (_, status, body) = routes
+                        .iter()
+                        .find(|(path, _, _)| request.starts_with(&format!("GET {path}? ")))
+                        .unwrap_or_else(|| panic!("unexpected request: {request}"));
+                    socket.write_all(format!("HTTP/1.1 {status} Test\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}", body.len()).as_bytes()).await.unwrap();
+                    requests.push(request);
+                }
+                requests
+            });
+            let mut backend = Backend::new().unwrap();
+            backend.api_base = format!("http://{address}");
+            backend.profiles = Profiles::at(
+                std::env::temp_dir().join("scw-missing-test-config"),
+                Some(Profile {
+                    access_key: access_key.into(),
+                    secret_key: "private-token".into(),
+                    project_id: "default-project".into(),
+                    organization_id: organization_id.into(),
+                }),
+            );
+            let info = backend.call("getApiKeyInfo", json!({})).await.unwrap();
+            assert_eq!(info, expected, "{access_key}");
+            assert!(!info.to_string().contains("private-token"));
+            assert_eq!(server.await.unwrap().len(), count);
+        }
     }
 }

@@ -11,6 +11,13 @@ export type ProfilesResponse = {
 	profiles: ProfileSummary[];
 };
 
+export type ApiKeyInfo = {
+	/** null when the key may not read its own IAM record; expiresAt null = never expires. */
+	key: { expiresAt: string | null } | null;
+	/** Organization cap on API key lifetime: 0 = no cap, null = not readable with this key. */
+	maxKeyLifetimeSeconds: number | null;
+};
+
 export type Project = {
 	id: string;
 	name: string;

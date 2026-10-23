@@ -31,6 +31,7 @@ const MOCK_VALUE = JSON.stringify({
 export const mockApi: ApiClient = {
 	getProfiles: async () => ({ active: null, profiles: [] }),
 	switchProfile: async ({ profile }) => ({ active: profile }),
+	getApiKeyInfo: async () => ({ key: { expiresAt: "2099-03-01T09:00:00Z" }, maxKeyLifetimeSeconds: 365 * 86_400 }),
 	getProjects: async () => [],
 	getSecrets: async () => [],
 	getSecretVersions: async () => [],

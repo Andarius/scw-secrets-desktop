@@ -22,7 +22,7 @@ pub(crate) fn validate_params(method: &str, params: &Value) -> Result<(), String
         "getProfiles" | "getHttpLogs" | "clearHttpLogs" | "getLatestRelease"
         | "getUpdateSupport" => &[],
         "switchProfile" => &["profile"],
-        "getProjects" => &["profile?"],
+        "getProjects" | "getApiKeyInfo" => &["profile?"],
         "getSecrets" => &["profile?", "projectId?", "query?", "path?", "status?"],
         "getSecretVersions" | "deleteSecret" => &["secretId", "profile?", "projectId?"],
         "getSecretValue"
