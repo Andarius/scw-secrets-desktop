@@ -41,5 +41,8 @@ Or piecemeal: `just typecheck`, `just build && just rust-check`, `just test`, `j
   versions scheduled for deletion; use the active counts (`useActiveVersionCounts`) for anything user-facing.
 - `MockApp` mirrors parts of `App`; when a UI change touches shared state, update both and the mock API so e2e covers it.
 - Every UI behavior change comes with a Playwright test in `tests/e2e/mock-app.e2e.ts`.
+- Every PR that changes the UI embeds a screenshot of it in the description, taken from mock mode (`just mock`).
+  Push images to the orphan `pr-assets` branch as `<pr-number>/<name>.png`, never to the feature branch, and embed
+  `https://raw.githubusercontent.com/Andarius/scw-secrets-desktop/refs/heads/pr-assets/<pr-number>/<name>.png`.
 - Scaleway API reference: there is no public OpenAPI spec. The Go SDK is the most reliable source for endpoints and
   fields: https://raw.githubusercontent.com/scaleway/scaleway-sdk-go/master/api/secret/v1beta1/secret_sdk.go
