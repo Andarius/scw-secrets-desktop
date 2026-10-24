@@ -1,6 +1,6 @@
 [package]
 name = "scw-secrets"
-version = "0.11.0"
+version = "0.12.0"
 description = "Desktop client for Scaleway Secret Manager"
 authors = ["Scw Secrets contributors"]
 edition = "2021"
