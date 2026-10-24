@@ -2,6 +2,26 @@
 
 Earlier releases: [GitHub Releases](https://github.com/Andarius/scw-secrets-desktop/releases).
 
+## 0.12.0 (2026-10-23)
+
+Release assets are signed and the updater verifies them before installing. The macOS app is signed and notarized, and the snap is much smaller.
+
+### Features
+
+- **Signed releases**: every release asset ships with a minisign signature. The in-app updater, `bin/quickstart.sh` and `bin/snap-install-release.sh` refuse an asset whose signature doesn't match the embedded key or names another version or file. Apps on 0.11.0 and earlier don't verify; updates from 0.12.0 on do. (#31)
+- **Signed and notarized macOS app**: the .app is signed with a Developer ID certificate and notarized, so Gatekeeper opens it without the quarantine workaround. (#31)
+
+### Fixes
+
+- **Crafted TOML secrets can't freeze the viewer**: `smol-toml` 1.9.1 fixes a quadratic parse (GHSA-r4xh-jqrq-34v2). The scw config is now read with `serde-saphyr` instead of the unmaintained `serde_yaml`, and dependencies are refreshed past known advisories. (#30)
+- **Smaller snap**: the snap no longer bundles WebKitGTK libraries it never loaded, going from 140 MB to 4.5 MB (491 MB to 18 MB installed). It runs on the system WebKitGTK 4.1 as before; the README lists it as a requirement and the quickstart warns when it's missing. (#28)
+
+### Dev
+
+- CI caches the Rust build, and the snap job reuses the Linux binary from the AppImage build instead of recompiling it. The snapcraft image is pinned by digest. (#26)
+- Release builds restore a Rust cache warmed from `master` by `warm-release-cache.yml`. (#29)
+- CI runs an `audit` job (`bun audit` + `cargo deny check advisories`), also available as `just audit`. (#30)
+
 ## 0.11.0 (2026-10-13)
 
 The desktop runtime moves from Deno to Tauri 2 with a Rust backend. The UI, features and update flow stay the same.
