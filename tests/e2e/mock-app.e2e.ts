@@ -57,7 +57,7 @@ test("settings show the selected profile and its API key limits", async ({ page 
 
 	const account = page.getByRole("region", { name: "Account" });
 	await expect(account).toContainText("staging");
-	await expect(account).toContainText("SCW3J9L2QR5YBHD8KWXM");
+	await expect(account).not.toContainText("SCW3J9L2QR5YBHD8KWXM");
 	await expect(account).toContainText("(in 90 days)");
 	await expect(account).toContainText("365 days");
 });

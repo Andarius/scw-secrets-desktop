@@ -30,7 +30,6 @@ function AccountSection({ profile }: { profile: ProfileSummary }) {
 	const expiry = info?.key ? describeKeyExpiry(info.key.expiresAt) : null;
 	const rows: [string, React.ReactNode][] = [
 		["Profile", profile.name],
-		["Access key", <span className="font-mono">{profile.accessKey || "—"}</span>],
 		["Organization", <span className="font-mono">{profile.organizationId || "—"}</span>],
 		["Default project", <span className="font-mono">{profile.projectId || "—"}</span>],
 		["Key expiry", info === undefined ? loading : expiry ? <span className={EXPIRY_TONES[expiry.tone]}>{expiry.label}</span> : UNAVAILABLE],
