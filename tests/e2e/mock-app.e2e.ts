@@ -50,7 +50,7 @@ test("switches project from the header dropdown", async ({ page }) => {
 	await expect(page.locator("header").getByRole("button", { name: /^Project/ })).toContainText("data-pipeline");
 });
 
-test("settings show the selected profile and its API key limits", async ({ page }) => {
+test("settings show the selected profile without its access key", async ({ page }) => {
 	await page.locator("header").getByRole("button", { name: /^Profile/ }).click();
 	await page.getByRole("listbox").getByRole("option", { name: /staging/ }).click();
 	await page.getByTitle("Settings").click();
@@ -58,8 +58,18 @@ test("settings show the selected profile and its API key limits", async ({ page 
 	const account = page.getByRole("region", { name: "Account" });
 	await expect(account).toContainText("staging");
 	await expect(account).not.toContainText("SCW3J9L2QR5YBHD8KWXM");
-	await expect(account).toContainText("(in 90 days)");
-	await expect(account).toContainText("365 days");
+});
+
+test("flags expiring secrets in the inventory and explains the policy in the detail", async ({ page }) => {
+	const row = (name: string) => page.getByRole("row").filter({ hasText: name });
+	await expect(row("DATABASE_URL")).toContainText("In 3 days");
+	await expect(row("STRIPE_SECRET_KEY")).toContainText("Expired");
+	await expect(row("OAUTH_CLIENT_SECRET")).toContainText("Once read");
+	await expect(row("SENTRY_DSN")).not.toContainText(/In \d|Expired|Once read/);
+
+	const expiration = page.getByLabel("Expiration");
+	await expect(expiration).toContainText("(in 3 days)");
+	await expect(expiration).toContainText("New versions expire 30 days after creation, then are disabled.");
 });
 
 test("filters the inventory by search term", async ({ page }) => {

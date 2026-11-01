@@ -1,3 +1,4 @@
+import type { EphemeralProperties } from "../../shared/models";
 import type { ApiClient } from "../../shared/rpc";
 
 // Exercises the value viewer: JSON with embedded JSON/TOML strings, long dot-path
@@ -27,11 +28,13 @@ const MOCK_VALUE = JSON.stringify({
 	tls_key: "-----BEGIN PRIVATE KEY-----\nMIIBVAIBADANBgkqhkiG9w0BAQEFAASCAT4wggE6AgEAAkEAx7fJ\nq2v9pLxWn3T8eKzR5mYd0aBcD1eFgH2iJkLmN4oPqRsT6uVwXyZ\n-----END PRIVATE KEY-----",
 });
 
+const DAY_MS = 86_400_000;
+const inDays = (days: number) => new Date(Date.now() + days * DAY_MS).toISOString();
+
 // Inert backend for mock mode (VITE_MOCK=1) — MockApp renders its own sample data.
 export const mockApi: ApiClient = {
 	getProfiles: async () => ({ active: null, profiles: [] }),
 	switchProfile: async ({ profile }) => ({ active: profile }),
-	getApiKeyInfo: async () => ({ key: { expiresAt: new Date(Date.now() + 90 * 86_400_000).toISOString() }, maxKeyLifetimeSeconds: 365 * 86_400 }),
 	getProjects: async () => [],
 	getSecrets: async () => [],
 	getSecretVersions: async () => [],
@@ -47,6 +50,16 @@ export const mockApi: ApiClient = {
 		counts: Object.fromEntries(secretIds.filter((id) => id.startsWith("f2a3")).map((id) => [id, 1])),
 		failed: [],
 	}),
+	// DATABASE_URL expires soon, JWT_SECRET later, STRIPE_SECRET_KEY already, OAUTH_CLIENT_SECRET once read
+	getVersionExpiries: async ({ secretIds }) => {
+		const known: Record<string, EphemeralProperties> = {
+			d4e5: { expires_at: inDays(3), expires_once_accessed: false, action: "disable" },
+			f6a7: { expires_at: inDays(60), expires_once_accessed: false, action: "delete" },
+			b8c9: { expires_at: inDays(-1), expires_once_accessed: false, action: "disable" },
+			a3b4: { expires_at: null, expires_once_accessed: true, action: "delete" },
+		};
+		return { expiries: Object.fromEntries(secretIds.map((id) => [id, known[id.slice(0, 4)] ?? null])), failed: [] };
+	},
 	createSecret: async () => ({ secretId: "mock-secret-id" }),
 	updateSecretValue: async () => ({ ok: true }),
 	enableSecretVersion: async () => ({ ok: true }),

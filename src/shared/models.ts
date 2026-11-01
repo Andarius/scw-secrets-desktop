@@ -11,13 +11,6 @@ export type ProfilesResponse = {
 	profiles: ProfileSummary[];
 };
 
-export type ApiKeyInfo = {
-	/** null when the key may not read its own IAM record; expiresAt null = never expires. */
-	key: { expiresAt: string | null } | null;
-	/** Organization cap on API key lifetime: 0 = no cap, null = not readable with this key. */
-	maxKeyLifetimeSeconds: number | null;
-};
-
 export type Project = {
 	id: string;
 	name: string;
@@ -36,6 +29,24 @@ export type Secret = {
 	tags: string[];
 	created_at: string;
 	updated_at: string;
+	ephemeral_policy?: EphemeralPolicy | null;
+};
+
+/** What Scaleway does to a version once it expires. */
+export type EphemeralAction = "delete" | "disable" | "unknown_action";
+
+/** Secret-level expiration rule applied to each new version; time_to_live is decimal seconds, e.g. "3600s". */
+export type EphemeralPolicy = {
+	time_to_live?: string | null;
+	expires_once_accessed?: boolean | null;
+	action: EphemeralAction;
+};
+
+/** Expiration of one version, derived from the secret's policy when the version was created. */
+export type EphemeralProperties = {
+	expires_at?: string | null;
+	expires_once_accessed?: boolean | null;
+	action: EphemeralAction;
 };
 
 export type SecretVersion = {
@@ -46,6 +57,7 @@ export type SecretVersion = {
 	updated_at: string;
 	description: string;
 	latest: boolean;
+	ephemeral_properties?: EphemeralProperties | null;
 };
 
 export type HttpLog = {

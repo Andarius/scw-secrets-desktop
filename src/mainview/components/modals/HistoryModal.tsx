@@ -3,6 +3,8 @@ import { Loader2, Power, PowerOff, Bomb, X, RefreshCw } from "lucide-react";
 
 import { api } from "../../lib/rpc";
 import type { SecretVersion } from "../../../shared/models";
+import { describeExpiry } from "../../lib/secret-expiry";
+import { ExpiryBadge } from "../panels/ExpiryBadge";
 
 type HistoryModalProps = {
 	secretId: string;
@@ -176,6 +178,7 @@ export function HistoryModal({
 									<th className="px-5 py-3 text-left font-medium">Status</th>
 									<th className="px-5 py-3 text-left font-medium">Created</th>
 									<th className="px-5 py-3 text-left font-medium">Updated</th>
+									<th className="px-5 py-3 text-left font-medium">Expires</th>
 									<th className="px-5 py-3 text-right font-medium">Actions</th>
 								</tr>
 							</thead>
@@ -184,6 +187,7 @@ export function HistoryModal({
 									const isDeleted =
 										version.status === "scheduled_for_deletion" || version.status === "destroyed";
 									const isEnabled = version.status === "enabled";
+									const expiry = isDeleted ? null : describeExpiry(version.ephemeral_properties);
 									return (
 										<tr
 											key={version.revision}
@@ -205,6 +209,9 @@ export function HistoryModal({
 											</td>
 											<td className="px-5 py-3 text-gray-400">
 												{formatDateTime(version.updated_at)}
+											</td>
+											<td className="px-5 py-3 text-gray-500">
+												{expiry ? <ExpiryBadge expiry={expiry} /> : "—"}
 											</td>
 											<td className="px-5 py-3 text-right">
 												{!isDeleted ? (

@@ -3,14 +3,17 @@ import { useEffect, useState } from "react";
 import { Check, Copy, CopyPlus, Eye, Pencil, Clock, Key as KeyIcon, Globe, Loader2, ExternalLink, Trash2, Layers2, X, Plus, Share2, Tag, PanelRightClose } from "lucide-react";
 
 import { api } from "../../lib/rpc";
-import type { ProfileSummary, Project, Secret } from "../../../shared/models";
+import type { EphemeralProperties, ProfileSummary, Project, Secret } from "../../../shared/models";
 import { secretConsoleUrl } from "../../lib/console";
 import { keepLatestVersionOnly } from "../../lib/secret-versions";
+import { describeExpiry, describePolicy } from "../../lib/secret-expiry";
+import { EXPIRY_TEXT_TONES } from "./ExpiryBadge";
 
 export type ValueEntry = { secretId: string; name: string; path?: string; type?: Secret["type"]; value: string };
 
 type DetailPanelProps = {
 	secrets: Secret[];
+	expiries: ReadonlyMap<string, EphemeralProperties | null>;
 	selectedProject: Project | null;
 	selectedProfileSummary: ProfileSummary | null;
 	onViewValues: (title: string, values: ValueEntry[]) => void;
@@ -66,6 +69,7 @@ function formatSecretType(type?: string): string {
 
 function SingleSecretDetail({
 	secret,
+	expiry: versionExpiry,
 	selectedProject,
 	selectedProfileSummary,
 	onCollapse,
@@ -74,6 +78,7 @@ function SingleSecretDetail({
 	onRefresh,
 }: {
 	secret: Secret;
+	expiry: EphemeralProperties | null | undefined;
 	selectedProject: Project | null;
 	selectedProfileSummary: ProfileSummary | null;
 	onViewValues: (title: string, values: ValueEntry[]) => void;
@@ -101,6 +106,7 @@ function SingleSecretDetail({
 	const [confirmDeleteSecret, setConfirmDeleteSecret] = useState(false);
 	const [shareCopied, setShareCopied] = useState(false);
 
+	const expiry = describeExpiry(versionExpiry);
 	const secretId = secret.id;
 	const [prevSecretId, setPrevSecretId] = useState<string>(secretId);
 	if (secretId !== prevSecretId) {
@@ -344,6 +350,20 @@ function SingleSecretDetail({
 							{secret.version_count}
 						</div>
 					</div>
+
+					{secret.ephemeral_policy || expiry ? (
+						<div className="col-span-2" aria-label="Expiration">
+							<div className="text-xs text-gray-400 uppercase tracking-wider mb-1.5">
+								Expiration
+							</div>
+							{expiry ? (
+								<div className={`text-sm ${EXPIRY_TEXT_TONES[expiry.tone]}`}>{expiry.label}</div>
+							) : null}
+							{secret.ephemeral_policy ? (
+								<div className="text-xs text-gray-500 mt-1">{describePolicy(secret.ephemeral_policy)}</div>
+							) : null}
+						</div>
+					) : null}
 				</div>
 
 				<div>
@@ -939,6 +959,7 @@ function MultiSecretDetail({
 
 export function DetailPanel({
 	secrets,
+	expiries,
 	selectedProject,
 	selectedProfileSummary,
 	onViewValues,
@@ -976,6 +997,7 @@ export function DetailPanel({
 			{secrets.length === 1 ? (
 				<SingleSecretDetail
 					secret={secrets[0]}
+					expiry={expiries.get(secrets[0].id)}
 					selectedProject={selectedProject}
 					selectedProfileSummary={selectedProfileSummary}
 					onViewValues={onViewValues}

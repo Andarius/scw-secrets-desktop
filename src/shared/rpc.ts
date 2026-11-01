@@ -1,4 +1,4 @@
-import type { ApiKeyInfo, HttpLog, LatestRelease, ProfilesResponse, Project, Secret, SecretFilters, SecretVersion } from "./models.ts";
+import type { EphemeralProperties, HttpLog, LatestRelease, ProfilesResponse, Project, Secret, SecretFilters, SecretVersion } from "./models.ts";
 
 // Backend API contract: Tauri rpc command with a method and JSON params.
 export type ApiRequests = {
@@ -9,10 +9,6 @@ export type ApiRequests = {
 	switchProfile: {
 		params: { profile: string };
 		response: { active: string };
-	};
-	getApiKeyInfo: {
-		params: { profile?: string };
-		response: ApiKeyInfo;
 	};
 	getProjects: {
 		params: { profile?: string };
@@ -37,6 +33,11 @@ export type ApiRequests = {
 	getActiveVersionCounts: {
 		params: { secretIds: string[]; profile?: string; projectId?: string };
 		response: { counts: Record<string, number>; failed: string[] };
+	};
+	/** Expiration of each secret's current version (latest enabled, else latest not deleted); null = none. */
+	getVersionExpiries: {
+		params: { secretIds: string[]; profile?: string; projectId?: string };
+		response: { expiries: Record<string, EphemeralProperties | null>; failed: string[] };
 	};
 	createSecret: {
 		params: { name: string; path?: string; type?: string; value: string; tags?: string[]; profile?: string; projectId?: string };

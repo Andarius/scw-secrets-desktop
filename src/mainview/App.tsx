@@ -20,6 +20,7 @@ import { useAvailableUpdate } from "./hooks/useAvailableUpdate";
 import { loadSettings, saveSettings, type AppSettings } from "./lib/settings";
 import { activeVersionCount } from "./lib/secret-versions";
 import { useActiveVersionCounts } from "./hooks/useActiveVersionCounts";
+import { useVersionExpiries } from "./hooks/useVersionExpiries";
 import {
 	filterSecrets,
 	getPathEntries,
@@ -322,6 +323,7 @@ function App() {
 	const visibleVersionCount = visibleSecrets.reduce((sum, secret) => sum + secret.version_count, 0);
 	const totalVersionCount = secrets.reduce((sum, secret) => sum + secret.version_count, 0);
 	const { activeCounts, loading: loadingActiveCounts } = useActiveVersionCounts(secrets, selectedProfile, selectedProjectId);
+	const expiries = useVersionExpiries(secrets, selectedProfile, selectedProjectId);
 	const visiblePrunableVersionCount = visibleSecrets.reduce(
 		(sum, secret) => sum + Math.max(activeVersionCount(secret, activeCounts) - 1, 0),
 		0,
@@ -455,6 +457,7 @@ function App() {
 
 						<Inventory
 							secrets={visibleSecrets}
+							expiries={expiries}
 							selectedSecretIds={selectedSecretIds}
 							onSelectionChange={setSelectedSecretIds}
 							onSecretDoubleClick={async (secret) => {
@@ -495,6 +498,7 @@ function App() {
 						{showDetailPane ? (
 							<DetailPanel
 								secrets={selectedSecrets}
+								expiries={expiries}
 								selectedProject={selectedProject}
 								selectedProfileSummary={selectedProfileSummary}
 								onViewValues={(title, values) => setExpandedValues({ title, values })}

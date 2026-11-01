@@ -2,8 +2,6 @@ import { useEffect, useState } from "react";
 import { Eye, ScrollText, X } from "lucide-react";
 
 import type { LatestRelease, ProfileSummary } from "../../../shared/models";
-import { useApiKeyInfo } from "../../hooks/useApiKeyInfo";
-import { describeKeyExpiry, formatKeyLifetime } from "../../lib/api-key";
 import type { AppSettings } from "../../lib/settings";
 import { isNewerVersion } from "../../lib/update-check";
 import { UpdateActions } from "../layout/UpdateActions";
@@ -21,22 +19,11 @@ type SettingsModalProps = {
 
 type UpdateStatus = "idle" | "checking" | "up-to-date" | "available" | "failed";
 
-const EXPIRY_TONES = { ok: "text-gray-300", warn: "text-amber-300", expired: "text-red-300" } as const;
-const UNAVAILABLE = <span className="text-gray-500">Not readable with this key</span>;
-
 function AccountSection({ profile }: { profile: ProfileSummary }) {
-	const info = useApiKeyInfo(profile.name);
-	const loading = <span className="text-gray-500">Loading…</span>;
-	const expiry = info?.key ? describeKeyExpiry(info.key.expiresAt) : null;
 	const rows: [string, React.ReactNode][] = [
 		["Profile", profile.name],
 		["Organization", <span className="font-mono">{profile.organizationId || "—"}</span>],
 		["Default project", <span className="font-mono">{profile.projectId || "—"}</span>],
-		["Key expiry", info === undefined ? loading : expiry ? <span className={EXPIRY_TONES[expiry.tone]}>{expiry.label}</span> : UNAVAILABLE],
-		[
-			"Max key lifetime",
-			info === undefined ? loading : info?.maxKeyLifetimeSeconds != null ? formatKeyLifetime(info.maxKeyLifetimeSeconds) : UNAVAILABLE,
-		],
 	];
 	return (
 		<section aria-label="Account">
@@ -49,9 +36,6 @@ function AccountSection({ profile }: { profile: ProfileSummary }) {
 					</div>
 				))}
 			</dl>
-			<div className="text-xs text-gray-500 mt-2">
-				Max key lifetime is the organization's cap on API key expiry, set in its IAM security settings.
-			</div>
 		</section>
 	);
 }

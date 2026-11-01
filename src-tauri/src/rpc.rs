@@ -22,14 +22,14 @@ pub(crate) fn validate_params(method: &str, params: &Value) -> Result<(), String
         "getProfiles" | "getHttpLogs" | "clearHttpLogs" | "getLatestRelease"
         | "getUpdateSupport" => &[],
         "switchProfile" => &["profile"],
-        "getProjects" | "getApiKeyInfo" => &["profile?"],
+        "getProjects" => &["profile?"],
         "getSecrets" => &["profile?", "projectId?", "query?", "path?", "status?"],
         "getSecretVersions" | "deleteSecret" => &["secretId", "profile?", "projectId?"],
         "getSecretValue"
         | "enableSecretVersion"
         | "disableSecretVersion"
         | "destroySecretVersion" => &["secretId", "revision", "profile?", "projectId?"],
-        "prefetchSecretValues" | "getActiveVersionCounts" => {
+        "prefetchSecretValues" | "getActiveVersionCounts" | "getVersionExpiries" => {
             &["secretIds", "profile?", "projectId?"]
         }
         "createSecret" => &[

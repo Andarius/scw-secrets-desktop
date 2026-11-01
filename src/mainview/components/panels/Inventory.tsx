@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { ChevronDown, ChevronUp, Search, Tag, X } from "lucide-react";
 
-import type { Secret } from "../../../shared/models";
+import type { EphemeralProperties, Secret } from "../../../shared/models";
 import {
 	getNextSelectionState,
 	getSelectAllState,
@@ -11,11 +11,14 @@ import type {
 	InventorySortKey,
 	StatusFilter,
 } from "../../lib/secret-list";
+import { describeExpiry } from "../../lib/secret-expiry";
+import { ExpiryBadge } from "./ExpiryBadge";
 
 export type { InventorySortDirection, InventorySortKey };
 
 type InventoryProps = {
 	secrets: Secret[];
+	expiries: ReadonlyMap<string, EphemeralProperties | null>;
 	selectedSecretIds: Set<string>;
 	onSelectionChange: (ids: Set<string>) => void;
 	onSecretDoubleClick: (secret: Secret) => void;
@@ -172,6 +175,7 @@ function TagDropdown({
 
 export function Inventory({
 	secrets,
+	expiries,
 	selectedSecretIds,
 	onSelectionChange,
 	onSecretDoubleClick,
@@ -393,6 +397,7 @@ export function Inventory({
 						<tbody className="divide-y divide-white/5">
 							{secrets.map((secret, index) => {
 								const isSelected = selectedSecretIds.has(secret.id);
+								const expiry = describeExpiry(expiries.get(secret.id));
 								return (
 									<tr
 										key={secret.id}
@@ -438,7 +443,10 @@ export function Inventory({
 											</button>
 										</td>
 										<td className="px-4 py-3">
-											<StatusBadge status={secret.status} />
+											<div className="flex flex-col items-start gap-1">
+												<StatusBadge status={secret.status} />
+												{expiry ? <ExpiryBadge expiry={expiry} /> : null}
+											</div>
 										</td>
 										<td className="px-4 py-3">
 											<div className="flex flex-wrap gap-1">
