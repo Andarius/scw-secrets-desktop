@@ -14,6 +14,7 @@ Release assets are signed and the updater verifies them before installing. The m
 ### Fixes
 
 - **Crafted TOML secrets can't freeze the viewer**: `smol-toml` 1.9.1 fixes a quadratic parse (GHSA-r4xh-jqrq-34v2). The scw config is now read with `serde-saphyr` instead of the unmaintained `serde_yaml`, and dependencies are refreshed past known advisories. (#30)
+- **Rust advisories cleared**: `rustls-webpki` 0.103.16 (RUSTSEC-2026-0382, certificate checks could accept distrusted intermediates) and `tokio` 1.54.1 (RUSTSEC-2026-0384). (#35)
 - **Smaller snap**: the snap no longer bundles WebKitGTK libraries it never loaded, going from 140 MB to 4.5 MB (491 MB to 18 MB installed). It runs on the system WebKitGTK 4.1 as before; the README lists it as a requirement and the quickstart warns when it's missing. (#28)
 
 ### Dev
