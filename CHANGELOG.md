@@ -14,7 +14,8 @@ Release assets are signed and the updater verifies them before installing. The m
 ### Fixes
 
 - **Crafted TOML secrets can't freeze the viewer**: `smol-toml` 1.9.1 fixes a quadratic parse (GHSA-r4xh-jqrq-34v2). The scw config is now read with `serde-saphyr` instead of the unmaintained `serde_yaml`, and dependencies are refreshed past known advisories. (#30)
-- **Rust advisories cleared**: `rustls-webpki` 0.103.16 (RUSTSEC-2026-0382, certificate checks could accept distrusted intermediates) and `tokio` 1.54.1 (RUSTSEC-2026-0384). (#35)
+- **Rust advisories cleared**: `rustls-webpki` 0.103.16 (RUSTSEC-2026-0382, certificate checks could accept distrusted intermediates) and `tokio` 1.54.1 (RUSTSEC-2026-0384), plus `glib` 0.20 (RUSTSEC-2024-0429, unsound string iterator). (#35, #36, #50)
+- **Vite 6.4.5**: fixes GHSA-8g5g-mxqh-grgj in the build toolchain. (#35)
 - **Smaller snap**: the snap no longer bundles WebKitGTK libraries it never loaded, going from 140 MB to 4.5 MB (491 MB to 18 MB installed). It runs on the system WebKitGTK 4.1 as before; the README lists it as a requirement and the quickstart warns when it's missing. (#28)
 
 ### Dev
@@ -22,6 +23,8 @@ Release assets are signed and the updater verifies them before installing. The m
 - CI caches the Rust build, and the snap job reuses the Linux binary from the AppImage build instead of recompiling it. The snapcraft image is pinned by digest. (#26)
 - Release builds restore a Rust cache warmed from `master` by `warm-release-cache.yml`. (#29)
 - CI runs an `audit` job (`bun audit` + `cargo deny check advisories`), also available as `just audit`. (#30)
+- Renovate keeps dependencies, CI actions and the Rust toolchain up to date. (#35)
+- Dependency updates: Rust 1.99.1, Bun 1.4.4 in CI, React, Tailwind CSS, PostCSS, and the `chrono`, `futures-util`, `serde`, `serde_json`, `tauri-plugin-clipboard-manager`, `tauri-plugin-window-state` and `tempfile` crates. (#37, #39–#49)
 
 ## 0.11.0 (2026-10-13)
 
