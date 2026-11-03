@@ -7,10 +7,10 @@ edition = "2021"
 license = "MIT"
 
 [build-dependencies]
-tauri-build = { version = "2", features = [] }
+tauri-build = { version = "2.7.4", features = [] }
 
 [dependencies]
-tauri = { version = "2", features = [] }
+tauri = { version = "2.12.5", features = [] }
 tauri-plugin-window-state = "2.5.0"
 tauri-plugin-clipboard-manager = "2.5.0"
 serde = { version = "1.0.229", features = ["derive"] }
@@ -29,7 +29,7 @@ tempfile = "3.27.0"
 glib = "0.20"
 
 [dev-dependencies]
-tauri = { version = "2", features = ["test"] }
+tauri = { version = "2.12.5", features = ["test"] }
 
 [lints.rust]
 unsafe_code = "warn"
