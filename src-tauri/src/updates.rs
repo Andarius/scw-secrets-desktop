@@ -185,8 +185,16 @@ fn pick_asset(payload: &Value, version: &str, name: &str) -> Option<(String, Str
     .then(|| (url, sha256.to_owned(), signature))
 }
 
+fn hex_digest(bytes: &[u8]) -> String {
+    use std::fmt::Write;
+    bytes.iter().fold(String::new(), |mut out, b| {
+        let _ = write!(out, "{b:02x}");
+        out
+    })
+}
+
 fn verify_digest(bytes: &[u8], expected: &str) -> InstallResult {
-    if format!("{:x}", Sha256::digest(bytes)) != expected {
+    if hex_digest(&Sha256::digest(bytes)) != expected {
         return Err("downloaded file doesn't match the published SHA-256".into());
     }
     Ok(())
@@ -549,7 +557,7 @@ mod tests {
 
     #[test]
     fn assets_require_exact_urls_and_sha256() {
-        let hash = format!("{:x}", Sha256::digest(b"app"));
+        let hash = hex_digest(&Sha256::digest(b"app"));
         let url = format!("https://github.com/{REPO}/releases/download/v1.2.3/ScwSecrets.AppImage");
         let signature = format!("{url}.minisig");
         let valid = json!({"assets": [
