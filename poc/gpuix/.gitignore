@@ -1,0 +1,8 @@
+node_modules/
+dist/
+native/target/
+scw-native.node
+screenshots/
+web/dist/
+dist-hermes/
+hermes/hermes-node-*/
